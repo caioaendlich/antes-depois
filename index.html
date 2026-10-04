@@ -1142,7 +1142,7 @@ function camOpenProj(kind, idx) {
 }
 function camClose() {
   $('cam').hidden = true; if (camStream) camStream.getTracks().forEach(x => x.stop()); camStream = null; trk = null;
-  if (camMode !== 'free' && screen === 'proj') shotChain.then(() => { renderProj(); bgCut(); });
+  if (camMode !== 'free' && screen === 'proj') shotChain.then(() => { renderProj(); bgCut(); if (Pj && unbacked(Pj.rec)) offerBackup(true); });
   setTimeout(pump, 300);
 }
 $('camA').onclick = () => camOpen('A'); $('camD').onclick = () => camOpen('D');
@@ -1201,7 +1201,8 @@ async function removeShot(s) {
   const del = [s]; if (s.kind === 'A') { const d = depOf(s); if (d) del.push(d); }
   for (const x of del) { const i = Pj.shots.indexOf(x); if (i >= 0) Pj.shots.splice(i, 1); await DB.del('shots', x.id); }
 }
-function touchProj() {
+function touchProj(noDirty) {
+  if (!noDirty) Pj.rec.dirty = (Pj.rec.dirty || 0) + 1;
   const L = antesList(); Pj.rec.nA = L.length; Pj.rec.nP = L.filter(depOf).length; Pj.rec.cover = L[0] ? L[0].thumb : null; Pj.rec.u = Date.now();
   return DB.put('projects', Pj.rec);
 }
@@ -1242,6 +1243,9 @@ async function renderHome() {
     b.innerHTML = (p.cover ? '<img alt="" src="' + p.cover + '">' : '<span class="ph"></span>') + '<span><b></b><small></small></span><i>›</i>';
     b.querySelector('b').textContent = p.name;
     b.querySelector('small').textContent = fmtD(p.t) + ' · ' + (p.nA || 0) + ' antes · ' + (p.nP || 0) + ' ' + ((p.nP || 0) === 1 ? 'par' : 'pares');
+    const bk = document.createElement('small'); bk.style.display = 'block';
+    if (p.dirty) { bk.textContent = 'sem backup desde a última alteração'; bk.style.color = 'var(--warn)'; } else if (p.bkAt) bk.textContent = 'backup em dia · ' + fmtDT(p.bkAt);
+    if (bk.textContent) b.querySelector('small').after(bk);
     b.onclick = () => openProject(p.id);
     box.appendChild(b);
   });
@@ -1280,6 +1284,7 @@ function renderProj() {
   $('pShootD').disabled = !L.length; $('pMount').disabled = !nP;
   $('pMount').textContent = nP ? 'Montar ' + nP + (nP === 1 ? ' comparação' : ' comparações') : 'Montar comparações';
   $('pShare').disabled = $('pBackup').disabled = !Pj.shots.length;
+  $('pBackup').textContent = Pj.rec.dirty ? 'Backup (pendente)' : 'Backup';
 }
 function fileName(s) {
   const L = antesList(), a = s.kind === 'A' ? s : L.find(x => x.id === s.of), i = L.indexOf(a);
@@ -1406,8 +1411,8 @@ function unzip(buf) {
   }
   return out;
 }
-$('pBackup').onclick = async () => {
-  if (!Pj) return; setStatus('Montando backup…', true);
+const unbacked = rec => rec.dirty || 0;
+async function buildBackup() {
   const enc = new TextEncoder(), entries = [], meta = { app: 'prisma', v: 1, project: { id: Pj.rec.id, name: Pj.rec.name, t: Pj.rec.t, tmpl: Pj.rec.tmpl || null }, shots: [] };
   const order = antesList().flatMap(a => [a, depOf(a)]).filter(Boolean);
   for (const s of order) {
@@ -1415,13 +1420,22 @@ $('pBackup').onclick = async () => {
     meta.shots.push({ id: s.id, kind: s.kind, of: s.of || null, w: s.w, h: s.h, pyr: s.pyr || null, pose: s.pose, yaw: s.yaw, t: s.t, adj: s.adj || null, edge: s.edge, file: name });
   }
   entries.unshift({ name: 'projeto.json', data: enc.encode(JSON.stringify(meta)) });
-  const d = new Date(), zname = 'prisma_' + slug(Pj.rec.name) + '_' + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) + '.zip';
-  const file = new File([zip(entries)], zname, { type: 'application/zip' });
+  const d = new Date(), zname = 'prisma_' + slug(Pj.rec.name) + '_' + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) + '-' + pad2(d.getHours()) + pad2(d.getMinutes()) + '.zip';
+  return new File([zip(entries)], zname, { type: 'application/zip' });
+}
+// backup pronto na tela; o toque no botão abre o compartilhamento (o iPhone exige um toque para isso)
+async function offerBackup(auto) {
+  if (!Pj || !Pj.shots.length) return;
+  setStatus('Montando backup…', true);
+  const rec = Pj.rec, file = await buildBackup(), mb = (file.size / 1048576).toFixed(1).replace('.', ',');
   setStatus('Pronto', false);
-  overlay(null, 'Backup de ' + Pj.rec.name + ' pronto (' + (file.size / 1048576).toFixed(1).replace('.', ',') + ' MB). Guarde em Arquivos ou no Drive. Para recuperar, use Restaurar backup na tela inicial.', [
-    ['Compartilhar backup', async () => { if (!await shareFiles([file])) download(file, zname); }, 'primary'],
-    ['Baixar', () => download(file, zname)], ['Fechar', closeOut]]);
-};
+  const done = () => { rec.dirty = 0; rec.bkAt = Date.now(); DB.put('projects', rec).catch(() => {}); closeOut(); if (screen === 'proj') renderProj(); if (screen === 'home') renderHome(); };
+  const n = unbacked(rec);
+  overlay(null, (auto && n ? n + (n === 1 ? ' alteração' : ' alterações') + ' sem backup em ' + rec.name + '. ' : 'Backup de ' + rec.name + ' pronto (' + mb + ' MB). ') + 'Toque em Salvar backup e escolha "Salvar em Arquivos", na pasta Prisma do iCloud Drive. Da próxima vez o iPhone já sugere a mesma pasta.', [
+    ['Salvar backup', async () => { try { if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); done(); return; } } catch (e) { if (e && e.name === 'AbortError') return; } download(file, file.name); done(); }, 'primary'],
+    [auto ? 'Agora não' : 'Fechar', closeOut]]);
+}
+$('pBackup').onclick = () => offerBackup(false);
 $('restore').onclick = () => $('fileZip').click();
 $('fileZip').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
@@ -1439,7 +1453,7 @@ $('fileZip').onchange = async e => {
       const r = { ...s, id: map[s.id], of: s.of ? map[s.of] : undefined, pid, blob, prev: pv.prev, thumb: pv.thumb };
       if (!r.pyr) delete r.pyr; delete r.file; Pj.shots.push(r); await DB.put('shots', r);
     }
-    await touchProj(); setStatus('Backup restaurado', false); show('proj'); renderProj(); bgCut();
+    await touchProj(true); setStatus('Backup restaurado', false); show('proj'); renderProj(); bgCut();
   } catch (err) { Pj = null; setStatus(err.message || 'Não consegui restaurar', false); }
 };
 
