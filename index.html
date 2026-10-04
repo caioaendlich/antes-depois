@@ -78,6 +78,17 @@ input[type=text]{font:inherit;font-size:14px;background:var(--panel);color:var(-
 .note{font-size:12.5px;color:var(--muted);line-height:1.45;margin:0}
 #out{position:fixed;inset:0;background:rgba(0,0,0,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;z-index:10}
 [hidden]{display:none!important}
+#cam{position:fixed;inset:0;background:#000;z-index:20;touch-action:none}
+#cam video,#cam canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#camGhost{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;opacity:.4}
+#cam .mir{transform:scaleX(-1)}
+.camtop{position:absolute;left:0;right:0;top:0;padding:max(10px,env(safe-area-inset-top)) 12px 10px;display:flex;gap:8px;align-items:center;justify-content:space-between;background:linear-gradient(#000a,#0000)}
+.cambot{position:absolute;left:0;right:0;bottom:0;padding:12px 14px max(14px,env(safe-area-inset-bottom));display:grid;gap:10px;background:linear-gradient(#0000,#000c 30%)}
+.cambot .sl{grid-template-columns:86px 1fr;color:#eee}
+.shut{justify-self:center;width:74px;height:74px;border-radius:50%;border:4px solid #fff;background:#fff3;cursor:pointer}
+.shut:active{background:#fff8}
+.camrow{display:flex;gap:8px;align-items:center;justify-content:space-between}
+#camFlash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s}
 #out img{max-height:78vh;max-width:100%;border-radius:8px}
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 #app{padding-top:max(12px,env(safe-area-inset-top));padding-bottom:max(28px,env(safe-area-inset-bottom))}
@@ -103,12 +114,12 @@ input[type=text]{font:inherit;font-size:14px;background:var(--panel);color:var(-
     <div class="pair">
     <div class="row">
       <div class="row-head"><span class="lbl">Antes</span>
-        <div class="flex"><button class="btn small" id="clearA" hidden>Limpar</button><button class="btn small" id="addA">+ Fotos de antes</button></div></div>
+        <div class="flex"><button class="btn small" id="clearA" hidden>Limpar</button><button class="btn small" id="camA">Câmera</button><button class="btn small" id="addA">+ Fotos de antes</button></div></div>
       <div class="strip-wrap empty" id="wrapA"><div class="strip" id="stripA"><div class="empty-note">Selecione uma ou várias fotos de antes</div></div></div>
     </div>
     <div class="row">
       <div class="row-head"><span class="lbl">Depois</span>
-        <div class="flex"><button class="btn small" id="clearD" hidden>Limpar</button><button class="btn small" id="addD">+ Fotos de depois</button></div></div>
+        <div class="flex"><button class="btn small" id="clearD" hidden>Limpar</button><button class="btn small" id="camD">Câmera</button><button class="btn small" id="addD">+ Fotos de depois</button></div></div>
       <div class="strip-wrap empty" id="wrapD"><div class="strip" id="stripD"><div class="empty-note">Selecione uma ou várias fotos de depois</div></div></div>
     </div>
     </div>
@@ -160,6 +171,27 @@ input[type=text]{font:inherit;font-size:14px;background:var(--panel);color:var(-
 
 <input type="file" id="fileA" accept="image/*" multiple hidden>
 <input type="file" id="fileD" accept="image/*" multiple hidden>
+<div id="cam" hidden>
+  <video id="camVid" playsinline muted autoplay></video>
+  <img id="camGhost" alt="" hidden>
+  <canvas id="camOv"></canvas>
+  <div id="camFlash"></div>
+  <div class="camtop">
+    <button class="btn small" id="camClose">Fechar</button>
+    <div class="seg" role="group" aria-label="Guardar em"><button id="cTA" aria-pressed="false">Antes</button><button id="cTD" aria-pressed="true">Depois</button></div>
+    <button class="btn small" id="camFlip">Virar</button>
+  </div>
+  <div class="cambot">
+    <label class="sl">Pirâmide <input type="range" id="pyrS" min="40" max="160" value="100"></label>
+    <label class="sl">Altura <input type="range" id="pyrY" min="-30" max="30" value="0"></label>
+    <div class="camrow">
+      <label class="check" style="color:#eee"><input type="checkbox" id="ghostOn" checked> Fantasma do antes</label>
+      <input type="range" id="ghostA" min="10" max="70" value="40" style="max-width:40%">
+    </div>
+    <button class="shut" id="camShot" aria-label="Tirar foto"></button>
+    <p class="note" id="camMsg" style="color:#ccc;text-align:center">Alinhe os dois exocantos na linha de cima, o pronasal no vértice e o lábio inferior no ponto de baixo.</p>
+  </div>
+</div>
 <div id="out" hidden><img id="outImg" alt="Imagem final"><p class="note" style="color:#ddd">Toque e segure na imagem e escolha "Salvar na Fotos" (ou "Adicionar às Fotos").</p><button class="btn" id="outClose">Fechar</button></div>
 
 <script src="ort.wasm.min.js"></script>
@@ -601,6 +633,63 @@ $('outClose').onclick = () => { $('out').hidden = true; };
 setInterval(updateSave, 800);
 (document.fonts ? document.fonts.ready : Promise.resolve()).then(render);
 render();
+// ---------- câmera com pirâmide (Prisma) e fantasma do antes ----------
+let camStream = null, camFacing = 'environment', camTarget = 'D';
+const cv2 = $('camOv'), vid = $('camVid');
+function camSetTarget(t) { camTarget = t; $('cTA').setAttribute('aria-pressed', t === 'A'); $('cTD').setAttribute('aria-pressed', t === 'D'); camGhost(); }
+function camGhost() {
+  const g = $('camGhost'), other = camTarget === 'D' ? 'A' : 'D', it = items[other][sel[other]];
+  if (it && $('ghostOn').checked) { g.src = it.src.toDataURL('image/jpeg', .7); g.hidden = false; g.style.opacity = $('ghostA').value / 100; }
+  else g.hidden = true;
+  g.classList.toggle('mir', camFacing === 'user');
+}
+function camDraw() {
+  if ($('cam').hidden) return;
+  const r = cv2.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  cv2.width = r.width * dpr; cv2.height = r.height * dpr;
+  const g = cv2.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, r.width, r.height);
+  const k = $('pyrS').value / 100, w = Math.min(r.width, r.height * .6) * .27 * k;
+  const cx = r.width / 2, cy = r.height * (.44 + $('pyrY').value / 100);
+  const eL = [cx - w, cy - w * .55], eR = [cx + w, cy - w * .55], prn = [cx, cy + w * .35], lab = [cx, cy + w * 1.0];
+  g.lineWidth = 1.5; g.strokeStyle = 'rgba(216,195,160,.95)'; g.setLineDash([]);
+  g.beginPath(); g.moveTo(...eL); g.lineTo(...eR); g.lineTo(...prn); g.closePath(); g.stroke();
+  g.beginPath(); g.moveTo(...eL); g.lineTo(...lab); g.lineTo(...eR); g.stroke();
+  g.setLineDash([4, 6]); g.strokeStyle = 'rgba(255,255,255,.55)';
+  g.beginPath(); g.moveTo(cx, cy - w * 1.6); g.lineTo(cx, cy + w * 1.6); g.stroke();
+  g.beginPath(); g.moveTo(cx - w * 1.6, eL[1]); g.lineTo(cx + w * 1.6, eL[1]); g.stroke();
+  g.setLineDash([]);
+  for (const [p, t] of [[eL, 'exocanto'], [eR, 'exocanto'], [prn, 'pronasal'], [lab, 'lábio inf.']]) {
+    g.fillStyle = '#d8c3a0'; g.beginPath(); g.arc(p[0], p[1], 4.5, 0, 7); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.8)'; g.font = '11px Figtree,system-ui,sans-serif'; g.textAlign = p[0] > cx + 1 ? 'right' : 'left'; g.fillText(t, p[0] + (p[0] > cx + 1 ? -8 : 8), p[1] - 8);
+  }
+}
+async function camStart() {
+  if (camStream) camStream.getTracks().forEach(t => t.stop());
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: camFacing, width: { ideal: 3840 }, height: { ideal: 2160 } }, audio: false });
+    vid.srcObject = camStream; vid.classList.toggle('mir', camFacing === 'user'); await vid.play();
+    $('camMsg').textContent = 'Alinhe os dois exocantos na linha de cima, o pronasal no vértice e o lábio inferior no ponto de baixo.';
+  } catch (e) { $('camMsg').textContent = 'Não consegui abrir a câmera. Permita o acesso à câmera para este app nos Ajustes do iPhone.'; }
+  camGhost(); camDraw();
+}
+function camOpen(t) { $('cam').hidden = false; camSetTarget(t); camStart(); }
+function camClose() { $('cam').hidden = true; if (camStream) camStream.getTracks().forEach(x => x.stop()); camStream = null; }
+$('camA').onclick = () => camOpen('A'); $('camD').onclick = () => camOpen('D');
+$('camClose').onclick = camClose;
+$('camFlip').onclick = () => { camFacing = camFacing === 'environment' ? 'user' : 'environment'; camStart(); };
+$('cTA').onclick = () => camSetTarget('A'); $('cTD').onclick = () => camSetTarget('D');
+['pyrS', 'pyrY'].forEach(id => $(id).oninput = camDraw);
+$('ghostOn').onchange = camGhost; $('ghostA').oninput = camGhost;
+window.addEventListener('resize', camDraw);
+$('camShot').onclick = () => {
+  if (!vid.videoWidth) return;
+  const c = document.createElement('canvas'); c.width = vid.videoWidth; c.height = vid.videoHeight;
+  const g = c.getContext('2d'); if (camFacing === 'user') { g.translate(c.width, 0); g.scale(-1, 1); }
+  g.drawImage(vid, 0, 0);
+  const fl = $('camFlash'); fl.style.transition = 'none'; fl.style.opacity = .8; requestAnimationFrame(() => { fl.style.transition = 'opacity .3s'; fl.style.opacity = 0; });
+  c.toBlob(b => { if (!b) return; const f = new File([b], 'camera.jpg', { type: 'image/jpeg' }); addFiles(camTarget, [f]); $('camMsg').textContent = 'Foto guardada em ' + (camTarget === 'A' ? 'Antes' : 'Depois') + '. Pode tirar outra ou fechar.'; }, 'image/jpeg', 0.95);
+};
+
 })();
 </script>
 
