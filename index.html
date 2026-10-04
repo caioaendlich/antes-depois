@@ -141,6 +141,13 @@ input.wide{width:100%}
 .cth .x{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.8);color:#fff;font-size:12px;line-height:18px;text-align:center}
 .shotrow{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px}
 .shotrow>:first-child{justify-self:start}.shotrow>:last-child{justify-self:end}
+#camPeek{position:absolute;inset:0;background:#000;display:flex;align-items:center;justify-content:center}
+#camPeek img{max-width:100%;max-height:100%;object-fit:contain}
+.peekBar{position:absolute;left:0;right:0;top:calc(max(10px,env(safe-area-inset-top)) + 84px);display:grid;gap:8px;justify-items:center;padding:0 12px}
+.peekBar span{font-size:13px;font-weight:600;color:#eee;background:rgba(0,0,0,.6);padding:3px 10px;border-radius:999px}
+.peekBtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.cell.empty{flex-direction:column;gap:8px}
+.cell.empty .btn{width:100%}
 #outBtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 </style>
 </head>
@@ -258,6 +265,7 @@ input.wide{width:100%}
   <video id="camVid" playsinline muted autoplay></video>
   <img id="camGhost" alt="" hidden>
   <canvas id="camOv"></canvas>
+  <div id="camPeek" hidden><img id="peekImg" alt=""><div class="peekBar"><span id="peekLbl"></span><div class="peekBtns"><button class="btn small primary" id="peekGal" type="button">Depois da galeria</button><button class="btn small" id="peekCam" type="button">Fotografar depois</button><button class="btn small" id="peekBack" type="button">Voltar à câmera</button></div></div></div>
   <div id="camFlash"></div>
   <div class="camtop">
     <button class="btn small" id="camClose">Fechar</button>
@@ -1075,7 +1083,7 @@ function camStripBuild(L) {
   L.forEach((a, i) => {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'cth';
     const cur = camMode === 'D' ? i === curA : i === camSelA; if (cur) { b.classList.add('cur'); curEl = b; }
-    b.innerHTML = '<img alt="" src="' + a.thumb + '">' + (camMode === 'D' && (depOf(a) || pendingDone.has(a.id)) ? '<span class="ok">✓</span>' : '') + (camMode === 'A' && cur ? '<span class="x" aria-label="Apagar esta foto">×</span>' : '');
+    b.innerHTML = '<img alt="" src="' + a.thumb + '">' + (depOf(a) || pendingDone.has(a.id) ? '<span class="ok">✓</span>' : '') + (camMode === 'A' && cur ? '<span class="x" aria-label="Apagar esta foto">×</span>' : '');
     b.onclick = async e => {
       if (camMode === 'D') { curA = i; camUI(); return; }
       if (cur && e.target.classList.contains('x')) { await removeShot(a); await touchProj(); camSelA = -1; }
@@ -1096,14 +1104,25 @@ function camUI() {
     $('camLbl').textContent = Pj.rec.name + ' · antes · ' + L.length;
     [...$('camPoses').children].forEach(c => c.classList.toggle('on', have.has(c.dataset.p)));
     camStripBuild(L);
-    $('camMsg').textContent = 'Fotografe as poses em sequência. Cada clique já fica salvo no projeto. Toque numa miniatura para apagar.';
+    const pk = L[camSelA];
+    $('camPeek').hidden = !pk;
+    if (pk) {
+      if ($('peekImg').dataset.id !== pk.id) { $('peekImg').src = pk.prev; $('peekImg').dataset.id = pk.id; }
+      const d = depOf(pk);
+      $('peekLbl').textContent = 'Antes ' + (camSelA + 1) + (pk.pose && pk.pose !== '—' ? ' · ' + pk.pose : '') + (d ? ' · já tem depois' : '');
+      $('peekGal').textContent = d ? 'Trocar depois (galeria)' : 'Depois da galeria';
+      $('peekCam').textContent = d ? 'Refazer depois na câmera' : 'Fotografar depois';
+    }
+    $('camMsg').textContent = pk ? 'Escolha o depois deste antes: da galeria ou fotografando agora. O × apaga o antes.' : 'Fotografe as poses em sequência. Cada clique já fica salvo no projeto. Toque numa miniatura para ver e parear.';
   } else if (camMode === 'D') {
+    $('camPeek').hidden = true;
     const L = antesList(), a = L[curA];
     $('camLbl').textContent = a ? 'Depois · ' + (a.pose && a.pose !== '—' ? a.pose + ' · ' : '') + (curA + 1) + ' de ' + L.length : 'Depois';
     camStripBuild(L);
     const all = L.length && L.every(x => depOf(x) || pendingDone.has(x.id));
     $('camMsg').textContent = all ? 'Todos os pares completos. Toque em Concluir para montar, ou numa miniatura para refazer.' : 'Encaixe a pirâmide dourada na branca. Ao fotografar, o próximo antes entra sozinho.';
   } else {
+    $('camPeek').hidden = true;
     $('camMsg').textContent = camTarget === 'D' ? 'Encaixe a pirâmide dourada (ao vivo) na branca (a do antes). Fica verde quando estiver alinhada.' : 'A pirâmide acompanha o rosto. Posicione e fotografe: ela fica guardada para o depois.';
   }
   camGhost(); camTargetPyr(); camDraw();
@@ -1164,9 +1183,14 @@ $('camShot').onclick = () => {
     if (!$('cam').hidden && camMode === mode) camUI();
   }).catch(e => { if (a) pendingDone.delete(a.id); $('camMsg').textContent = 'Não consegui guardar a foto (' + e.message + '). Tente de novo.'; });
 };
-$('camGal').onclick = () => $('fileCam').click();
+let galFor = null;
+$('camGal').onclick = () => { galFor = null; $('fileCam').click(); };
+$('peekGal').onclick = () => { galFor = antesList()[camSelA] || null; $('fileCam').click(); };
+$('peekCam').onclick = () => { const i = camSelA; if (i < 0) return; camMode = 'D'; curA = i; camSelA = -1; lastDone = -1; camUI(); };
+$('peekBack').onclick = () => { camSelA = -1; camUI(); };
 $('fileCam').onchange = async e => {
-  const fs = [...e.target.files]; e.target.value = ''; if (!fs.length) return;
+  const fs = [...e.target.files]; e.target.value = ''; if (!fs.length) { galFor = null; return; }
+  if (galFor) { const a = galFor; galFor = null; await importToProject(fs.slice(0, 1), 'D', a); camUI(); return; }
   if (camMode === 'free') { await addFiles(camTarget, fs); camUI(); return; }
   await importToProject(fs, camMode, camMode === 'D' ? antesList()[curA] : null);
   if (camMode === 'D') { advance(); } camUI();
@@ -1241,7 +1265,14 @@ function renderProj() {
     const d = depOf(a), row = document.createElement('div'); row.className = 'prow';
     row.appendChild(cellBtn(a, (i + 1) + (a.pose && a.pose !== '—' ? ' · ' + a.pose : '')));
     if (d) row.appendChild(cellBtn(d, 'Depois'));
-    else { const e = document.createElement('button'); e.type = 'button'; e.className = 'cell empty'; e.textContent = 'Fotografar depois'; e.onclick = () => camOpenProj('D', i); row.appendChild(e); }
+    else {
+      const e = document.createElement('div'); e.className = 'cell empty';
+      e.innerHTML = '<span>Depois</span><button class="btn small" type="button">Câmera</button><button class="btn small" type="button">Galeria</button>';
+      const [bc, bg] = e.querySelectorAll('button');
+      bc.onclick = () => camOpenProj('D', i);
+      bg.onclick = () => { projGalFor = a; $('fileProj').click(); };
+      row.appendChild(e);
+    }
     g.appendChild(row);
   });
   const nP = L.filter(depOf).length;
@@ -1429,8 +1460,13 @@ $('pName').addEventListener('change', () => { const v = $('pName').value.trim();
 $('pShootA').onclick = () => camOpenProj('A');
 $('pShootD').onclick = () => camOpenProj('D');
 $('pMount').onclick = () => { stopBg(); openEditor(); };
-$('pImport').onclick = () => $('fileProj').click();
-$('fileProj').onchange = async e => { const fs = [...e.target.files]; e.target.value = ''; if (!fs.length || !Pj) return; await importToProject(fs, 'A', null); renderProj(); bgCut(); };
+let projGalFor = null;
+$('pImport').onclick = () => { projGalFor = null; $('fileProj').click(); };
+$('fileProj').onchange = async e => {
+  const fs = [...e.target.files]; e.target.value = ''; const a = projGalFor; projGalFor = null; if (!fs.length || !Pj) return;
+  if (a) await importToProject(fs, 'D', a); else await importToProject(fs, 'A', null);
+  renderProj(); bgCut();
+};
 $('pShare').onclick = async () => {
   if (!Pj) return;
   const order = antesList().flatMap(a => [a, depOf(a)]).filter(Boolean), files = order.map(s => new File([s.blob], fileName(s), { type: 'image/jpeg' }));
