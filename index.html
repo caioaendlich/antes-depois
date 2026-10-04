@@ -162,6 +162,32 @@ input.wide{width:100%}
 .st2 .ok{position:absolute;right:3px;bottom:3px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:#5fc27e;color:#fff;font-size:9.5px;line-height:15px;text-align:center;font-weight:700}
 .st2.add{background:transparent;border:1.5px dashed #3a3c40;color:var(--muted);font:inherit;font-size:12px;line-height:1.2}
 #app.picking .controls>:not(#pickBox){display:none!important}
+#app.picking .stage{margin-inline:-16px;padding-top:0}
+#app.picking .view{border-radius:0;box-shadow:none}
+#app.picking #vtog{display:none}
+#app.proj .pair,#app.proj #saveAll{display:none!important}
+.halves{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;pointer-events:none;z-index:3}
+.half{position:relative;display:flex;align-items:center;justify-content:center}
+.htag{position:absolute;top:8px;left:8px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#eee;background:rgba(0,0,0,.5);padding:3px 8px;border-radius:999px}
+.half .plus{pointer-events:auto;width:76px;height:76px;border-radius:50%;border:1.5px solid rgba(255,255,255,.55);background:rgba(0,0,0,.35);color:#fff;font-size:40px;font-weight:300;line-height:1;cursor:pointer}
+.half .hcam{pointer-events:auto;position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font:inherit;font-size:12px;font-weight:600;color:#eee;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:5px 12px;cursor:pointer}
+#pickBox{display:grid;gap:12px}
+.scrubs{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.scrub{display:flex;gap:2px;height:46px;padding:3px;background:var(--panel);border-radius:8px;touch-action:none;overflow:hidden;align-items:stretch}
+.scrub .sc{flex:1 1 0;min-width:0;max-width:34px;border-radius:3px;overflow:hidden;opacity:.45;position:relative}
+.scrub .sc img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.scrub .sc.on{opacity:1;box-shadow:inset 0 0 0 2px var(--accent)}
+.scrub .scadd{flex:0 0 26px;border:1px dashed #3a3c40;border-radius:3px;color:var(--muted);font-size:18px;display:flex;align-items:center;justify-content:center;background:transparent;font-family:inherit;cursor:pointer;padding:0}
+.scrub .scnone{flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px}
+.sclabels{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12.5px;color:var(--muted);text-align:center;font-variant-numeric:tabular-nums;margin-top:-6px}
+.clist{display:grid;gap:8px}
+.ccard{display:grid;grid-template-columns:88px 1fr auto;gap:12px;align-items:center;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 14px 8px 8px;color:var(--fg);font:inherit;cursor:pointer}
+.ccard .cth2{display:grid;grid-template-columns:1fr 1fr;gap:2px;width:88px;height:66px;border-radius:8px;overflow:hidden;background:#222}
+.ccard .cth2 img{width:100%;height:100%;object-fit:cover;display:block}
+.ccard .cth2.one{grid-template-columns:1fr}
+.ccard b{display:block;font-size:15px;font-weight:600}.ccard small{color:var(--muted);font-size:12.5px}.ccard i{font-style:normal;color:var(--muted);font-size:20px}
+.pmore{display:grid;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+.pmore .btn{background:transparent}
 .pkrow{display:grid;grid-template-columns:58px 1fr 58px;gap:8px;align-items:center}
 .pkb{font-size:26px;line-height:1;padding:10px 0;font-weight:500}
 .pkmid{text-align:center;display:grid;gap:2px}.pkmid b{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}.pkmid span{font-size:14.5px;font-variant-numeric:tabular-nums}
@@ -188,27 +214,25 @@ input.wide{width:100%}
   <button class="btn primary big" id="newProj" type="button">+ Novo paciente</button>
   <div class="panel" id="newForm" hidden>
     <input type="text" class="wide" id="newName" placeholder="Nome do paciente" maxlength="60" autocomplete="off">
-    <div class="flex"><button class="btn primary" id="newGo" type="button">Fotografar</button><button class="btn primary" id="newAlbum" type="button">Do álbum</button><button class="btn" id="newCancel" type="button">Cancelar</button></div>
+    <div class="flex"><button class="btn primary" id="newGo" type="button">Criar paciente</button><button class="btn" id="newCancel" type="button">Cancelar</button></div>
   </div>
   <div class="plist" id="projList"></div>
   <div class="tools"><button class="btn small" id="freeMode" type="button">Montagem avulsa</button><button class="btn small" id="restore" type="button">Restaurar backup</button></div>
   <p class="note">As fotos ficam guardadas só neste aparelho, dentro do app. Ao fechar cada paciente, toque em Backup e guarde o arquivo no Drive ou em Arquivos.</p>
-  <p class="note" style="opacity:.6">Versão 17</p>
+  <p class="note" style="opacity:.6">Versão 18</p>
 </section>
 
 <section id="proj" class="scr" hidden>
   <input type="text" class="pname" id="pName" aria-label="Nome do paciente" maxlength="60" autocomplete="off">
-  <div class="pact">
-    <button class="btn primary big" id="pShootA" type="button">Fotografar antes</button>
-    <button class="btn" id="pShootD" type="button">Fotografar depois</button>
-    <button class="btn" id="pMount" type="button">Montar comparações</button>
-  </div>
-  <div class="pgrid" id="pGrid"></div>
-  <div class="tools">
-    <button class="btn small" id="pImport" type="button">Importar antes da galeria</button>
-    <button class="btn small" id="pShare" type="button">Compartilhar originais</button>
-    <button class="btn small" id="pBackup" type="button">Backup</button>
-    <button class="btn small" id="pDel" type="button">Apagar projeto</button>
+  <button class="btn primary big" id="pNew" type="button">+ Nova comparação</button>
+  <div class="clist" id="pComps"></div>
+  <div class="pmore">
+    <span class="lbl">Paciente</span>
+    <div class="tools">
+      <button class="btn small" id="pBackup" type="button">Backup</button>
+      <button class="btn small" id="pShare" type="button">Fotos originais</button>
+      <button class="btn small" id="pDel" type="button">Apagar paciente</button>
+    </div>
   </div>
 </section>
 
@@ -229,17 +253,20 @@ input.wide{width:100%}
       <canvas id="cv" width="1080" height="1920" aria-label="Prévia da imagem (mostrando o miolo 4:5; salva em 9:16)"></canvas>
       <button class="vbtn" id="vtog" type="button">Ver 9:16 inteiro</button>
       <div class="side-hint" id="hint">Arraste para mover · pinça para zoom e giro</div>
+      <div class="halves" id="halves" hidden>
+        <div class="half"><span class="htag">Antes</span><button class="plus" id="plusA" type="button" aria-label="Escolher fotos de antes no álbum">+</button><button class="hcam" id="camHA" type="button">Câmera</button></div>
+        <div class="half"><span class="htag">Depois</span><button class="plus" id="plusD" type="button" aria-label="Escolher fotos de depois no álbum">+</button><button class="hcam" id="camHD" type="button">Câmera</button></div>
+      </div>
     </div>
   </div>
 
   <div class="controls">
-    <div class="panel" id="pickBox" hidden>
-      <div class="pchips" id="pkPose"></div>
-      <div class="pkrow"><button class="btn pkb" id="pkLp" type="button" aria-label="Antes anterior">‹</button><div class="pkmid"><b>Antes · esquerda</b><span id="pkLl"></span></div><button class="btn pkb" id="pkLn" type="button" aria-label="Próximo antes">›</button></div>
-      <div class="pkrow"><button class="btn pkb" id="pkRp" type="button" aria-label="Depois anterior">‹</button><div class="pkmid"><b>Depois · direita</b><span id="pkRl"></span></div><button class="btn pkb" id="pkRn" type="button" aria-label="Próximo depois">›</button></div>
-      <div class="flex"><button class="btn small" id="pkAddA" type="button">+ Antes do álbum</button><button class="btn small" id="pkAddD" type="button">+ Depois do álbum</button></div>
-      <button class="btn primary big" id="pkGo" type="button">Concluído</button>
-      <p class="note">Toque nas setas para trocar a foto de cada lado. Arraste e pince na foto para encaixar. O fundo só é removido em Concluído.</p>
+    <div id="pickBox" hidden>
+      <div class="scrubs"><div class="scrub" id="scrA"></div><div class="scrub" id="scrD"></div></div>
+      <div class="sclabels"><span id="pkLl"></span><span id="pkRl"></span></div>
+      <button class="btn primary big" id="pkGo" type="button">Remover fundo</button>
+      <p class="note">Toque no + de cada lado para escolher as fotos no álbum. Passe o dedo nas miniaturas para trocar a foto daquele lado; arraste e pince na foto para encaixar.</p>
+      <div class="tools"><button class="btn small" id="pkDel" type="button">Apagar esta comparação</button></div>
     </div>
     <div class="pair">
     <div class="row">
@@ -898,7 +925,13 @@ function overlay(src, note, btns) {
 function closeOut() { $('out').hidden = true; const s = $('outImg').getAttribute('src') || ''; if (s.startsWith('blob:')) URL.revokeObjectURL(s); }
 function showOut(blob) { overlay(URL.createObjectURL(blob), 'Toque e segure na imagem e escolha "Salvar na Fotos" (ou "Adicionar às Fotos").', [['Fechar', closeOut]]); }
 // Salvar na galeria: folha de compartilhamento do aparelho (tem "Salvar imagem"); se não houver, o salvamento do app; por último, segurar a imagem
+function compThumb() {
+  if (!curComp || !linked) return;
+  const h = Math.round(W * 5 / 4), c = mkCanvas(240, 300); c.getContext('2d').drawImage(cv, 0, (H - h) / 2, W, h, 0, 0, 240, 300);
+  curComp.out = c.toDataURL('image/jpeg', 0.8); savePair(); saveComp();
+}
 $('save').onclick = async () => {
+  compThumb();
   const { blob, name, file } = makeFile(linked ? pairTag(sel.A) : '');
   if (file && navigator.canShare && navigator.share) {
     try { if (navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); setStatus('Imagem pronta na galeria', false); return; } }
@@ -967,6 +1000,12 @@ const cv2 = $('camOv'), vid = $('camVid');
 let Pj = null, curA = 0, lastDone = -1, camSelA = -1, screen = 'home';
 const pendingDone = new Set();
 const antesList = () => Pj ? Pj.shots.filter(s => s.kind === 'A').sort((a, b) => a.t - b.t) : [];
+// comparação atual: conjunto de antes e depois escolhidos para uma montagem (o paciente pode ter várias, por data)
+let curComp = null;
+const shotById = id => Pj ? Pj.shots.find(s => s.id === id) : null;
+const compList = (c, k) => c ? c[k].map(shotById).filter(Boolean) : [];
+const camA = () => curComp ? compList(curComp, 'A') : antesList();
+function saveComp() { if (Pj) { Pj.rec.u = Date.now(); return DB.put('projects', Pj.rec).catch(() => {}); } }
 const depOf = a => Pj && a ? Pj.shots.find(s => s.kind === 'D' && s.of === a.id) : null;
 
 function camSetTarget(t) { camTarget = t; $('cTA').setAttribute('aria-pressed', t === 'A'); $('cTD').setAttribute('aria-pressed', t === 'D'); camUI(); }
@@ -975,7 +1014,7 @@ function ghostSrc() {
     const other = camTarget === 'D' ? 'A' : 'D', it = items[other][sel[other]]; if (!it) return null;
     return it._g || (it._g = it.prev.toDataURL ? it.prev.toDataURL('image/jpeg', .8) : it.prev.src);
   }
-  if (camMode === 'D') { const a = antesList()[curA]; return a ? a.prev : null; }
+  if (camMode === 'D') { const a = camA()[curA]; return a ? a.prev : null; }
   return null;
 }
 // a foto é guardada como a cena é (igual à câmera nativa); a prévia da frontal é espelhada como selfie,
@@ -1122,7 +1161,7 @@ async function camTargetPyr() {
   const tok = ++tgtTok; target = null;
   let holder = null, img = null;
   if (camMode === 'free') { const it = items.A[sel.A]; if (camTarget !== 'D' || !it) return; holder = it; img = it.prev; }
-  else if (camMode === 'D') { const a = antesList()[curA]; if (!a) return; holder = a; img = a.prev; }
+  else if (camMode === 'D') { const a = camA()[curA]; if (!a) return; holder = a; img = a.prev; }
   else return;
   if (holder.pyr === undefined) {
     try { const el = typeof img === 'string' ? await loadImg(img) : img; const p = await detectOn(el); holder.pyr = p ? { pts: [...p], w: holder.w, h: holder.h, hid: p.hid } : null; if (holder.pid) DB.put('shots', holder).catch(() => {}); }
@@ -1224,7 +1263,7 @@ function camUI() {
   $('camPoses').hidden = camMode !== 'A'; $('camStrip').hidden = free;
   $('camRedo').hidden = camMode !== 'D' || lastDone < 0;
   if (camMode === 'A') {
-    const L = antesList(), have = new Set(L.map(s => s.pose));
+    const L = camA(), have = new Set(L.map(s => s.pose));
     $('camLbl').textContent = Pj.rec.name + ' · antes · ' + L.length;
     [...$('camPoses').children].forEach(c => c.classList.toggle('on', have.has(c.dataset.p)));
     camStripBuild(L);
@@ -1240,7 +1279,7 @@ function camUI() {
     $('camMsg').textContent = pk ? 'Escolha o depois deste antes: da galeria ou fotografando agora. O × apaga o antes.' : 'Fotografe as poses em sequência. Cada clique já fica salvo no projeto. Toque numa miniatura para ver e parear.';
   } else if (camMode === 'D') {
     $('camPeek').hidden = true;
-    const L = antesList(), a = L[curA];
+    const L = camA(), a = L[curA];
     $('camLbl').textContent = a ? 'Depois · ' + (a.pose && a.pose !== '—' ? a.pose + ' · ' : '') + (curA + 1) + ' de ' + L.length : 'Depois';
     camStripBuild(L);
     const all = L.length && L.every(x => depOf(x) || pendingDone.has(x.id));
@@ -1252,7 +1291,7 @@ function camUI() {
   camGhost(); camTargetPyr(); camDraw();
 }
 function advance() {
-  const L = antesList(), n = L.length;
+  const L = camA(), n = L.length;
   for (let k = 1; k <= n; k++) { const j = (curA + k) % n; if (!depOf(L[j]) && !pendingDone.has(L[j].id)) { curA = j; return true; } }
   return false;
 }
@@ -1261,12 +1300,12 @@ function camOpen(t) { camMode = 'free'; tmpl = null; camSetTarget(t); camOpenCom
 function camOpenProj(kind, idx) {
   if (!Pj) return;
   camMode = kind; tmpl = Pj.rec.tmpl || null; lastDone = -1; camSelA = -1; pendingDone.clear();
-  if (kind === 'D') { const L = antesList(); if (!L.length) return; curA = idx != null ? idx : Math.max(0, L.findIndex(a => !depOf(a))); }
+  if (kind === 'D') { const L = camA(); if (!L.length) return; curA = idx != null ? idx : Math.max(0, L.findIndex(a => !depOf(a))); }
   camUI(); camOpenCommon();
 }
 function camClose(quiet) {
   $('cam').hidden = true; if (camStream) camStream.getTracks().forEach(x => x.stop()); camStream = null; trk = null;
-  if (camMode !== 'free' && screen === 'proj' && !quiet) shotChain.then(() => { renderProj(); bgCut(); if (Pj && unbacked(Pj.rec)) offerBackup(true); });
+  if (camMode !== 'free' && !quiet && Pj) shotChain.then(() => { if (curComp) openPick(curComp); else { show('proj'); renderProj(); } });
   setTimeout(pump, 300);
 }
 $('camA').onclick = () => camOpen('A'); $('camD').onclick = () => camOpen('D');
@@ -1299,33 +1338,42 @@ $('camShot').onclick = () => {
     return;
   }
   const mode = camMode; let a = null;
-  if (mode === 'D') { a = antesList()[curA]; if (!a) return; pendingDone.add(a.id); lastDone = curA; advance(); camUI(); }
+  if (mode === 'D') { a = camA()[curA]; if (!a) return; pendingDone.add(a.id); lastDone = curA; advance(); camUI(); }
   shotChain = shotChain.then(async () => {
     const rec = await shotFromCanvas(c, { kind: mode, pyr, yaw, pose: mode === 'D' ? a.pose : poseOf(yaw) });
     if (mode === 'D') { rec.of = a.id; const old = depOf(a); if (old) await removeShot(old); }
-    Pj.shots.push(rec); await DB.put('shots', rec); pendingDone.delete(rec.of); await touchProj();
+    Pj.shots.push(rec); await DB.put('shots', rec); pendingDone.delete(rec.of);
+    if (curComp) { curComp[mode].push(rec.id); if (mode === 'A' && !curComp.selA) curComp.selA = rec.id; if (mode === 'D' && a && curComp.selA === a.id) curComp.selD = rec.id; }
+    await touchProj();
     if (!$('cam').hidden && camMode === mode) camUI();
   }).catch(e => { if (a) pendingDone.delete(a.id); $('camMsg').textContent = 'Não consegui guardar a foto (' + e.message + '). Tente de novo.'; });
 };
 let galFor = null;
 $('camGal').onclick = () => { galFor = null; $('fileCam').click(); };
-$('peekGal').onclick = () => { galFor = antesList()[camSelA] || null; $('fileCam').click(); };
+$('peekGal').onclick = () => { galFor = camA()[camSelA] || null; $('fileCam').click(); };
 $('peekCam').onclick = () => { const i = camSelA; if (i < 0) return; camMode = 'D'; curA = i; camSelA = -1; lastDone = -1; camUI(); };
 $('peekBack').onclick = () => { camSelA = -1; camUI(); };
 $('fileCam').onchange = async e => {
-  const fs = [...e.target.files]; e.target.value = ''; if (!fs.length) { galFor = null; return; }
-  if (camMode === 'free') { galFor = null; await addFiles(camTarget, fs); camUI(); return; }
-  let L = null, R = null;
-  if (galFor) { const a = galFor; galFor = null; const ad = await importToProject(fs.slice(0, 1), 'D', a); L = a; R = ad[0]; }
-  else if (camMode === 'D') { const a = antesList()[curA]; const ad = await importToProject(fs.slice(0, 1), 'D', a); L = a; R = ad[0]; }
-  else { const ad = await importToProject(fs, 'A', null); camClose(true); show('proj'); renderProj(); askDepois(ad[0]); return; }
-  camClose(true); openPick(L, R);
+  const fs = [...e.target.files]; e.target.value = ''; const gf = galFor; galFor = null; if (!fs.length) return;
+  if (camMode === 'free') { await addFiles(camTarget, fs); camUI(); return; }
+  const side = gf || camMode === 'D' ? 'D' : 'A';
+  await importToComp(fs, side);
+  if (gf && curComp) curComp.selA = gf.id;
+  camClose(true); openPick(curComp);
 };
 
 // ---------- projetos ----------
 async function removeShot(s) {
   if (s.kind === 'A') { const d = depOf(s); if (d) { d.of = null; await DB.put('shots', d); } }
   const i = Pj.shots.indexOf(s); if (i >= 0) Pj.shots.splice(i, 1); await DB.del('shots', s.id);
+  (Pj.rec.comps || []).forEach(c => { c.A = c.A.filter(x => x !== s.id); c.D = c.D.filter(x => x !== s.id); if (c.selA === s.id) c.selA = c.A[0] || null; if (c.selD === s.id) c.selD = c.D[0] || null; });
+}
+async function importToComp(fs, side) {
+  if (!curComp) return [];
+  const ad = await importToProject(fs, side, null);
+  ad.forEach(r => curComp[side].push(r.id));
+  if (ad[0]) { if (side === 'A') curComp.selA = ad[0].id; else curComp.selD = ad[0].id; }
+  await saveComp(); return ad;
 }
 const depList = () => Pj ? Pj.shots.filter(s => s.kind === 'D').sort((a, b) => a.t - b.t) : [];
 const loose = () => depList().filter(d => !d.of || !Pj.shots.some(a => a.id === d.of));
@@ -1385,37 +1433,40 @@ async function renderHome() {
 async function openProject(id) {
   const rec = await DB.get('projects', id); if (!rec) return;
   Pj = { rec, shots: await DB.byP(id) };
-  show('proj'); renderProj(); bgCut();
+  if (!rec.comps) migrateComps();
+  const live = rec.comps.filter(c => c.A.length || c.D.length);
+  if (!live.length) { newComp(); return; }
+  show('proj'); renderProj();
 }
-function cellBtn(s, tag) {
-  const b = document.createElement('button'); b.type = 'button'; b.className = 'cell';
-  b.innerHTML = '<img alt="" src="' + s.prev + '"><span class="tag"></span>'; b.querySelector('.tag').textContent = tag;
-  b.onclick = () => viewShot(s); return b;
+// projetos antigos: cada par vira uma comparação; o que sobrou fica numa só
+function migrateComps() {
+  const comps = [], used = new Set();
+  antesList().forEach(a => { const d = depOf(a); if (d) { comps.push({ id: newId('c'), t: d.t || a.t, A: [a.id], D: [d.id], selA: a.id, selD: d.id, tf: d.adj && d.adj.tf || null }); used.add(a.id); used.add(d.id); } });
+  const restA = Pj.shots.filter(s => s.kind === 'A' && !used.has(s.id)).map(s => s.id), restD = Pj.shots.filter(s => s.kind === 'D' && !used.has(s.id)).map(s => s.id);
+  if (restA.length || restD.length) comps.push({ id: newId('c'), t: Pj.rec.t, A: restA, D: restD, selA: restA[0] || null, selD: restD[0] || null, tf: null });
+  Pj.rec.comps = comps; saveComp();
 }
+function newComp() {
+  const c = { id: newId('c'), t: Date.now(), A: [], D: [], selA: null, selD: null, tf: null };
+  Pj.rec.comps.push(c); saveComp(); openPick(c);
+}
+const fmtFull = t => { const d = new Date(t); return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear() + ' · ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()); };
 function renderProj() {
   if (!Pj) return;
   $('pName').value = Pj.rec.name;
-  const L = antesList(), g = $('pGrid'); g.innerHTML = '';
-  if (!L.length) g.innerHTML = '<p class="note">Nenhuma foto ainda. Comece pelo antes: a câmera fotografa em sequência e cada clique já fica salvo.</p>';
-  L.forEach((a, i) => {
-    const d = depOf(a), row = document.createElement('div'); row.className = 'prow';
-    row.appendChild(cellBtn(a, (i + 1) + (a.pose && a.pose !== '—' ? ' · ' + a.pose : '')));
-    if (d) row.appendChild(cellBtn(d, 'Depois'));
-    else {
-      const e = document.createElement('div'); e.className = 'cell empty';
-      e.innerHTML = '<span>Depois</span><button class="btn small" type="button">Câmera</button><button class="btn small" type="button">Galeria</button>';
-      const [bc, bg] = e.querySelectorAll('button');
-      bc.onclick = () => camOpenProj('D', i);
-      bg.onclick = () => { projGalFor = a; $('fileProj').click(); };
-      row.appendChild(e);
-    }
-    g.appendChild(row);
+  const box = $('pComps'); box.innerHTML = '';
+  const comps = (Pj.rec.comps || []).filter(c => c.A.length || c.D.length).sort((a, b) => b.t - a.t);
+  if (!comps.length) box.innerHTML = '<p class="note">Nenhuma comparação ainda.</p>';
+  comps.forEach(c => {
+    const a = shotById(c.selA) || compList(c, 'A')[0], d = shotById(c.selD) || compList(c, 'D')[0];
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'ccard';
+    const th = c.out ? '<span class="cth2 one"><img alt="" src="' + c.out + '"></span>' : '<span class="cth2">' + (a ? '<img alt="" src="' + a.thumb + '">' : '<span></span>') + (d ? '<img alt="" src="' + d.thumb + '">' : '<span></span>') + '</span>';
+    b.innerHTML = th + '<span><b></b><small></small></span><i>›</i>';
+    b.querySelector('b').textContent = fmtFull(c.t);
+    b.querySelector('small').textContent = c.A.length + ' antes · ' + c.D.length + ' depois' + (c.out ? ' · montada' : '');
+    b.onclick = () => openPick(c);
+    box.appendChild(b);
   });
-  const nP = L.filter(depOf).length, lz = loose();
-  if (lz.length) { const p = document.createElement('p'); p.className = 'note'; p.textContent = lz.length + (lz.length === 1 ? ' depois sem par. ' : ' depois sem par. ') + 'Toque em Montar comparações para escolher o antes de cada um.'; g.appendChild(p); }
-  $('pShootA').textContent = L.length ? 'Fotografar mais antes' : 'Fotografar antes';
-  $('pShootD').disabled = !L.length; $('pMount').disabled = !L.length;
-  $('pMount').textContent = 'Montar comparações';
   $('pShare').disabled = $('pBackup').disabled = !Pj.shots.length;
   $('pBackup').textContent = Pj.rec.dirty ? 'Backup (pendente)' : 'Backup';
 }
@@ -1470,6 +1521,7 @@ function savePair() {
   const i = sel.A, [a, d] = pairShots[i] || []; if (!d) return;
   pairTf[i] = { A: { ...tf.A }, D: { ...tf.D }, front: opts.front };
   d.adj = { tf: pairTf[i] }; a.edge = items.A[i].edge; d.edge = items.D[i].edge;
+  if (curComp && curComp.selA === a.id && curComp.selD === d.id) { curComp.tf = pairTf[i]; saveComp(); }
   DB.put('shots', a).catch(() => {}); DB.put('shots', d).catch(() => {});
 }
 function loadPairTf(i) {
@@ -1482,13 +1534,13 @@ function switchPair(i) {
   sel.A = sel.D = i; loadPairTf(i); queueIt(items.A[i], 'A'); queueIt(items.D[i], 'D');
   markSel('A'); markSel('D'); scrollToSel('A', true); scrollToSel('D', true); syncSliders(); render(); pump();
 }
-function openEditor(focus) {
-  const pairs = antesList().map(a => [a, depOf(a)]).filter(p => p[1]); if (!pairs.length) return;
+function openEditor(focus, dsel) {
+  const pairs = dsel ? [[focus, dsel]] : antesList().map(a => [a, depOf(a)]).filter(p => p[1]); if (!pairs.length) return;
   const i0 = Math.max(0, pairs.findIndex(p => p[0] === focus));
   if (!linked && (items.A.length || items.D.length)) { freeStash = { A: items.A, D: items.D, sel: { ...sel }, tf: { A: { ...tf.A }, D: { ...tf.D } } }; ['A', 'D'].forEach(s => items[s].forEach(release)); items.A = []; items.D = []; }
   clearItems(); linked = true; pairShots = pairs;
   items.A = pairs.map(p => itemFromShot(p[0], 'A', true)); items.D = pairs.map(p => itemFromShot(p[1], 'D', true));
-  pairTf = pairs.map(p => p[1].adj && p[1].adj.tf ? p[1].adj.tf : null);
+  pairTf = pairs.map(p => curComp && dsel && curComp.tf ? curComp.tf : p[1].adj && p[1].adj.tf ? p[1].adj.tf : null);
   sel.A = sel.D = i0; loadPairTf(i0); queueIt(items.A[i0], 'A'); queueIt(items.D[i0], 'D');
   $('app').classList.add('proj'); show('edit');
   buildStrip('A'); buildStrip('D'); markSel('A'); markSel('D'); scrollToSel('A', false); scrollToSel('D', false); setActive('A'); render(); updateSave(); pump();
@@ -1556,10 +1608,11 @@ function unzip(buf) {
 }
 const unbacked = rec => rec.dirty || 0;
 async function buildBackup() {
-  const enc = new TextEncoder(), entries = [], meta = { app: 'prisma', v: 1, project: { id: Pj.rec.id, name: Pj.rec.name, t: Pj.rec.t, tmpl: Pj.rec.tmpl || null }, shots: [] };
-  const order = allOrdered();
+  const enc = new TextEncoder(), entries = [], meta = { app: 'prisma', v: 1, project: { id: Pj.rec.id, name: Pj.rec.name, t: Pj.rec.t, tmpl: Pj.rec.tmpl || null, comps: Pj.rec.comps || null }, shots: [] };
+  const order = Pj.shots.slice().sort((a, b) => a.t - b.t);
   for (const s of order) {
-    const name = fileName(s); entries.push({ name, data: new Uint8Array(await s.blob.arrayBuffer()) });
+    let name = fileName(s); while (entries.some(e => e.name === name)) name = name.replace(/(_\d+)?\.jpg$/, m => '_' + (parseInt((m.match(/\d+/) || ['1'])[0]) + 1) + '.jpg');
+    entries.push({ name, data: new Uint8Array(await s.blob.arrayBuffer()) });
     meta.shots.push({ id: s.id, kind: s.kind, of: s.of || null, w: s.w, h: s.h, pyr: s.pyr || null, pose: s.pose, yaw: s.yaw, t: s.t, adj: s.adj || null, edge: s.edge, file: name });
   }
   entries.unshift({ name: 'projeto.json', data: enc.encode(JSON.stringify(meta)) });
@@ -1603,7 +1656,8 @@ $('fileZip').onchange = async e => {
       const r = { ...s, id: map[s.id], of: s.of ? map[s.of] : undefined, pid, blob, prev: pv.prev, thumb: pv.thumb };
       if (!r.pyr) delete r.pyr; delete r.file; Pj.shots.push(r); await DB.put('shots', r);
     }
-    await touchProj(true); setStatus('Backup restaurado', false); show('proj'); renderProj(); bgCut();
+    if (meta.project.comps) { const m = id => map[id] || null; rec.comps = meta.project.comps.map(c => ({ ...c, id: clash ? newId('c') : c.id, A: c.A.map(m).filter(Boolean), D: c.D.map(m).filter(Boolean), selA: m(c.selA), selD: m(c.selD) })); }
+    await touchProj(true); setStatus('Backup restaurado', false); openProject(pid);
   } catch (err) { Pj = null; setStatus(err.message || 'Não consegui restaurar', false); }
 };
 
@@ -1620,18 +1674,12 @@ async function newProjRec(name) {
 async function createProj() {
   const name = $('newName').value.trim(); if (!name) { $('newName').focus(); return; }
   if (!await newProjRec(name)) return;
-  show('proj'); renderProj(); camOpenProj('A');
+  Pj.rec.comps = []; newComp();
 }
 $('newGo').onclick = createProj;
-// o seletor de fotos precisa abrir no mesmo toque; o projeto é criado enquanto você escolhe
-$('newAlbum').onclick = () => {
-  const name = $('newName').value.trim(); if (!name) { $('newName').focus(); return; }
-  pkAdd = 'A'; albumProj = newProjRec(name); $('fileAlbum').click();
-};
 $('newName').addEventListener('keydown', e => { if (e.key === 'Enter') createProj(); });
 $('pName').addEventListener('change', () => { const v = $('pName').value.trim(); if (!Pj || !v) { $('pName').value = Pj ? Pj.rec.name : ''; return; } Pj.rec.name = v; touchProj(); });
-$('pShootA').onclick = () => camOpenProj('A');
-$('pShootD').onclick = () => camOpenProj('D');
+
 // ---------- escolha do par: duas faixas roláveis, prévia lado a lado, sem recorte ----------
 let psA = 0, psD = -1, ssQuiet = 0, ssGal = null;
 function ssBuild(el, list, kind) {
@@ -1711,110 +1759,100 @@ $('filePair').onchange = async e => {
   ssBuild($('ssA'), A, 'A'); ssBuild($('ssD'), D, 'D');
   requestAnimationFrame(() => { if (k === 'A') ssGo($('ssA'), A.length - 1, true); else { ssGo($('ssD'), D.length - 1, true); ssGo($('ssA'), Math.max(0, psA), false); } });
 };
-// ---------- montagem: escolha das fotos direto na tela final (sem recorte até Concluído) ----------
-// Cada metade mostra uma foto inteira (com fundo) já enquadrada pelos olhos, no mesmo enquadramento que a montagem final usa.
-// Setas trocam a foto de cada lado; chips filtram pelo ângulo; arrastar e pinçar ajustam o encaixe, que segue para a montagem.
-let allA = [], allD = [], pickA = [], pickD = [], pickL = 0, pickR = 0, pkPose = 'Todos', pkAdd = null;
+// ---------- tela de seleção da comparação ----------
+// Quadro 4:5 de ponta a ponta dividido ao meio. Cada lado tem um + (álbum) e Câmera; as fotos escolhidas viram miniaturas
+// bem pequenas logo abaixo do seu lado, e passar o dedo por cima troca a foto daquele lado na hora. Sem recorte até Remover fundo.
+let pickA = [], pickD = [], pickL = 0, pickR = 0, pkSide = null;
 const pimg = {};
 function pickImg(s) { let im = pimg[s.id]; if (!im) { im = pimg[s.id] = new Image(); im.onload = () => { if (picking) render(); }; im.src = s.prev; } return im; }
 function drawPickSide(g, s, side) {
-  if (!s) return false;
-  const im = pickImg(s), x0 = side === 'A' ? 0 : W / 2;
-  if (!im.naturalWidth) return true;
-  const ps = { w: s.w, h: s.h, pyr: s.pyr, meta: null }, P = place(ps), t = tf[side], k = P.k0 * t.s;
+  const x0 = side === 'A' ? 0 : W / 2;
   g.save(); g.beginPath(); g.rect(x0, 0, W / 2, H); g.clip();
-  g.fillStyle = '#111'; g.fillRect(x0, 0, W / 2, H);
-  g.translate(COL[side] + t.dx, P.oy + t.dy); g.rotate((t.r + P.r0) * Math.PI / 180); g.scale(k, k);
-  g.imageSmoothingQuality = 'high'; g.drawImage(im, -P.ax, -P.ay, ps.w, ps.h);
-  g.restore(); return true;
+  g.fillStyle = side === 'A' ? '#141518' : '#17181b'; g.fillRect(x0, 0, W / 2, H);
+  if (s) {
+    const im = pickImg(s);
+    if (im.naturalWidth) {
+      const ps = { w: s.w, h: s.h, pyr: s.pyr, meta: null }, P = place(ps), t = tf[side], k = P.k0 * t.s;
+      g.translate(COL[side] + t.dx, P.oy + t.dy); g.rotate((t.r + P.r0) * Math.PI / 180); g.scale(k, k);
+      g.imageSmoothingQuality = 'high'; g.drawImage(im, -P.ax, -P.ay, ps.w, ps.h);
+    }
+  }
+  g.restore(); return !!s;
 }
 function drawPick(g) {
-  const a = drawPickSide(g, pickA[pickL], 'A'), b = drawPickSide(g, pickD[pickR], 'D');
-  g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '500 34px Figtree, system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.75)';
-  if (!a) { g.fillText('Sem antes', W / 4, H * 0.38); g.fillText('neste ângulo', W / 4, H * 0.38 + 46); }
-  if (!b) { g.fillText('Sem depois', W * 3 / 4, H * 0.38); g.fillText('neste ângulo', W * 3 / 4, H * 0.38 + 46); }
-  g.fillStyle = 'rgba(0,0,0,.6)'; g.fillRect(W / 2 - 2, 0, 4, H);
+  drawPickSide(g, pickA[pickL], 'A'); drawPickSide(g, pickD[pickR], 'D');
+  g.fillStyle = 'rgba(0,0,0,.7)'; g.fillRect(W / 2 - 2, 0, 4, H);
+  $('plusA').hidden = !!pickA.length; $('plusD').hidden = !!pickD.length;
   return true;
 }
-function pkChips() {
-  const poses = ['Perfil E', '45° E', 'Frente', '45° D', 'Perfil D'].filter(p => allA.concat(allD).some(s => s.pose === p));
-  const box = $('pkPose'); box.innerHTML = '';
-  ['Todos', ...poses].forEach(p => {
-    const b = document.createElement('button'); b.type = 'button'; b.textContent = p; b.setAttribute('aria-pressed', p === pkPose);
-    b.onclick = () => { const cl = pickA[pickL], cr = pickD[pickR]; pkPose = p; pkFilter(); pickL = Math.max(0, pickA.indexOf(cl)); pickR = Math.max(0, pickD.indexOf(cr)); tf.A = T0(); tf.D = T0(); pkChips(); pkLabels(); render(); };
-    box.appendChild(b);
-  });
+function scBuild(el, list, side) {
+  el.innerHTML = '';
+  if (!list.length) { const n = document.createElement('div'); n.className = 'scnone'; n.textContent = 'sem fotos'; el.appendChild(n); }
+  list.forEach((s, i) => { const d = document.createElement('div'); d.className = 'sc' + (i === (side === 'A' ? pickL : pickR) ? ' on' : ''); d.innerHTML = '<img alt="" src="' + s.thumb + '">'; el.appendChild(d); });
+  const add = document.createElement('button'); add.type = 'button'; add.className = 'scadd'; add.textContent = '+'; add.setAttribute('aria-label', 'Mais fotos deste lado');
+  add.onclick = () => pkAlbum(side); el.appendChild(add);
 }
-function pkFilter() { pickA = pkPose === 'Todos' ? allA : allA.filter(s => s.pose === pkPose); pickD = pkPose === 'Todos' ? allD : allD.filter(s => s.pose === pkPose); }
-function pkStep(side, dir) {
-  const L = side === 'A' ? pickA : pickD; if (L.length < 2) return;
-  if (side === 'A') pickL = (pickL + dir + L.length) % L.length; else pickR = (pickR + dir + L.length) % L.length;
-  tf[side] = T0(); pkLabels(); render();
-  const nx = L[((side === 'A' ? pickL : pickR) + dir + L.length) % L.length]; if (nx) pickImg(nx); // pré-carrega a próxima
-}
+function scMark() { [['scrA', pickL], ['scrD', pickR]].forEach(([id, i]) => [...$(id).querySelectorAll('.sc')].forEach((e, j) => e.classList.toggle('on', j === i))); }
+// passar o dedo: a miniatura que está sob o dedo vira a foto daquele lado
+['scrA', 'scrD'].forEach(id => {
+  const el = $(id), side = id === 'scrA' ? 'A' : 'D';
+  let on = false;
+  const pick = e => {
+    const ts = [...el.querySelectorAll('.sc')]; if (!ts.length) return;
+    let i = ts.findIndex(t => { const r = t.getBoundingClientRect(); return e.clientX >= r.left - 1 && e.clientX <= r.right + 1; });
+    if (i < 0) { const r0 = ts[0].getBoundingClientRect(); i = e.clientX < r0.left ? 0 : ts.length - 1; }
+    const cur = side === 'A' ? pickL : pickR; if (i === cur) return;
+    if (side === 'A') pickL = i; else pickR = i;
+    tf[side] = T0(); scMark(); pkLabels(); render();
+  };
+  el.addEventListener('pointerdown', e => { if (e.target.closest('.scadd')) return; on = true; el.setPointerCapture(e.pointerId); pick(e); });
+  el.addEventListener('pointermove', e => { if (on) pick(e); });
+  const end = () => { if (!on) return; on = false; pkSave(); };
+  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+});
 function pkLabels() {
-  const lab = (L, i) => L[i] ? (i + 1) + ' de ' + L.length + (L[i].pose && L[i].pose !== '—' ? ' · ' + L[i].pose : '') + (L[i].kind === 'A' && depOf(L[i]) ? ' · já pareado' : '') : 'nenhuma';
+  const lab = (L, i) => L[i] ? (i + 1) + ' de ' + L.length + (L[i].pose && L[i].pose !== '—' ? ' · ' + L[i].pose : '') : '';
   $('pkLl').textContent = lab(pickA, pickL); $('pkRl').textContent = lab(pickD, pickR);
-  $('pkLp').disabled = $('pkLn').disabled = pickA.length < 2; $('pkRp').disabled = $('pkRn').disabled = pickD.length < 2;
   const ok = !!(pickA[pickL] && pickD[pickR]);
-  $('pkGo').disabled = !ok; $('pkGo').textContent = ok ? 'Concluído' : !allD.length ? 'Adicione o depois' : 'Escolha antes e depois';
+  $('pkGo').disabled = !ok; $('pkGo').textContent = ok ? 'Remover fundo' : !pickA.length ? 'Escolha o antes no +' : 'Escolha o depois no +';
 }
-$('pkLp').onclick = () => pkStep('A', -1); $('pkLn').onclick = () => pkStep('A', 1);
-$('pkRp').onclick = () => pkStep('D', -1); $('pkRn').onclick = () => pkStep('D', 1);
-function openPick(Ls, Rs) {
-  if (!Pj) return;
+function pkSave() { if (!curComp) return; curComp.selA = pickA[pickL] ? pickA[pickL].id : null; curComp.selD = pickD[pickR] ? pickD[pickR].id : null; saveComp(); }
+function openPick(c) {
+  if (!Pj || !c) return;
   if (linked) { savePair(); clearItems(); linked = false; }
-  allA = antesList(); allD = depList();
-  if (!Ls) Ls = allA.find(a => !depOf(a)) || allA[0];
-  if (!Rs) Rs = depOf(Ls) || loose().find(d => !Ls || d.pose === Ls.pose) || loose()[0] || allD[allD.length - 1];
-  pkPose = Ls && Ls.pose && Ls.pose !== '—' && (!Rs || Rs.pose === Ls.pose) ? Ls.pose : 'Todos';
-  pkFilter();
-  pickL = Math.max(0, pickA.indexOf(Ls)); pickR = Math.max(0, pickD.indexOf(Rs));
-  tf.A = T0(); tf.D = T0(); picking = true; setActive('A');
-  $('app').classList.add('picking', 'proj'); $('pickBox').hidden = false; show('edit');
-  pkChips(); pkLabels(); allA.concat(allD).forEach(pickImg);
+  curComp = c;
+  pickA = compList(c, 'A'); pickD = compList(c, 'D');
+  pickL = Math.max(0, pickA.findIndex(s => s.id === c.selA)); pickR = Math.max(0, pickD.findIndex(s => s.id === c.selD));
+  const t0 = c.tf; tf.A = t0 ? { ...t0.A } : T0(); tf.D = t0 ? { ...t0.D } : T0();
+  picking = true; setActive('A');
+  $('app').classList.add('picking', 'proj'); $('pickBox').hidden = false; $('halves').hidden = false; show('edit');
+  scBuild($('scrA'), pickA, 'A'); scBuild($('scrD'), pickD, 'D'); pkLabels(); pickA.concat(pickD).forEach(pickImg);
   render();
 }
-function closePick() { picking = false; $('app').classList.remove('picking'); $('pickBox').hidden = true; }
+function closePick() { picking = false; $('app').classList.remove('picking'); $('pickBox').hidden = true; $('halves').hidden = true; }
+function pkAlbum(side) { pkSide = side; $('fileAlbum').click(); }
+$('plusA').onclick = () => pkAlbum('A'); $('plusD').onclick = () => pkAlbum('D');
+$('camHA').onclick = () => { if (!curComp) return; pkSave(); closePick(); camOpenProj('A'); };
+$('camHD').onclick = () => { if (!curComp) return; pkSave(); const L = compList(curComp, 'A'); if (!L.length) { setStatus('Escolha ou fotografe o antes primeiro', false); return; } closePick(); camOpenProj('D', Math.max(0, pickL)); };
+$('fileAlbum').onchange = async e => {
+  const fs = [...e.target.files]; e.target.value = ''; const side = pkSide; pkSide = null; if (!fs.length || !curComp) return;
+  pkSave(); await importToComp(fs, side); if (side === 'A') curComp.tf = null; openPick(curComp);
+};
 $('pkGo').onclick = async () => {
   const a = pickA[pickL], d = pickD[pickR]; if (!a || !d) return;
   const old = depOf(a); if (old && old !== d) { old.of = null; await DB.put('shots', old); }
-  if (d.of !== a.id) { d.of = a.id; d.pose = a.pose; }
-  d.adj = { tf: { A: { ...tf.A }, D: { ...tf.D }, front: defaultFront(a) } }; // o encaixe feito aqui segue para a montagem
-  await DB.put('shots', a); await DB.put('shots', d); await touchProj();
-  closePick(); openEditor(a);
+  d.of = a.id; if (!d.pose || d.pose === '—') d.pose = a.pose;
+  curComp.selA = a.id; curComp.selD = d.id;
+  curComp.tf = { A: { ...tf.A }, D: { ...tf.D }, front: curComp.tf && curComp.tf.front || defaultFront(a) };
+  await DB.put('shots', a); await DB.put('shots', d); await touchProj(); await saveComp();
+  closePick(); openEditor(a, d);
 };
-$('pkAddA').onclick = () => { pkAdd = 'A'; $('fileAlbum').click(); };
-$('pkAddD').onclick = () => { pkAdd = 'D'; $('fileAlbum').click(); };
-// ---------- álbum: escolhe os antes, depois os depois, e cai direto na escolha do par ----------
-let albumProj = null, albumFirstA = null;
-function askDepois(firstA) {
-  albumFirstA = firstA;
-  overlay(null, 'Antes guardados. Agora escolha no álbum as fotos de depois.', [
-    ['Escolher os depois', () => { closeOut(); pkAdd = 'D'; $('fileAlbum').click(); }, 'primary'],
-    ['Montar só com estes', () => { closeOut(); openPick(firstA, null); }]]);
-}
-$('fileAlbum').onchange = async e => {
-  const fs = [...e.target.files]; e.target.value = ''; const kind = pkAdd || 'A'; pkAdd = null;
-  if (albumProj) { const p = albumProj; albumProj = null; const ok = await p; if (!ok) return; }
-  if (!Pj) return;
-  if (!fs.length) { if (kind === 'A' && !antesList().length) { show('proj'); renderProj(); } return; }
-  const keepA = picking ? pickA[pickL] : null, keepD = picking ? pickD[pickR] : null, wasPicking = picking;
-  const ad = await importToProject(fs, kind, null);
-  if (kind === 'A' && !wasPicking) { show('proj'); renderProj(); askDepois(ad[0]); return; }
-  if (kind === 'A') openPick(ad[0], keepD);
-  else openPick(albumFirstA && Pj.shots.includes(albumFirstA) ? albumFirstA : keepA, ad[0]);
-  albumFirstA = null;
-};
-$('pickAgain').onclick = () => { const cur = pairShots[sel.A]; openPick(cur && cur[0], cur && cur[1]); };
-$('pMount').onclick = () => { stopBg(); openPick(); };
-let projGalFor = null;
-$('pImport').onclick = () => { projGalFor = null; $('fileProj').click(); };
-$('fileProj').onchange = async e => {
-  const fs = [...e.target.files]; e.target.value = ''; const a = projGalFor; projGalFor = null; if (!fs.length || !Pj) return;
-  if (a) await importToProject(fs, 'D', a); else await importToProject(fs, 'A', null);
-  renderProj(); bgCut();
-};
+$('pkDel').onclick = () => arm($('pkDel'), async () => {
+  if (!curComp) return; Pj.rec.comps = Pj.rec.comps.filter(c => c !== curComp); curComp = null; await saveComp();
+  closePick(); $('app').classList.remove('proj'); show('proj'); renderProj();
+});
+$('pickAgain').onclick = () => { savePair(); openPick(curComp); };
+$('pNew').onclick = () => { if (Pj) newComp(); };
 $('pShare').onclick = async () => {
   if (!Pj) return;
   const order = allOrdered(), files = order.map(s => new File([s.blob], fileName(s), { type: 'image/jpeg' }));
@@ -1824,7 +1862,12 @@ $('pDel').onclick = () => arm($('pDel'), async () => { for (const s of Pj.shots)
 $('freeMode').onclick = openFree;
 $('back').onclick = () => {
   if (screen === 'edit') {
-    if (picking || linked) { if (linked) { savePair(); clearItems(); linked = false; } closePick(); $('app').classList.remove('proj'); show('proj'); renderProj(); }
+    if (picking || linked) {
+      if (linked) { savePair(); clearItems(); linked = false; }
+      closePick(); $('app').classList.remove('proj'); curComp = null;
+      if (Pj) { Pj.rec.comps = (Pj.rec.comps || []).filter(c => c.A.length || c.D.length); saveComp(); }
+      if (Pj && !Pj.rec.comps.length) { Pj = null; show('home'); renderHome(); } else { show('proj'); renderProj(); }
+    }
     else { show('home'); renderHome(); }
   } else if (screen === 'pair') { show('proj'); renderProj(); }
   else if (screen === 'proj') { stopBg(); Pj = null; show('home'); renderHome(); }
