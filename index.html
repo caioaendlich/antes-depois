@@ -27,15 +27,15 @@ body{background:var(--bg);color:var(--fg);font-family:var(--ui);font-size:15px;m
 #app{max-width:1100px;margin:0 auto;padding-block:12px 28px;padding-inline:16px;display:grid;gap:14px;grid-template-columns:1fr}
 @media (min-width:900px){#app{grid-template-columns:minmax(0,420px) minmax(0,1fr);align-items:start}}
 header{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-h1{font-size:19px;font-weight:700;letter-spacing:.01em;margin:0}
+h1{font-size:15px;font-weight:700;letter-spacing:.06em;margin:0;line-height:1}
+header{min-height:0;padding-block:0}header .chip{font-size:11.5px;padding:3px 9px}
+/* faixa opaca atrás do relógio: nada passa por cima da prévia ao rolar */
+body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:30;pointer-events:none}
 .chip{font-size:12.5px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-variant-numeric:tabular-nums}
 .chip.busy{color:var(--accent);border-color:#4a4234}
 .chip{display:inline-flex;align-items:center;gap:7px}
-.pyr{width:14px;height:14px;display:none;perspective:60px}
+.pyr{width:16px;height:16px;display:none}
 .chip.busy .pyr{display:inline-block}
-.pyr svg{width:100%;height:100%;animation:pyrspin 1.6s linear infinite;transform-style:preserve-3d}
-@keyframes pyrspin{to{transform:rotateY(360deg)}}
-@media (prefers-reduced-motion:reduce){.pyr svg{animation-duration:4s}}
 .stage{position:relative}
 /* Prévia em 4:5: mostra o miolo do 9:16 maior na tela; a exportação continua 9:16 inteira */
 .view{position:relative;width:100%;aspect-ratio:4/5;overflow:hidden;border-radius:10px;background:#000;box-shadow:0 0 0 1px var(--line);touch-action:none}
@@ -99,15 +99,15 @@ input[type=text]{font:inherit;font-size:14px;background:var(--panel);color:var(-
 #camFlash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s}
 #out img{max-height:78vh;max-width:100%;border-radius:8px}
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
-#app{padding-top:max(12px,env(safe-area-inset-top));padding-bottom:max(28px,env(safe-area-inset-bottom))}
+#app{padding-top:max(6px,calc(env(safe-area-inset-top) + 4px));padding-bottom:max(28px,env(safe-area-inset-bottom))}
 </style>
 </head>
 <body>
 
 <div id="app">
   <header>
-    <h1>Antes e Depois</h1>
-    <span class="chip" id="statusChip"><span class="pyr" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="#d8c3a0" stroke-width="1.4" stroke-linejoin="round"><path d="M10 2 L18 16 L2 16 Z"/><path d="M10 2 L11.5 16"/><path d="M2 16 L11.5 16"/></svg></span><span id="status">Recorte roda no aparelho</span></span>
+    <h1>PRISMA</h1>
+    <span class="chip" id="statusChip"><canvas class="pyr" id="pyr" width="48" height="48" aria-hidden="true"></canvas><span id="status">Recorte roda no aparelho</span></span>
   </header>
 
   <div class="stage">
@@ -221,7 +221,30 @@ let session = null, sessionP = null;
 const queue = []; let working = false;
 let uid = 0;
 
-function setStatus(t, busy) { $('status').textContent = t; $('statusChip').classList.toggle('busy', !!busy); }
+function setStatus(t, busy) { $('status').textContent = t; $('statusChip').classList.toggle('busy', !!busy); if (busy) spin(); }
+// quatro pontos nos vértices de um tetraedro girando em 3D, como pontos de carregamento
+let spinOn = false;
+function spin() {
+  if (spinOn) return; spinOn = true;
+  const c = $('pyr'), g = c.getContext('2d'), a = 1 / Math.sqrt(3);
+  const V = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]].map(v => v.map(x => x * a));
+  const E = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]];
+  const t0 = performance.now();
+  (function f(now) {
+    if (!$('statusChip').classList.contains('busy')) { spinOn = false; return; }
+    const t = (now - t0) / 1000, ay = t * 2.1, ax = 0.6 + Math.sin(t * 0.9) * 0.35;
+    const P = V.map(([x, y, z]) => {
+      let X = x * Math.cos(ay) + z * Math.sin(ay), Z = -x * Math.sin(ay) + z * Math.cos(ay);
+      let Y = y * Math.cos(ax) - Z * Math.sin(ax); Z = y * Math.sin(ax) + Z * Math.cos(ax);
+      const k = 2.6 / (2.6 + Z); return [24 + X * 15 * k, 24 + Y * 15 * k, Z, k];
+    });
+    g.clearRect(0, 0, 48, 48);
+    g.lineWidth = 1.2;
+    for (const [i, j] of E) { const z = (P[i][2] + P[j][2]) / 2; g.strokeStyle = 'rgba(216,195,160,' + (0.18 + (1 - z) * 0.18) + ')'; g.beginPath(); g.moveTo(P[i][0], P[i][1]); g.lineTo(P[j][0], P[j][1]); g.stroke(); }
+    [...P].sort((p, q) => q[2] - p[2]).forEach(p => { g.fillStyle = 'rgba(216,195,160,' + (0.45 + (1 - p[2]) * 0.4) + ')'; g.beginPath(); g.arc(p[0], p[1], 4.2 * p[3], 0, 7); g.fill(); });
+    requestAnimationFrame(f);
+  })(t0);
+}
 
 // ---------- modelo ----------
 let worker = null, wseq = 0; const wwait = new Map();
@@ -275,7 +298,11 @@ async function addFiles(side, files) {
       const thumb = document.createElement('canvas'); const tk = 136 / Math.min(src.width, src.height);
       thumb.width = Math.round(src.width * tk); thumb.height = Math.round(src.height * tk);
       thumb.getContext('2d').drawImage(src, 0, 0, thumb.width, thumb.height);
-      const it = { id: ++uid, src, thumbUrl: thumb.toDataURL('image/jpeg', .8), cut: null, meta: null, status: 'fila' };
+      const prev = document.createElement('canvas'); const pk = Math.min(1, 540 / Math.max(src.width, src.height));
+      prev.width = Math.round(src.width * pk); prev.height = Math.round(src.height * pk);
+      prev.getContext('2d').drawImage(src, 0, 0, prev.width, prev.height);
+      const it = { id: ++uid, file: f, w: src.width, h: src.height, prev, src: null, thumbUrl: thumb.toDataURL('image/jpeg', .8), cut: null, meta: null, status: 'fila' };
+      src.width = src.height = 0;
       items[side].push(it); queue.push({ side, it });
     } catch (e) { setStatus(e.message, false); }
   }
@@ -317,7 +344,7 @@ async function pump() {
 }
 
 async function cutout(it) {
-  const { src } = it;
+  const src = it.src || await fileToCanvas(it.file);
   mg.clearRect(0, 0, RES, RES);
   mg.drawImage(src, 0, 0, RES, RES);
   const px = mg.getImageData(0, 0, RES, RES).data;
@@ -325,26 +352,51 @@ async function cutout(it) {
   for (let i = 0, j = 0; j < n; i += 4, j++) {
     inp[j] = (px[i] - 128) / 256; inp[j + n] = (px[i + 1] - 128) / 256; inp[j + 2 * n] = (px[i + 2] - 128) / 256;
   }
-  it.raw = await runModel(inp);
+  const out = await runModel(inp), u8 = new Uint8Array(out.length);
+  for (let j = 0; j < out.length; j++) { const v = out[j]; u8[j] = v <= 0 ? 0 : v >= 1 ? 255 : Math.round(v * 255); }
+  it.raw = u8;
   if (it.edge == null) it.edge = 20;
-  buildBase(it); composeCut(it);
-  it.meta = analyse(it.raw, src.width, src.height);
+  it.meta = analyse(it.raw, it.w, it.h);
+  if (isSelected(it)) { it.src = src; buildBase(it); composeCut(it); }
+  else if (src !== it.src) { src.width = src.height = 0; }
 }
 
+function isSelected(it) { return items.A[sel.A] === it || items.D[sel.D] === it; }
+function freeCanvas(c) { if (c) { c.width = c.height = 0; } }
+function release(it) {
+  ['src', 'cut', 'base', 'fin'].forEach(k => { freeCanvas(it[k]); it[k] = null; });
+  if (!it.edited) { freeCanvas(it.plus); freeCanvas(it.minus); it.plus = it.minus = null; }
+}
+async function ensureLive(it) {
+  if (it._live) return it._live;
+  it._live = (async () => {
+    if (!it.src) it.src = await fileToCanvas(it.file);
+    if (it.raw && !it.cut) { buildBase(it); composeCut(it); }
+  })();
+  try { await it._live; } finally { it._live = null; }
+  render(); updateSave();
+}
+// só as fotos selecionadas ficam em resolução cheia; as outras guardam só arquivo, prévia e máscara
+function keepLive() {
+  ['A', 'D'].forEach(s => items[s].forEach(it => { if (isSelected(it)) { if (!it.src || (it.raw && !it.cut)) ensureLive(it); } else if (it.src || it.cut) release(it); }));
+}
 function mkCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
 function buildBase(it) {
   const lo = 0.02 + it.edge / 100 * 0.32, span = Math.max(0.2, 1 - lo - 0.04);
   const m = it.raw, n = RES * RES, md = mg.createImageData(RES, RES);
   for (let j = 0, i = 0; j < n; j++, i += 4) {
-    let a = (m[j] - lo) / span; a = a < 0 ? 0 : a > 1 ? 1 : a;
+    let a = (m[j] / 255 - lo) / span; a = a < 0 ? 0 : a > 1 ? 1 : a;
     md.data[i] = md.data[i + 1] = md.data[i + 2] = 255; md.data[i + 3] = a * 255;
   }
   mg.putImageData(md, 0, 0);
-  if (!it.base) {
-    const k = Math.min(1, 1100 / Math.max(it.src.width, it.src.height));
-    const w = Math.round(it.src.width * k), h = Math.round(it.src.height * k);
-    it.base = mkCanvas(w, h); it.plus = mkCanvas(w, h); it.minus = mkCanvas(w, h); it.fin = mkCanvas(w, h);
-    it.cut = mkCanvas(it.src.width, it.src.height);
+  {
+    const k = Math.min(1, 1100 / Math.max(it.w, it.h));
+    const w = Math.round(it.w * k), h = Math.round(it.h * k);
+    if (!it.base) it.base = mkCanvas(w, h);
+    if (!it.plus) it.plus = mkCanvas(w, h);
+    if (!it.minus) it.minus = mkCanvas(w, h);
+    if (!it.fin) it.fin = mkCanvas(w, h);
+    if (!it.cut) it.cut = mkCanvas(it.w, it.h);
   }
   const b = it.base.getContext('2d'); b.clearRect(0, 0, it.base.width, it.base.height);
   b.imageSmoothingQuality = 'high'; b.drawImage(mc, 0, 0, it.base.width, it.base.height);
@@ -378,7 +430,7 @@ function analyse(m, w, h) {
   let top = -1, bottom = -1;
   for (let y = 0; y < RES; y++) {
     let l = -1, r = -1;
-    for (let x = 0; x < RES; x++) if (m[y * RES + x] > 0.5) { if (l < 0) l = x; r = x; }
+    for (let x = 0; x < RES; x++) if (m[y * RES + x] > 127) { if (l < 0) l = x; r = x; }
     rows.push(l < 0 ? null : [l, r]);
     if (l >= 0 && r - l > 6) { if (top < 0) top = y; bottom = y; }
   }
@@ -396,8 +448,8 @@ function analyse(m, w, h) {
 function drawSide(g, side) {
   const it = items[side][sel[side]]; if (!it) return false;
   const t = tf[side];
-  const img = it.cut || it.src;
-  const meta = it.meta || { top: img.height * 0.12, cx: img.width / 2, hw: img.width * 0.55 };
+  const img = it.cut || it.src || it.prev;
+  const meta = it.meta || { top: it.h * 0.12, cx: it.w / 2, hw: it.w * 0.55 };
   const k = (HEAD_W / meta.hw) * t.s;
   g.save();
   g.translate(COL[side] + t.dx, HEAD_TOP + t.dy);
@@ -405,7 +457,7 @@ function drawSide(g, side) {
   g.scale(k, k);
   if (!it.cut) g.globalAlpha = 0.35;
   g.imageSmoothingQuality = 'high';
-  g.drawImage(img, -meta.cx, -meta.top);
+  g.drawImage(img, -meta.cx, -meta.top, it.w, it.h);
   g.restore();
   return true;
 }
@@ -476,6 +528,7 @@ function markThumb(it) {
 }
 function markSel(side) {
   [...$('strip' + side).querySelectorAll('.th')].forEach((b, i) => b.classList.toggle('sel', i === sel[side]));
+  keepLive();
 }
 function scrollToSel(side, smooth) {
   const strip = $('strip' + side), b = strip.querySelectorAll('.th')[sel[side]]; if (!b) return;
@@ -486,7 +539,7 @@ function scrollToSel(side, smooth) {
 function removeItem(side, i) {
   const it = items[side][i];
   for (let k = queue.length - 1; k >= 0; k--) if (queue[k].it === it) queue.splice(k, 1);
-  items[side].splice(i, 1);
+  items[side].splice(i, 1); release(it);
   sel[side] = Math.max(0, Math.min(sel[side], items[side].length - 1));
   buildStrip(side); render(); updateSave(); syncSliders();
 }
@@ -495,7 +548,7 @@ function removeItem(side, i) {
   $('file' + side).onchange = e => { addFiles(side, e.target.files); e.target.value = ''; };
   $('clear' + side).onclick = () => {
     for (let i = queue.length - 1; i >= 0; i--) if (queue[i].side === side) queue.splice(i, 1);
-    items[side] = []; sel[side] = 0; tf[side] = { s: 1, dx: 0, dy: 0, r: 0 };
+    items[side].forEach(release); items[side] = []; sel[side] = 0; tf[side] = { s: 1, dx: 0, dy: 0, r: 0 };
     buildStrip(side); render(); updateSave(); syncSliders();
   };
 });
@@ -547,7 +600,7 @@ function toImage(side, p) {
   return { x: (x * Math.cos(a) - y * Math.sin(a)) / k + meta.cx, y: (x * Math.sin(a) + y * Math.cos(a)) / k + meta.top, k };
 }
 function stamp(it, from, to) {
-  const ms = it.plus.width / it.src.width, r = Math.max(2, brushR / to.k * ms);
+  it.edited = true; const ms = it.plus.width / it.w, r = Math.max(2, brushR / to.k * ms);
   const on = (tool === 'add' ? it.plus : it.minus).getContext('2d');
   const off = (tool === 'add' ? it.minus : it.plus).getContext('2d');
   const x0 = from.x * ms, y0 = from.y * ms, x1 = to.x * ms, y1 = to.y * ms;
@@ -662,7 +715,7 @@ const cv2 = $('camOv'), vid = $('camVid');
 function camSetTarget(t) { camTarget = t; $('cTA').setAttribute('aria-pressed', t === 'A'); $('cTD').setAttribute('aria-pressed', t === 'D'); camGhost(); }
 function camGhost() {
   const g = $('camGhost'), other = camTarget === 'D' ? 'A' : 'D', it = items[other][sel[other]];
-  if (it && $('ghostOn').checked) { g.src = it.src.toDataURL('image/jpeg', .7); g.hidden = false; g.style.opacity = $('ghostA').value / 100; }
+  if (it && $('ghostOn').checked) { g.src = it.prev.toDataURL('image/jpeg', .8); g.hidden = false; g.style.opacity = $('ghostA').value / 100; }
   else g.hidden = true;
   g.classList.toggle('mir', camFacing === 'user');
 }
