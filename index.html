@@ -79,7 +79,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .check{display:flex;align-items:center;gap:8px;font-size:14px}
 .check input{accent-color:var(--accent);width:18px;height:18px}
 input[type=text]{font:inherit;font-size:14px;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0;width:170px}
-.pair{display:grid;gap:6px;min-width:0}.pair .row,.strip-wrap{min-width:0;max-width:100%}html,body{overflow-x:hidden;overscroll-behavior-x:none}body{touch-action:pan-y}#app{max-width:min(1100px,100vw)}.pair .row{gap:3px}.pair .btn.small{padding:4px 10px;font-size:12.5px}.pair .row-head .flex{flex-wrap:nowrap}
+.pair{display:grid;gap:6px;min-width:0}.pair .row,.strip-wrap{min-width:0;max-width:100%}html,body{overflow-x:hidden;overscroll-behavior-x:none}body{touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}input[type=text]{-webkit-user-select:text;user-select:text}#app{max-width:min(1100px,100vw)}.pair .row{gap:3px}.pair .btn.small{padding:4px 10px;font-size:12.5px}.pair .row-head .flex{flex-wrap:nowrap}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:12px}
 .save-row{display:flex;gap:10px;flex-wrap:wrap}
 .save-row .btn.primary{flex:1;min-width:180px;font-size:15px;padding:12px}
@@ -136,9 +136,9 @@ input[type=text]{font:inherit;font-size:14px;background:var(--panel);color:var(-
       <div class="row-head"><span class="lbl">Ajustar</span>
         <div class="seg" role="group" aria-label="Lado ajustado"><button id="segA" aria-pressed="true">Antes</button><button id="segD" aria-pressed="false">Depois</button></div></div>
       <div class="sliders">
-        <label class="sl">Zoom <input type="range" id="zoom" min="50" max="200" value="100"><output id="zoomV">100%</output></label>
-        <label class="sl">Giro <input type="range" id="rot" min="-150" max="150" value="0"><output id="rotV">0,0°</output></label>
-        <label class="sl">Altura <input type="range" id="posY" min="-500" max="500" value="0"><output id="posYV">0</output></label>
+        <label class="sl">Zoom <input type="range" id="zoom" min="60" max="165" value="100"><output id="zoomV">100%</output></label>
+        <label class="sl">Giro <input type="range" id="rot" min="-105" max="105" value="0"><output id="rotV">0,0°</output></label>
+        <label class="sl">Altura <input type="range" id="posY" min="-350" max="350" value="0"><output id="posYV">0</output></label>
       </div>
       <div class="flex">
         <button class="btn small" id="match">Igualar zoom dos dois</button>
@@ -190,8 +190,7 @@ input[type=text]{font:inherit;font-size:14px;background:var(--panel);color:var(-
     <button class="btn small" id="camFlip">Virar</button>
   </div>
   <div class="cambot">
-    <label class="sl">Pirâmide <input type="range" id="pyrS" min="40" max="160" value="100"></label>
-    <label class="sl">Altura <input type="range" id="pyrY" min="-30" max="30" value="0"></label>
+    <div class="camrow"><span class="chip" id="camFit" style="color:#eee">Procurando o rosto…</span><label class="check" style="color:#eee"><input type="checkbox" id="pyrOn" checked> Pirâmide</label></div>
     <div class="camrow">
       <label class="check" style="color:#eee"><input type="checkbox" id="ghostOn" checked> Fantasma do antes</label>
       <input type="range" id="ghostA" min="10" max="70" value="40" style="max-width:40%">
@@ -232,7 +231,7 @@ function spin() {
   const t0 = performance.now();
   (function f(now) {
     if (!$('statusChip').classList.contains('busy')) { spinOn = false; return; }
-    const t = (now - t0) / 1000, ay = t * 2.1, ax = 0.6 + Math.sin(t * 0.9) * 0.35;
+    const t = (now - t0) / 1000, ay = t * 4.6, ax = 0.6 + Math.sin(t * 1.8) * 0.35;
     const P = V.map(([x, y, z]) => {
       let X = x * Math.cos(ay) + z * Math.sin(ay), Z = -x * Math.sin(ay) + z * Math.cos(ay);
       let Y = y * Math.cos(ax) - Z * Math.sin(ax); Z = y * Math.sin(ax) + Z * Math.cos(ax);
@@ -712,49 +711,100 @@ render();
 // ---------- câmera com pirâmide (Prisma) e fantasma do antes ----------
 let camStream = null, camFacing = 'environment', camTarget = 'D';
 const cv2 = $('camOv'), vid = $('camVid');
-function camSetTarget(t) { camTarget = t; $('cTA').setAttribute('aria-pressed', t === 'A'); $('cTD').setAttribute('aria-pressed', t === 'D'); camGhost(); }
+function camSetTarget(t) { camTarget = t; $('cTA').setAttribute('aria-pressed', t === 'A'); $('cTD').setAttribute('aria-pressed', t === 'D'); camGhost(); target = null; camTargetPyr().then(camDraw); }
 function camGhost() {
   const g = $('camGhost'), other = camTarget === 'D' ? 'A' : 'D', it = items[other][sel[other]];
   if (it && $('ghostOn').checked) { g.src = it.prev.toDataURL('image/jpeg', .8); g.hidden = false; g.style.opacity = $('ghostA').value / 100; }
   else g.hidden = true;
   g.classList.toggle('mir', camFacing === 'user');
 }
+// Pirâmide do Prisma presa ao rosto: exocantos (33 e 263), pronasal (1) e lábio inferior (17) da malha facial
+const PYR = [33, 263, 1, 17], PYR_E = [[0, 1], [0, 2], [1, 2], [0, 3], [1, 3], [2, 3]];
+let fm = null, fmBusy = false, fmLoad = null, live = null, target = null, fmMode = 'live', fmCb = null;
+function loadFM() {
+  if (fmLoad) return fmLoad;
+  fmLoad = new Promise((res, rej) => {
+    const sc = document.createElement('script'); sc.src = 'fm/face_mesh.js';
+    sc.onload = async () => {
+      try {
+        fm = new FaceMesh({ locateFile: f => 'fm/' + f });
+        fm.setOptions({ maxNumFaces: 1, refineLandmarks: false, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5, selfieMode: false });
+        fm.onResults(r => { const lm = r.multiFaceLandmarks && r.multiFaceLandmarks[0]; const p = lm ? PYR.map(i => ({ x: lm[i].x, y: lm[i].y, z: lm[i].z })) : null; if (fmCb) { const cb = fmCb; fmCb = null; cb(p); } });
+        await fm.initialize(); res(fm);
+      } catch (e) { rej(e); }
+    };
+    sc.onerror = () => rej(new Error('sem malha'));
+    document.head.appendChild(sc);
+  });
+  fmLoad.catch(() => { fmLoad = null; });
+  return fmLoad;
+}
+function fmDetect(image) { return new Promise(res => { fmCb = res; fm.send({ image }).catch(() => { fmCb = null; res(null); }); }); }
+// pirâmide-alvo: a do antes selecionado (guardada na captura, ou detectada na foto da galeria)
+async function camTargetPyr() {
+  target = null;
+  const it = items.A[sel.A];
+  if (camTarget !== 'D' || !it) return;
+  if (!it.pyr) { await loadFM(); while (fmBusy) await new Promise(r => setTimeout(r, 30)); fmBusy = true; const p = await fmDetect(it.prev); fmBusy = false; it.pyr = p ? { pts: p, w: it.w, h: it.h } : null; }
+  target = it.pyr;
+}
+function toScreen(p, r, sw, sh) {
+  const vw = sw || vid.videoWidth || 1, vh = sh || vid.videoHeight || 1, k = Math.max(r.width / vw, r.height / vh);
+  let x = (r.width - vw * k) / 2 + p.x * vw * k; const y = (r.height - vh * k) / 2 + p.y * vh * k;
+  if (camFacing === 'user') x = r.width - x;
+  return [x, y, p.z || 0];
+}
+function drawPyr(g, P, color, dashed) {
+  g.lineWidth = dashed ? 1.5 : 2; g.strokeStyle = color; g.setLineDash(dashed ? [5, 5] : []);
+  for (const [a, b] of PYR_E) { g.beginPath(); g.moveTo(P[a][0], P[a][1]); g.lineTo(P[b][0], P[b][1]); g.stroke(); }
+  g.setLineDash([]); g.fillStyle = color;
+  P.forEach(p => { const rr = Math.max(2.5, 4.5 - p[2] * 20); g.beginPath(); g.arc(p[0], p[1], rr, 0, 7); g.fill(); });
+  return P;
+}
 function camDraw() {
   if ($('cam').hidden) return;
   const r = cv2.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
-  cv2.width = r.width * dpr; cv2.height = r.height * dpr;
+  if (cv2.width !== Math.round(r.width * dpr)) { cv2.width = r.width * dpr; cv2.height = r.height * dpr; }
   const g = cv2.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, r.width, r.height);
-  const k = $('pyrS').value / 100, w = Math.min(r.width, r.height * .6) * .27 * k;
-  const cx = r.width / 2, cy = r.height * (.44 + $('pyrY').value / 100);
-  const eL = [cx - w, cy - w * .55], eR = [cx + w, cy - w * .55], prn = [cx, cy + w * .35], lab = [cx, cy + w * 1.0];
-  g.lineWidth = 1.5; g.strokeStyle = 'rgba(216,195,160,.95)'; g.setLineDash([]);
-  g.beginPath(); g.moveTo(...eL); g.lineTo(...eR); g.lineTo(...prn); g.closePath(); g.stroke();
-  g.beginPath(); g.moveTo(...eL); g.lineTo(...lab); g.lineTo(...eR); g.stroke();
-  g.setLineDash([4, 6]); g.strokeStyle = 'rgba(255,255,255,.55)';
-  g.beginPath(); g.moveTo(cx, cy - w * 1.6); g.lineTo(cx, cy + w * 1.6); g.stroke();
-  g.beginPath(); g.moveTo(cx - w * 1.6, eL[1]); g.lineTo(cx + w * 1.6, eL[1]); g.stroke();
-  g.setLineDash([]);
-  for (const [p, t] of [[eL, 'exocanto'], [eR, 'exocanto'], [prn, 'pronasal'], [lab, 'lábio inf.']]) {
-    g.fillStyle = '#d8c3a0'; g.beginPath(); g.arc(p[0], p[1], 4.5, 0, 7); g.fill();
-    g.fillStyle = 'rgba(255,255,255,.8)'; g.font = '11px Figtree,system-ui,sans-serif'; g.textAlign = p[0] > cx + 1 ? 'right' : 'left'; g.fillText(t, p[0] + (p[0] > cx + 1 ? -8 : 8), p[1] - 8);
-  }
+  if (!$('pyrOn').checked) return;
+  const T = target ? target.pts.map(p => toScreen(p, r, target.w, target.h)) : null;
+  if (T) drawPyr(g, T, 'rgba(255,255,255,.85)', true);
+  if (live) {
+    const L = live.map(p => toScreen(p, r)), ok = T ? fitScore(L, T) : null;
+    drawPyr(g, L, ok != null && ok >= 92 ? 'rgba(120,220,140,.95)' : 'rgba(216,195,160,.95)', false);
+    $('camFit').textContent = target ? 'Alinhamento ' + ok + '%' + (ok >= 92 ? ' · pode fotografar' : '') : 'Rosto encontrado';
+  } else $('camFit').textContent = fm ? 'Procurando o rosto…' : 'Carregando a pirâmide…';
+}
+function fitScore(a, b) {
+  const d = Math.hypot(b[0][0] - b[1][0], b[0][1] - b[1][1]) || 1;
+  let e = 0; for (let i = 0; i < 4; i++) e += Math.hypot(a[i][0] - b[i][0], a[i][1] - b[i][1]);
+  return Math.max(0, Math.round(100 - (e / 4) / d * 250));
+}
+async function camLoop() {
+  try { await loadFM(); } catch (e) { $('camFit').textContent = 'Pirâmide indisponível'; return; }
+  const tick = async () => {
+    if ($('cam').hidden) return;
+    if (!fmBusy && vid.readyState >= 2) { fmBusy = true; live = await fmDetect(vid); fmBusy = false; camDraw(); }
+    requestAnimationFrame(tick);
+  };
+  tick();
 }
 async function camStart() {
   if (camStream) camStream.getTracks().forEach(t => t.stop());
   try {
     camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: camFacing, width: { ideal: 3840 }, height: { ideal: 2160 } }, audio: false });
     vid.srcObject = camStream; vid.classList.toggle('mir', camFacing === 'user'); await vid.play();
-    $('camMsg').textContent = 'Alinhe os dois exocantos na linha de cima, o pronasal no vértice e o lábio inferior no ponto de baixo.';
+    $('camMsg').textContent = camTarget === 'D' ? 'Encaixe a pirâmide dourada (ao vivo) na branca (a do antes). Fica verde quando estiver alinhada.' : 'A pirâmide acompanha o rosto. Posicione do jeito que quiser e fotografe: ela fica guardada para o depois.';
   } catch (e) { $('camMsg').textContent = 'Não consegui abrir a câmera. Permita o acesso à câmera para este app nos Ajustes do iPhone.'; }
   camGhost(); camDraw();
 }
-function camOpen(t) { $('cam').hidden = false; camSetTarget(t); camStart(); }
+function camOpen(t) { $('cam').hidden = false; live = null; camSetTarget(t); camStart().then(() => { camLoop(); }); }
 function camClose() { $('cam').hidden = true; if (camStream) camStream.getTracks().forEach(x => x.stop()); camStream = null; }
 $('camA').onclick = () => camOpen('A'); $('camD').onclick = () => camOpen('D');
 $('camClose').onclick = camClose;
 $('camFlip').onclick = () => { camFacing = camFacing === 'environment' ? 'user' : 'environment'; camStart(); };
 $('cTA').onclick = () => camSetTarget('A'); $('cTD').onclick = () => camSetTarget('D');
-['pyrS', 'pyrY'].forEach(id => $(id).oninput = camDraw);
+$('pyrOn').onchange = camDraw;
 $('ghostOn').onchange = camGhost; $('ghostA').oninput = camGhost;
 window.addEventListener('resize', camDraw);
 $('camShot').onclick = () => {
@@ -763,7 +813,7 @@ $('camShot').onclick = () => {
   const g = c.getContext('2d'); if (camFacing === 'user') { g.translate(c.width, 0); g.scale(-1, 1); }
   g.drawImage(vid, 0, 0);
   const fl = $('camFlash'); fl.style.transition = 'none'; fl.style.opacity = .8; requestAnimationFrame(() => { fl.style.transition = 'opacity .3s'; fl.style.opacity = 0; });
-  c.toBlob(b => { if (!b) return; const f = new File([b], 'camera.jpg', { type: 'image/jpeg' }); addFiles(camTarget, [f]); $('camMsg').textContent = 'Foto guardada em ' + (camTarget === 'A' ? 'Antes' : 'Depois') + '. Pode tirar outra ou fechar.'; }, 'image/jpeg', 0.95);
+  c.toBlob(b => { if (!b) return; const f = new File([b], 'camera.jpg', { type: 'image/jpeg' }); const shotPyr = live ? live.map(p => ({ ...p })) : null; const n0 = items[camTarget].length; addFiles(camTarget, [f]).then(() => { const it = items[camTarget][n0]; if (it && shotPyr) it.pyr = { pts: shotPyr, w: vid.videoWidth, h: vid.videoHeight }; if (camTarget === 'A') camTargetPyr(); }); $('camMsg').textContent = 'Foto guardada em ' + (camTarget === 'A' ? 'Antes' : 'Depois') + '. Pode tirar outra ou fechar.'; }, 'image/jpeg', 0.95);
 };
 
 })();
