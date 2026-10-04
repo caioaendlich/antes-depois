@@ -181,6 +181,7 @@ input.wide{width:100%}
   <div class="plist" id="projList"></div>
   <div class="tools"><button class="btn small" id="freeMode" type="button">Montagem avulsa</button><button class="btn small" id="restore" type="button">Restaurar backup</button></div>
   <p class="note">As fotos ficam guardadas só neste aparelho, dentro do app. Ao fechar cada paciente, toque em Backup e guarde o arquivo no Drive ou em Arquivos.</p>
+  <p class="note" style="opacity:.6">Versão 13</p>
 </section>
 
 <section id="proj" class="scr" hidden>
@@ -1651,6 +1652,6 @@ show('home'); renderHome();
 })();
 </script>
 
-<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');let r0=!!navigator.serviceWorker.controller;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(r0)location.reload();r0=true;});}</script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{r.update();document.addEventListener('visibilitychange',()=>{if(!document.hidden)r.update();});});let r0=!!navigator.serviceWorker.controller;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(r0)location.reload();r0=true;});}</script>
 </body>
 </html>
