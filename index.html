@@ -162,6 +162,7 @@ input.wide{width:100%}
 .st2 .ok{position:absolute;right:3px;bottom:3px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:#5fc27e;color:#fff;font-size:9.5px;line-height:15px;text-align:center;font-weight:700}
 .st2.add{background:transparent;border:1.5px dashed #3a3c40;color:var(--muted);font:inherit;font-size:12px;line-height:1.2}
 #app.picking .controls>:not(#pickBox){display:none!important}
+.st2.on{box-shadow:inset 0 0 0 2px var(--accent)}
 #pickAgain{display:none}#app.proj #pickAgain{display:block}
 .swrap.mini::after{width:36px;border-radius:7px}
 .sstrip.mini{gap:4px;padding:3px calc(50% - 15px)}
@@ -186,7 +187,7 @@ input.wide{width:100%}
   <div class="plist" id="projList"></div>
   <div class="tools"><button class="btn small" id="freeMode" type="button">Montagem avulsa</button><button class="btn small" id="restore" type="button">Restaurar backup</button></div>
   <p class="note">As fotos ficam guardadas só neste aparelho, dentro do app. Ao fechar cada paciente, toque em Backup e guarde o arquivo no Drive ou em Arquivos.</p>
-  <p class="note" style="opacity:.6">Versão 14</p>
+  <p class="note" style="opacity:.6">Versão 15</p>
 </section>
 
 <section id="proj" class="scr" hidden>
@@ -299,6 +300,7 @@ input.wide{width:100%}
 <input type="file" id="fileCam" accept="image/*" multiple hidden>
 <input type="file" id="fileProj" accept="image/*" multiple hidden>
 <input type="file" id="filePair" accept="image/*" multiple hidden>
+<input type="file" id="filePick" accept="image/*" multiple hidden>
 <input type="file" id="fileZip" accept=".zip,application/zip" hidden>
 <div id="cam" hidden>
   <video id="camVid" playsinline muted autoplay></video>
@@ -1261,7 +1263,7 @@ $('fileCam').onchange = async e => {
   let L = null, R = null;
   if (galFor) { const a = galFor; galFor = null; const ad = await importToProject(fs.slice(0, 1), 'D', a); L = a; R = ad[0]; }
   else if (camMode === 'D') { const a = antesList()[curA]; const ad = await importToProject(fs.slice(0, 1), 'D', a); L = a; R = ad[0]; }
-  else { const ad = await importToProject(fs, 'A', null); L = ad[0]; R = ad.length > 1 ? ad[ad.length - 1] : null; }
+  else { const ad = await importToProject(fs, 'A', null); L = ad[0]; R = null; }
   camClose(true); openPick(L, R);
 };
 
@@ -1645,7 +1647,7 @@ $('filePair').onchange = async e => {
   requestAnimationFrame(() => { if (k === 'A') ssGo($('ssA'), A.length - 1, true); else { ssGo($('ssD'), D.length - 1, true); ssGo($('ssA'), Math.max(0, psA), false); } });
 };
 // ---------- montagem: escolha das fotos direto na tela final (sem recorte até Concluído) ----------
-let pickList = [], pickL = 0, pickR = 1;
+let pickA = [], pickD = [], pickL = 0, pickR = 0, pkGal = null;
 const pimg = {};
 function pickImg(s) { let im = pimg[s.id]; if (!im) { im = pimg[s.id] = new Image(); im.onload = () => { if (picking) render(); }; im.src = s.prev; } return im; }
 function drawPickSide(g, s, x0) {
@@ -1661,33 +1663,47 @@ function drawPickSide(g, s, x0) {
   g.restore(); return true;
 }
 function drawPick(g) {
-  const a = drawPickSide(g, pickList[pickL], 0), b = drawPickSide(g, pickList[pickR], W / 2);
+  const a = drawPickSide(g, pickA[pickL], 0), b = drawPickSide(g, pickD[pickR], W / 2);
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '500 34px Figtree, system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.7)';
+  if (!a) g.fillText('Toque em + na barra de cima', W / 4, H * 0.38);
+  if (!b) { g.fillText('Toque em + na barra', W * 3 / 4, H * 0.36); g.fillText('de baixo para escolher', W * 3 / 4, H * 0.36 + 46); g.fillText('o depois', W * 3 / 4, H * 0.36 + 92); }
   g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(W / 2 - 1, 0, 2, H);
-  return a || b;
+  return true;
 }
-function pkBuild(el, which) {
+function pkBuild(el, list) {
   el.innerHTML = '';
-  pickList.forEach((s, i) => {
+  list.forEach((s, i) => {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'st2';
-    b.innerHTML = '<img alt="" src="' + s.thumb + '">';
+    b.innerHTML = '<img alt="" src="' + s.thumb + '">' + (s.kind === 'A' && depOf(s) ? '<span class="ok">✓</span>' : '');
     b.onclick = () => pkGoTo(el, i, true);
     el.appendChild(b);
   });
+  const add = document.createElement('button'); add.type = 'button'; add.className = 'st2 add'; add.textContent = '+';
+  add.style.fontSize = '20px';
+  add.onclick = () => { pkGal = el.id; $('filePick').click(); };
+  el.appendChild(add);
 }
+function pkMark(el, i) { [...el.children].forEach((t, j) => t.classList.toggle('on', j === i)); }
+function pkScroll(el, i) { const t = el.children[i]; if (t) el.scrollLeft = t.offsetLeft + t.offsetWidth / 2 - el.clientWidth / 2; }
 function pkGoTo(el, i, smooth) {
-  const t = el.children[i]; if (!t) return;
+  const t = el.children[i]; if (!t || t.classList.contains('add')) return;
   el.scrollTo({ left: t.offsetLeft + t.offsetWidth / 2 - el.clientWidth / 2, behavior: smooth ? 'smooth' : 'auto' });
-  pkSet(el.id === 'pkL' ? 'L' : 'R', i);
+  pkSet(el.id === 'pkL' ? 'L' : 'R', i, true);
 }
-function pkSet(side, i) {
-  if (side === 'L') { if (i === pickL) return; pickL = i; } else { if (i === pickR) return; pickR = i; }
+function pkSet(side, i, force) {
+  if (side === 'L') { if (i === pickL && !force) return; pickL = i; pkMark($('pkL'), i); } else { if (i === pickR && !force) return; pickR = i; pkMark($('pkR'), i); }
   pkLabels(); render();
 }
 function pkLabels() {
-  const lab = (s, i) => s ? (i + 1) + ' de ' + pickList.length + (s.pose && s.pose !== '—' ? ' · ' + s.pose : '') : '';
-  $('pkLl').textContent = lab(pickList[pickL], pickL); $('pkRl').textContent = lab(pickList[pickR], pickR);
-  $('pkGo').disabled = !pickList[pickL] || !pickList[pickR] || pickL === pickR;
-  $('pkGo').textContent = pickL === pickR ? 'Escolha fotos diferentes' : 'Concluído';
+  const lab = (L, i) => L[i] ? (i + 1) + ' de ' + L.length + (L[i].pose && L[i].pose !== '—' ? ' · ' + L[i].pose : '') : (L.length ? '' : 'nenhuma ainda');
+  $('pkLl').textContent = lab(pickA, pickL); $('pkRl').textContent = lab(pickD, pickR);
+  const ok = !!(pickA[pickL] && pickD[pickR]);
+  $('pkGo').disabled = !ok; $('pkGo').textContent = ok ? 'Concluído' : pickA[pickL] ? 'Escolha o depois' : 'Escolha o antes';
+}
+function pkPlace() {
+  // posiciona as barras depois que a tela já foi desenhada (com nova tentativa, o iPhone às vezes atrasa o layout)
+  const go = () => { pkScroll($('pkL'), pickL); pkScroll($('pkR'), pickR); pkMark($('pkL'), pickL); pkMark($('pkR'), pickR); };
+  requestAnimationFrame(() => requestAnimationFrame(go)); setTimeout(go, 120); setTimeout(go, 400);
 }
 ['pkL', 'pkR'].forEach(id => {
   let raf = 0;
@@ -1695,36 +1711,37 @@ function pkLabels() {
     if (raf) return;
     raf = requestAnimationFrame(() => {
       raf = 0; const el = $(id), c = el.scrollLeft + el.clientWidth / 2; let best = 0, bd = 1e9;
-      [...el.children].forEach((t, i) => { const d = Math.abs(t.offsetLeft + t.offsetWidth / 2 - c); if (d < bd) { bd = d; best = i; } });
-      pkSet(id === 'pkL' ? 'L' : 'R', best);
+      [...el.children].forEach((t, i) => { if (t.classList.contains('add')) return; const d = Math.abs(t.offsetLeft + t.offsetWidth / 2 - c); if (d < bd) { bd = d; best = i; } });
+      if (el.children.length > 1) pkSet(id === 'pkL' ? 'L' : 'R', best);
     });
   }, { passive: true });
 });
 function openPick(Ls, Rs) {
   if (!Pj) return;
   if (linked) { savePair(); clearItems(); linked = false; }
-  pickList = antesList().concat(depList());
-  if (!pickList.length) { show('proj'); renderProj(); return; }
-  let l = Ls ? pickList.indexOf(Ls) : -1;
-  if (l < 0) { const A = antesList(); const f = A.find(a => !depOf(a)) || A[0]; l = Math.max(0, pickList.indexOf(f)); }
-  let r = Rs ? pickList.indexOf(Rs) : -1;
-  if (r < 0) { const d = depOf(pickList[l]) || loose()[0]; r = d ? pickList.indexOf(d) : -1; }
-  if (r < 0 || r === l) r = pickList.length > 1 ? (l + 1) % pickList.length : 0;
-  pickL = l; pickR = r; picking = true;
+  pickA = antesList(); pickD = depList();
+  let l = Ls ? pickA.indexOf(Ls) : -1;
+  if (l < 0) { const f = pickA.find(a => !depOf(a)) || pickA[0]; l = Math.max(0, pickA.indexOf(f)); }
+  let r = Rs ? pickD.indexOf(Rs) : -1;
+  if (r < 0) { const d = depOf(pickA[l]) || loose()[0] || pickD[pickD.length - 1]; r = d ? pickD.indexOf(d) : 0; }
+  pickL = l; pickR = Math.max(0, r); picking = true;
   $('app').classList.add('picking', 'proj'); $('pickBox').hidden = false; show('edit');
-  pkBuild($('pkL')); pkBuild($('pkR')); pkLabels();
-  requestAnimationFrame(() => { pkGoTo($('pkL'), l, false); pkGoTo($('pkR'), r, false); render(); });
+  pkBuild($('pkL'), pickA); pkBuild($('pkR'), pickD); pkLabels(); pkPlace();
   render();
 }
 function closePick() { picking = false; $('app').classList.remove('picking'); $('pickBox').hidden = true; }
 $('pkGo').onclick = async () => {
-  const a = pickList[pickL], d = pickList[pickR]; if (!a || !d || a === d) return;
-  if (a.kind !== 'A') { a.kind = 'A'; a.of = null; }
-  if (d.kind === 'A') { const dd = depOf(d); if (dd) { dd.of = null; await DB.put('shots', dd); } d.kind = 'D'; }
+  const a = pickA[pickL], d = pickD[pickR]; if (!a || !d) return;
   const old = depOf(a); if (old && old !== d) { old.of = null; await DB.put('shots', old); }
   if (d.of !== a.id) { d.of = a.id; d.pose = a.pose; }
   await DB.put('shots', a); await DB.put('shots', d); await touchProj();
   closePick(); openEditor(a);
+};
+$('filePick').onchange = async e => {
+  const fs = [...e.target.files]; e.target.value = ''; const side = pkGal; pkGal = null; if (!fs.length || !Pj) return;
+  const keepA = pickA[pickL], keepD = pickD[pickR];
+  const ad = await importToProject(fs, side === 'pkL' ? 'A' : 'D', null);
+  openPick(side === 'pkL' ? ad[0] : keepA, side === 'pkR' ? ad[0] : keepD);
 };
 $('pickAgain').onclick = () => { const cur = pairShots[sel.A]; openPick(cur && cur[0], cur && cur[1]); };
 $('pMount').onclick = () => { stopBg(); openPick(); };
