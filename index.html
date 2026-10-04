@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>Prisma</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'">
 <style>
 /* Layout: estúdio de foto escuro. Prévia 9:16 em cima (ou à esquerda no Mac), faixas de miniaturas e ajustes embaixo. */
 :root{
@@ -166,6 +166,14 @@ input.wide{width:100%}
 #app.picking .view{border-radius:0;box-shadow:none}
 #app.picking #vtog{display:none}
 #app.proj .pair,#app.proj #saveAll{display:none!important}
+.etools{display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;padding-top:6px}
+.etools>*{pointer-events:auto}
+.etools .seg{background:rgba(0,0,0,.62);border-color:rgba(255,255,255,.14);padding:2px}
+.etools .seg button{font-size:12.5px;padding:6px 10px;color:#ccc}
+.etools .seg button[aria-pressed="true"]{background:rgba(255,255,255,.18);color:#fff}
+.etools .ebtn{font:inherit;font-size:12.5px;font-weight:600;color:#eee;background:rgba(0,0,0,.62);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:7px 10px}
+.etools input[type=range]{flex-basis:100%;max-width:240px;background:transparent}
+#app.picking .etools{display:none!important}
 .halves{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;pointer-events:none;z-index:3}
 .half{position:relative;display:flex;align-items:center;justify-content:center}
 .htag{position:absolute;top:8px;left:8px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#eee;background:rgba(0,0,0,.5);padding:3px 8px;border-radius:999px}
@@ -221,7 +229,7 @@ input.wide{width:100%}
   <div class="plist" id="projList"></div>
   <div class="tools"><button class="btn small" id="freeMode" type="button">Montagem avulsa</button><button class="btn small" id="restore" type="button">Restaurar backup</button></div>
   <p class="note">As fotos ficam guardadas só neste aparelho, dentro do app. Ao fechar cada paciente, toque em Backup e guarde o arquivo no Drive ou em Arquivos.</p>
-  <p class="note" style="opacity:.6">Versão 20</p>
+  <p class="note" style="opacity:.6">Versão 21</p>
 </section>
 
 <section id="proj" class="scr" hidden>
@@ -260,6 +268,12 @@ input.wide{width:100%}
         <div class="half"><span class="htag">Depois</span><button class="plus" id="plusD" type="button" aria-label="Escolher fotos de depois no álbum">+</button><button class="hcam" id="camHD" type="button">Câmera</button></div>
       </div>
     </div>
+    <div class="etools" id="etools" hidden>
+        <div class="seg sm" role="group" aria-label="Ferramenta"><button data-t="move" aria-pressed="true">Mover</button><button data-t="del" aria-pressed="false">Apagar</button><button data-t="add" aria-pressed="false">Restaurar</button></div>
+        <div class="seg sm" role="group" aria-label="Foto"><button data-s="A" aria-pressed="true">Antes</button><button data-s="D" aria-pressed="false">Depois</button></div>
+        <button class="ebtn" id="eUndo" type="button" hidden>Desfazer</button>
+        <input type="range" id="eBrush" min="8" max="140" value="44" aria-label="Tamanho do pincel" hidden>
+      </div>
   </div>
 
   <div class="controls">
@@ -314,7 +328,11 @@ input.wide{width:100%}
         <input type="text" id="handTxt" value="@caioendlich.md" aria-label="Texto da assinatura" maxlength="40">
       </div>
       <div class="flex">
-        <label class="check"><input type="checkbox" id="labels"> Escrever ANTES e DEPOIS</label>
+        <label class="check"><input type="checkbox" id="labels" checked> Escrever ANTES e DEPOIS</label>
+      </div>
+      <div class="flex">
+        <label class="check"><input type="checkbox" id="titleOn" checked> Nome no topo</label>
+        <input type="text" id="titleTxt" value="DR. CAIO ENDLICH" aria-label="Nome no topo" maxlength="40">
       </div>
       <div class="row-head"><span class="check" style="gap:10px">Na frente</span>
         <div class="seg" role="group" aria-label="Foto na frente"><button id="frA" aria-pressed="false">Antes</button><button id="frD" aria-pressed="true">Depois</button></div></div>
@@ -377,7 +395,7 @@ const cv = $('cv'), ctx = cv.getContext('2d');
 const items = { A: [], D: [] };
 const sel = { A: 0, D: 0 };
 const tf = { A: { s: 1, dx: 0, dy: 0, r: 0 }, D: { s: 1, dx: 0, dy: 0, r: 0 } };
-const opts = { fade: 0.80, hand: true, handTxt: '@caioendlich.md', labels: false, front: 'D' };
+const opts = { fade: 0.80, hand: true, handTxt: '@caioendlich.md', labels: true, front: 'D', title: true, titleTxt: 'DR. CAIO ENDLICH' };
 let active = 'A', picking = false;
 let session = null, sessionP = null;
 const queue = []; let working = false;
@@ -700,6 +718,13 @@ function drawSide(g, side) {
   return true;
 }
 
+// texto com espaçamento entre letras, centralizado (desenha letra por letra; funciona em qualquer Safari)
+function spaced(g, txt, cx, y, sp) {
+  const ws = [...txt].map(ch => g.measureText(ch).width), total = ws.reduce((a, b) => a + b, 0) + sp * (ws.length - 1);
+  let x = cx - total / 2; const al = g.textAlign; g.textAlign = 'left'; g.textBaseline = 'middle';
+  [...txt].forEach((ch, i) => { g.fillText(ch, x, y); x += ws[i] + sp; });
+  g.textAlign = al;
+}
 function render() {
   const g = ctx;
   g.setTransform(1, 0, 0, 1, 0, 0);
@@ -719,12 +744,17 @@ function render() {
 
   g.textAlign = 'center'; g.textBaseline = 'middle';
   const bottomSpace = H - fy;
-  if (opts.labels) {
-    g.font = '600 34px Figtree, system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.92)';
-    if ('letterSpacing' in g) g.letterSpacing = '9px';
+  if (opts.labels && !picking) {
+    g.font = '500 30px Figtree, system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.9)';
     const ly = fy + Math.min(70, bottomSpace * 0.3);
-    g.fillText('ANTES', COL.A, ly); g.fillText('DEPOIS', COL.D, ly);
-    if ('letterSpacing' in g) g.letterSpacing = '0px';
+    spaced(g, 'ANTES', COL.A, ly, 9); spaced(g, 'DEPOIS', COL.D, ly, 9);
+  }
+  if (opts.title && opts.titleTxt.trim() && !picking) {
+    // nome no topo, fino e espaçado, dentro da área que aparece no post 4:5
+    const ty = (H - W * 5 / 4) / 2 + 92;
+    g.font = '300 38px Figtree, system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.9)';
+    spaced(g, opts.titleTxt.trim().toUpperCase(), W / 2, ty, 13);
+    g.fillStyle = 'rgba(255,255,255,.45)'; g.fillRect(W / 2 - 34, ty + 34, 68, 1.5);
   }
   if (opts.hand && opts.handTxt.trim()) {
     g.font = '500 30px Figtree, system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.62)';
@@ -735,7 +765,8 @@ function render() {
     g.fillText('Adicione as fotos de', W / 2, H * 0.40);
     g.fillText('antes e de depois', W / 2, H * 0.40 + 54);
   }
-  $('hint').hidden = picking || !any || ['A', 'D'].some(s => items[s][sel[s]] && !items[s][sel[s]].cut);
+  const ready = !picking && any && ['A', 'D'].every(s => !items[s][sel[s]] || items[s][sel[s]].cut);
+  $('hint').hidden = true; $('etools').hidden = !ready;
   if (brushing && ring) { const it = items[active][sel[active]]; g.beginPath(); g.arc(ring.x, ring.y, brushR, 0, Math.PI * 2); g.lineWidth = 3; g.strokeStyle = tool === 'add' ? 'rgba(120,220,160,.9)' : 'rgba(240,110,110,.9)'; g.stroke(); }
 }
 
@@ -797,6 +828,7 @@ function removeItem(side, i) {
 function setActive(side) {
   active = side;
   $('segA').setAttribute('aria-pressed', side === 'A'); $('segD').setAttribute('aria-pressed', side === 'D');
+  document.querySelectorAll('#etools [data-s]').forEach(b => b.setAttribute('aria-pressed', b.dataset.s === side));
   syncSliders();
 }
 function syncSliders() {
@@ -817,6 +849,8 @@ $('fade').oninput = e => { opts.fade = e.target.value / 100; $('fadeV').textCont
 $('hand').onchange = e => { opts.hand = e.target.checked; render(); };
 $('handTxt').oninput = e => { opts.handTxt = e.target.value; render(); };
 $('labels').onchange = e => { opts.labels = e.target.checked; render(); };
+$('titleOn').onchange = e => { opts.title = e.target.checked; render(); };
+$('titleTxt').oninput = e => { opts.titleTxt = e.target.value; render(); };
 function setFront(s) { opts.front = s; $('frA').setAttribute('aria-pressed', s === 'A'); $('frD').setAttribute('aria-pressed', s === 'D'); render(); }
 $('frA').onclick = () => setFront('A'); $('frD').onclick = () => setFront('D');
 
@@ -827,8 +861,14 @@ let tool = 'move', brushR = 44, brushing = false, lastImg = null, ring = null;
 function setTool(t) {
   tool = t;
   [['toolMove', 'move'], ['toolAdd', 'add'], ['toolDel', 'del']].forEach(([id, v]) => $(id).setAttribute('aria-pressed', v === t));
+  document.querySelectorAll('#etools [data-t]').forEach(b => b.setAttribute('aria-pressed', b.dataset.t === t));
+  $('eUndo').hidden = $('eBrush').hidden = t === 'move';
   $('hint').textContent = t === 'move' ? 'Arraste para mover · pinça para zoom e giro' : (t === 'add' ? 'Pinte para restaurar' : 'Pinte para apagar') + ' · lado ' + (active === 'A' ? 'Antes' : 'Depois');
 }
+document.querySelectorAll('#etools [data-t]').forEach(b => b.onclick = () => setTool(b.dataset.t));
+document.querySelectorAll('#etools [data-s]').forEach(b => b.onclick = () => { setActive(b.dataset.s); if (tool !== 'move') setTool(tool); });
+$('eUndo').onclick = () => $('undoBrush').click();
+$('eBrush').oninput = e => { brushR = +e.target.value; $('brush').value = e.target.value; $('brushV').textContent = e.target.value; };
 $('toolMove').onclick = () => setTool('move'); $('toolAdd').onclick = () => setTool('add'); $('toolDel').onclick = () => setTool('del');
 $('brush').oninput = e => { brushR = +e.target.value; $('brushV').textContent = e.target.value; };
 $('edge').oninput = e => { const it = items[active][sel[active]]; $('edgeV').textContent = e.target.value; if (!it || !it.raw) return; it.edge = +e.target.value; scheduleRecut(it, true); };
