@@ -221,7 +221,7 @@ input.wide{width:100%}
   <div class="plist" id="projList"></div>
   <div class="tools"><button class="btn small" id="freeMode" type="button">Montagem avulsa</button><button class="btn small" id="restore" type="button">Restaurar backup</button></div>
   <p class="note">As fotos ficam guardadas só neste aparelho, dentro do app. Ao fechar cada paciente, toque em Backup e guarde o arquivo no Drive ou em Arquivos.</p>
-  <p class="note" style="opacity:.6">Versão 19</p>
+  <p class="note" style="opacity:.6">Versão 20</p>
 </section>
 
 <section id="proj" class="scr" hidden>
@@ -1394,10 +1394,10 @@ async function importToProject(files, kind, startA) {
     let img, url = URL.createObjectURL(f);
     try { img = await loadImg(url); } catch (e) { URL.revokeObjectURL(url); continue; }
     const w = img.naturalWidth, h = img.naturalHeight, pv = previews(img, w, h); URL.revokeObjectURL(url);
-    let p = null; try { p = await detectOn(pv.canvas); } catch (e) {}
+    const p = null; // pontos do rosto ficam para depois (em segundo plano): as fotos aparecem na hora
     freeCanvas(pv.canvas);
     const blob = new Blob([await f.arrayBuffer()], { type: f.type || 'image/jpeg' });
-    const rec = { id: newId('s'), pid: Pj.rec.id, kind, blob, w, h, prev: pv.prev, thumb: pv.thumb, t: Date.now() + n, pyr: p ? { pts: [...p], w, h, hid: p.hid } : null, yaw: p ? p.yaw : null };
+    const rec = { id: newId('s'), pid: Pj.rec.id, kind, blob, w, h, prev: pv.prev, thumb: pv.thumb, t: Date.now() + n, yaw: null };
     if (kind === 'A') rec.pose = poseOf(rec.yaw);
     else if (pool) { rec.pose = poseOf(rec.yaw); rec.of = null; }
     else { rec.pose = a.pose; rec.of = a.id; const old = depOf(a); if (old) { old.of = null; await DB.put('shots', old); } }
@@ -1405,7 +1405,27 @@ async function importToProject(files, kind, startA) {
     if (kind === 'D' && !pool) { const L = antesList(); a = L.find((x, j) => j > L.indexOf(a) && !depOf(x)) || null; }
   }
   await touchProj(); setStatus('Pronto', false);
+  detectLater(added);
   return added;
+}
+// detecção do rosto depois da importação, uma foto por vez; quando chega, a foto se centraliza sozinha
+const detQ = []; let detOn = false;
+function detectLater(recs) { detQ.push(...recs); if (!detOn) runDet(); }
+async function runDet() {
+  detOn = true;
+  while (detQ.length) {
+    const r = detQ.shift();
+    if (r.pyr) continue;
+    try {
+      const im = await loadImg(r.prev), p = await detectOn(im);
+      r.pyr = p ? { pts: [...p], w: r.w, h: r.h, hid: p.hid } : null; r.yaw = p ? p.yaw : null;
+      if (r.kind === 'A' || !r.pose || r.pose === '—') r.pose = poseOf(r.yaw);
+      if (Pj && Pj.shots.includes(r)) DB.put('shots', r).catch(() => {});
+      if (picking) { render(); pkLabels(); }
+    } catch (e) { r.pyr = null; }
+    await new Promise(z => setTimeout(z, 0));
+  }
+  detOn = false;
 }
 function show(s) {
   screen = s;
