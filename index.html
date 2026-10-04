@@ -148,6 +148,19 @@ input.wide{width:100%}
 .peekBtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .cell.empty{flex-direction:column;gap:8px}
 .cell.empty .btn{width:100%}
+.pprev{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.pp{position:relative;aspect-ratio:4/5;border-radius:10px;overflow:hidden;background:#1d1e21}
+.pp img{width:100%;height:100%;object-fit:cover;display:block}
+.pp .tag{position:absolute;left:8px;top:8px;font-size:12px;font-weight:600;background:rgba(0,0,0,.6);color:#eee;padding:2px 8px;border-radius:999px}
+.ppempty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px}
+.swrap{position:relative}
+.swrap::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:64px;transform:translateX(-50%);border:2px solid var(--accent);border-radius:10px;pointer-events:none}
+.sstrip{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px calc(50% - 30px);scrollbar-width:none;touch-action:pan-x;background:var(--panel);border-radius:12px}
+.sstrip::-webkit-scrollbar{display:none}
+.st2{flex:0 0 60px;height:80px;border-radius:8px;overflow:hidden;position:relative;border:0;padding:0;background:#222;scroll-snap-align:center;cursor:pointer}
+.st2 img{width:100%;height:100%;object-fit:cover;display:block}
+.st2 .ok{position:absolute;right:3px;bottom:3px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:#5fc27e;color:#fff;font-size:9.5px;line-height:15px;text-align:center;font-weight:700}
+.st2.add{background:transparent;border:1.5px dashed #3a3c40;color:var(--muted);font:inherit;font-size:12px;line-height:1.2}
 #outBtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 </style>
 </head>
@@ -184,6 +197,16 @@ input.wide{width:100%}
     <button class="btn small" id="pBackup" type="button">Backup</button>
     <button class="btn small" id="pDel" type="button">Apagar projeto</button>
   </div>
+</section>
+
+<section id="pairScr" class="scr" hidden>
+  <div class="pprev"><div class="pp"><img id="ppA" alt=""><span class="tag">Antes</span></div><div class="pp"><img id="ppD" alt=""><span class="tag">Depois</span><span class="ppempty" id="ppDe">Escolha o depois</span></div></div>
+  <div class="row-head"><span class="lbl">Antes</span><span class="note" id="psAl"></span></div>
+  <div class="swrap"><div class="sstrip" id="ssA"></div></div>
+  <div class="row-head"><span class="lbl">Depois</span><span class="note" id="psDl"></span></div>
+  <div class="swrap"><div class="sstrip" id="ssD"></div></div>
+  <button class="btn primary big" id="pairGo" type="button">Montar este par</button>
+  <p class="note">Role as faixas com o dedo para escolher. O fundo só é removido depois que você tocar em Montar.</p>
 </section>
 
 <div id="app" hidden>
@@ -260,6 +283,7 @@ input.wide{width:100%}
 <input type="file" id="fileD" accept="image/*" multiple hidden>
 <input type="file" id="fileCam" accept="image/*" multiple hidden>
 <input type="file" id="fileProj" accept="image/*" multiple hidden>
+<input type="file" id="filePair" accept="image/*" multiple hidden>
 <input type="file" id="fileZip" accept=".zip,application/zip" hidden>
 <div id="cam" hidden>
   <video id="camVid" playsinline muted autoplay></video>
@@ -1225,20 +1249,23 @@ $('fileCam').onchange = async e => {
 
 // ---------- projetos ----------
 async function removeShot(s) {
-  const del = [s]; if (s.kind === 'A') { const d = depOf(s); if (d) del.push(d); }
-  for (const x of del) { const i = Pj.shots.indexOf(x); if (i >= 0) Pj.shots.splice(i, 1); await DB.del('shots', x.id); }
+  if (s.kind === 'A') { const d = depOf(s); if (d) { d.of = null; await DB.put('shots', d); } }
+  const i = Pj.shots.indexOf(s); if (i >= 0) Pj.shots.splice(i, 1); await DB.del('shots', s.id);
 }
+const depList = () => Pj ? Pj.shots.filter(s => s.kind === 'D').sort((a, b) => a.t - b.t) : [];
+const loose = () => depList().filter(d => !d.of || !Pj.shots.some(a => a.id === d.of));
+const allOrdered = () => antesList().flatMap(a => [a, depOf(a)]).filter(Boolean).concat(loose());
 function touchProj(noDirty) {
   if (!noDirty) Pj.rec.dirty = (Pj.rec.dirty || 0) + 1;
   const L = antesList(); Pj.rec.nA = L.length; Pj.rec.nP = L.filter(depOf).length; Pj.rec.cover = L[0] ? L[0].thumb : null; Pj.rec.u = Date.now();
   return DB.put('projects', Pj.rec);
 }
 async function importToProject(files, kind, startA) {
-  if (kind === 'D' && !startA) return;
+  const pool = kind === 'D' && !startA;
   let a = startA, n = 0;
   for (const f of files) {
     setStatus('Importando ' + (++n) + ' de ' + files.length, true);
-    if (kind === 'D' && !a) break;
+    if (kind === 'D' && !a && !pool) break;
     let img, url = URL.createObjectURL(f);
     try { img = await loadImg(url); } catch (e) { URL.revokeObjectURL(url); continue; }
     const w = img.naturalWidth, h = img.naturalHeight, pv = previews(img, w, h); URL.revokeObjectURL(url);
@@ -1247,17 +1274,18 @@ async function importToProject(files, kind, startA) {
     const blob = new Blob([await f.arrayBuffer()], { type: f.type || 'image/jpeg' });
     const rec = { id: newId('s'), pid: Pj.rec.id, kind, blob, w, h, prev: pv.prev, thumb: pv.thumb, t: Date.now() + n, pyr: p ? { pts: [...p], w, h, hid: p.hid } : null, yaw: p ? p.yaw : null };
     if (kind === 'A') rec.pose = poseOf(rec.yaw);
-    else { rec.pose = a.pose; rec.of = a.id; const old = depOf(a); if (old) await removeShot(old); }
+    else if (pool) { rec.pose = poseOf(rec.yaw); rec.of = null; }
+    else { rec.pose = a.pose; rec.of = a.id; const old = depOf(a); if (old) { old.of = null; await DB.put('shots', old); } }
     Pj.shots.push(rec); await DB.put('shots', rec);
-    if (kind === 'D') { const L = antesList(); a = L.find((x, j) => j > L.indexOf(a) && !depOf(x)) || null; }
+    if (kind === 'D' && !pool) { const L = antesList(); a = L.find((x, j) => j > L.indexOf(a) && !depOf(x)) || null; }
   }
   await touchProj(); setStatus('Pronto', false);
 }
 function show(s) {
   screen = s;
-  $('home').hidden = s !== 'home'; $('proj').hidden = s !== 'proj'; $('app').hidden = s !== 'edit';
+  $('home').hidden = s !== 'home'; $('proj').hidden = s !== 'proj'; $('app').hidden = s !== 'edit'; $('pairScr').hidden = s !== 'pair';
   $('back').hidden = s === 'home';
-  $('back').textContent = s === 'proj' ? '‹ Pacientes' : s === 'edit' && linked && Pj ? '‹ ' + Pj.rec.name : '‹ Início';
+  $('back').textContent = s === 'proj' ? '‹ Pacientes' : s === 'pair' && Pj ? '‹ ' + Pj.rec.name : s === 'edit' && linked ? '‹ Escolher par' : '‹ Início';
   window.scrollTo(0, 0);
   if (s === 'edit') requestAnimationFrame(render);
   $('statusChip').style.visibility = s === 'edit' && /^(Recortando|Preparando recorte|Pronto)/.test($('status').textContent) ? 'hidden' : '';
@@ -1307,15 +1335,17 @@ function renderProj() {
     }
     g.appendChild(row);
   });
-  const nP = L.filter(depOf).length;
+  const nP = L.filter(depOf).length, lz = loose();
+  if (lz.length) { const p = document.createElement('p'); p.className = 'note'; p.textContent = lz.length + (lz.length === 1 ? ' depois sem par. ' : ' depois sem par. ') + 'Toque em Montar comparações para escolher o antes de cada um.'; g.appendChild(p); }
   $('pShootA').textContent = L.length ? 'Fotografar mais antes' : 'Fotografar antes';
-  $('pShootD').disabled = !L.length; $('pMount').disabled = !nP;
-  $('pMount').textContent = nP ? 'Montar ' + nP + (nP === 1 ? ' comparação' : ' comparações') : 'Montar comparações';
+  $('pShootD').disabled = !L.length; $('pMount').disabled = !L.length;
+  $('pMount').textContent = 'Montar comparações';
   $('pShare').disabled = $('pBackup').disabled = !Pj.shots.length;
   $('pBackup').textContent = Pj.rec.dirty ? 'Backup (pendente)' : 'Backup';
 }
 function fileName(s) {
   const L = antesList(), a = s.kind === 'A' ? s : L.find(x => x.id === s.of), i = L.indexOf(a);
+  if (i < 0) return slug(Pj.rec.name) + '_depois-sem-par_' + pad2(depList().indexOf(s) + 1) + '.jpg';
   return slug(Pj.rec.name) + '_' + pad2(i + 1) + '_' + (s.kind === 'A' ? 'antes' : 'depois') + (s.pose && s.pose !== '—' ? '_' + slug(s.pose) : '') + '.jpg';
 }
 function arm(b, fn) {
@@ -1332,24 +1362,26 @@ function download(blob, name) { const a = document.createElement('a'); a.href = 
 function viewShot(s) {
   const L = antesList(), a = s.kind === 'A' ? s : L.find(x => x.id === s.of), i = L.indexOf(a), name = fileName(s);
   const btns = [['Compartilhar', async () => { if (!await shareFiles([new File([s.blob], name, { type: 'image/jpeg' })])) download(s.blob, name); }]];
-  btns.push([s.kind === 'D' ? 'Refazer depois' : depOf(s) ? 'Refazer depois' : 'Fotografar depois', () => { closeOut(); camOpenProj('D', i); }]);
+  if (i >= 0) btns.push([s.kind === 'D' ? 'Refazer depois' : depOf(s) ? 'Refazer depois' : 'Fotografar depois', () => { closeOut(); camOpenProj('D', i); }]);
   btns.push(['Apagar', b => arm(b, async () => { closeOut(); await removeShot(s); await touchProj(); renderProj(); })]);
   btns.push(['Fechar', closeOut, 'primary']);
-  overlay(URL.createObjectURL(s.blob), (s.kind === 'A' ? 'Antes ' : 'Depois ') + (i + 1) + (s.pose && s.pose !== '—' ? ' · ' + s.pose : '') + ' · ' + fmtDT(s.t) + (s.kind === 'A' && depOf(s) ? ' · apagar o antes apaga o depois junto' : ''), btns);
+  overlay(URL.createObjectURL(s.blob), (s.kind === 'A' ? 'Antes ' : 'Depois ') + (i + 1) + (s.pose && s.pose !== '—' ? ' · ' + s.pose : '') + ' · ' + fmtDT(s.t) + (s.kind === 'A' && depOf(s) ? ' · apagar o antes deixa o depois guardado, sem par' : ''), btns);
 }
 // recorte em segundo plano das fotos do projeto, para a montagem já abrir pronta
 function bgCut() {
-  if (!Pj) return;
+  return; // recorte só depois de escolher o par (pedido do Caio)
   for (const s of Pj.shots) if (!s.mask && !queue.some(q => q.it.shot === s)) itemFromShot(s, 'P');
   pump();
 }
 function stopBg() { for (let i = queue.length - 1; i >= 0; i--) if (queue[i].side === 'P') queue.splice(i, 1); }
-function itemFromShot(s, side) {
+function itemFromShot(s, side, noQueue) {
   const k = Math.min(1, MAX_SRC / Math.max(s.w, s.h)), img = new Image(); img.onload = () => { if (screen === 'edit') render(); }; img.src = s.prev;
   const it = { id: ++uid, file: s.blob, w: Math.round(s.w * k), h: Math.round(s.h * k), prev: img, src: null, thumbUrl: s.thumb, cut: null, meta: null, status: 'fila', shot: s, edge: s.edge != null ? s.edge : 20, pyr: s.pyr };
-  if (s.mask) { it.raw = s.mask; it.meta = analyse(it.raw, it.w, it.h); it.status = 'pronto'; } else queue.push({ side, it });
+  if (s.mask) { it.raw = s.mask; it.meta = analyse(it.raw, it.w, it.h); it.status = 'pronto'; } else if (!noQueue) queue.push({ side, it });
   return it;
 }
+function queueIt(it, side) { if (it && !it.raw && it.status !== 'erro' && !queue.some(q => q.it === it)) queue.push({ side, it }); }
+function defaultFront(a) { if (a && a.yaw != null && !isNaN(a.yaw)) return a.yaw > 12 ? 'A' : 'D'; return a && / D$/.test(a.pose || '') ? 'A' : 'D'; }
 
 // ---------- montagem dos pares do projeto ----------
 let linked = false, pairTf = [], pairShots = [], freeStash = null;
@@ -1359,25 +1391,30 @@ function pairTag(i) { return Pj ? slug(Pj.rec.name) + '_par' + pad2(i + 1) + (pa
 function savePair() {
   if (!linked || !pairShots.length) return;
   const i = sel.A, [a, d] = pairShots[i] || []; if (!d) return;
-  pairTf[i] = { A: { ...tf.A }, D: { ...tf.D } };
+  pairTf[i] = { A: { ...tf.A }, D: { ...tf.D }, front: opts.front };
   d.adj = { tf: pairTf[i] }; a.edge = items.A[i].edge; d.edge = items.D[i].edge;
   DB.put('shots', a).catch(() => {}); DB.put('shots', d).catch(() => {});
 }
-function loadPairTf(i) { const p = pairTf[i]; tf.A = p ? { ...p.A } : T0(); tf.D = p ? { ...p.D } : T0(); }
+function loadPairTf(i) {
+  const p = pairTf[i]; tf.A = p ? { ...p.A } : T0(); tf.D = p ? { ...p.D } : T0();
+  const f = p && p.front ? p.front : defaultFront(pairShots[i] && pairShots[i][0]);
+  opts.front = f; $('frA').setAttribute('aria-pressed', f === 'A'); $('frD').setAttribute('aria-pressed', f === 'D');
+}
 function switchPair(i) {
   if (i !== sel.A) savePair();
-  sel.A = sel.D = i; loadPairTf(i);
+  sel.A = sel.D = i; loadPairTf(i); queueIt(items.A[i], 'A'); queueIt(items.D[i], 'D');
   markSel('A'); markSel('D'); scrollToSel('A', true); scrollToSel('D', true); syncSliders(); render(); pump();
 }
-function openEditor() {
+function openEditor(focus) {
   const pairs = antesList().map(a => [a, depOf(a)]).filter(p => p[1]); if (!pairs.length) return;
+  const i0 = Math.max(0, pairs.findIndex(p => p[0] === focus));
   if (!linked && (items.A.length || items.D.length)) { freeStash = { A: items.A, D: items.D, sel: { ...sel }, tf: { A: { ...tf.A }, D: { ...tf.D } } }; ['A', 'D'].forEach(s => items[s].forEach(release)); items.A = []; items.D = []; }
   clearItems(); linked = true; pairShots = pairs;
-  items.A = pairs.map(p => itemFromShot(p[0], 'A')); items.D = pairs.map(p => itemFromShot(p[1], 'D'));
+  items.A = pairs.map(p => itemFromShot(p[0], 'A', true)); items.D = pairs.map(p => itemFromShot(p[1], 'D', true));
   pairTf = pairs.map(p => p[1].adj && p[1].adj.tf ? p[1].adj.tf : null);
-  sel.A = sel.D = 0; loadPairTf(0);
+  sel.A = sel.D = i0; loadPairTf(i0); queueIt(items.A[i0], 'A'); queueIt(items.D[i0], 'D');
   $('app').classList.add('proj'); show('edit');
-  buildStrip('A'); buildStrip('D'); markSel('A'); markSel('D'); setActive('A'); render(); updateSave(); pump();
+  buildStrip('A'); buildStrip('D'); markSel('A'); markSel('D'); scrollToSel('A', false); scrollToSel('D', false); setActive('A'); render(); updateSave(); pump();
 }
 function openFree() {
   if (linked) { savePair(); clearItems(); linked = false; }
@@ -1388,6 +1425,7 @@ function openFree() {
 $('saveAll').onclick = async () => {
   if (!linked) return;
   const all = items.A.concat(items.D);
+  items.A.forEach(it => queueIt(it, 'A')); items.D.forEach(it => queueIt(it, 'D'));
   if (all.some(it => !it.raw && it.status !== 'erro')) {
     $('saveAll').disabled = true; pump();
     while (linked && all.some(it => !it.raw && it.status !== 'erro')) { setStatus('Terminando o recorte · faltam ' + all.filter(it => !it.raw).length, true); await new Promise(r => setTimeout(r, 500)); }
@@ -1442,7 +1480,7 @@ function unzip(buf) {
 const unbacked = rec => rec.dirty || 0;
 async function buildBackup() {
   const enc = new TextEncoder(), entries = [], meta = { app: 'prisma', v: 1, project: { id: Pj.rec.id, name: Pj.rec.name, t: Pj.rec.t, tmpl: Pj.rec.tmpl || null }, shots: [] };
-  const order = antesList().flatMap(a => [a, depOf(a)]).filter(Boolean);
+  const order = allOrdered();
   for (const s of order) {
     const name = fileName(s); entries.push({ name, data: new Uint8Array(await s.blob.arrayBuffer()) });
     meta.shots.push({ id: s.id, kind: s.kind, of: s.of || null, w: s.w, h: s.h, pyr: s.pyr || null, pose: s.pose, yaw: s.yaw, t: s.t, adj: s.adj || null, edge: s.edge, file: name });
@@ -1508,7 +1546,86 @@ $('newName').addEventListener('keydown', e => { if (e.key === 'Enter') createPro
 $('pName').addEventListener('change', () => { const v = $('pName').value.trim(); if (!Pj || !v) { $('pName').value = Pj ? Pj.rec.name : ''; return; } Pj.rec.name = v; touchProj(); });
 $('pShootA').onclick = () => camOpenProj('A');
 $('pShootD').onclick = () => camOpenProj('D');
-$('pMount').onclick = () => { stopBg(); openEditor(); };
+// ---------- escolha do par: duas faixas roláveis, prévia lado a lado, sem recorte ----------
+let psA = 0, psD = -1, ssQuiet = 0, ssGal = null;
+function ssBuild(el, list, kind) {
+  el.innerHTML = '';
+  list.forEach((s, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'st2'; b.dataset.i = i;
+    let badge = '';
+    if (kind === 'A' && depOf(s)) badge = '<span class="ok">✓</span>';
+    if (kind === 'D' && s.of) { const j = antesList().findIndex(a => a.id === s.of); if (j >= 0) badge = '<span class="ok">' + (j + 1) + '</span>'; }
+    b.innerHTML = '<img alt="" src="' + s.thumb + '">' + badge;
+    b.onclick = () => ssGo(el, i, true);
+    el.appendChild(b);
+  });
+  const add = document.createElement('button'); add.type = 'button'; add.className = 'st2 add'; add.innerHTML = '+<br>Galeria';
+  add.onclick = () => { ssGal = kind; $('filePair').click(); };
+  el.appendChild(add);
+}
+function ssGo(el, i, smooth) {
+  const t = el.querySelectorAll('.st2')[i]; if (!t) return;
+  ssQuiet = Date.now() + (smooth ? 600 : 120);
+  el.scrollTo({ left: t.offsetLeft + t.offsetWidth / 2 - el.clientWidth / 2, behavior: smooth ? 'smooth' : 'auto' });
+  if (el.id === 'ssA') setPsA(i); else setPsD(i);
+}
+function ssCenter(el) {
+  const c = el.scrollLeft + el.clientWidth / 2, ts = [...el.querySelectorAll('.st2:not(.add)')]; let best = 0, bd = 1e9;
+  ts.forEach((t, i) => { const d = Math.abs(t.offsetLeft + t.offsetWidth / 2 - c); if (d < bd) { bd = d; best = i; } });
+  return ts.length ? best : -1;
+}
+function setPsA(i) {
+  if (i === psA && $('ppA').getAttribute('src')) return;
+  psA = i; const A = antesList(), a = A[i];
+  const d = depOf(a), D = depList();
+  if (d) { const j = D.indexOf(d); if (j >= 0 && j !== psD) ssGo($('ssD'), j, true); }
+  pairPrev();
+}
+function setPsD(i) { psD = i; pairPrev(); }
+function pairPrev() {
+  const A = antesList(), D = depList(), a = A[psA], d = D[psD];
+  $('ppA').src = a ? a.prev : ''; $('ppA').hidden = !a;
+  $('ppD').hidden = !d; if (d) $('ppD').src = d.prev; $('ppDe').hidden = !!d;
+  $('psAl').textContent = a ? (psA + 1) + ' de ' + A.length + (a.pose && a.pose !== '—' ? ' · ' + a.pose : '') : '';
+  $('psDl').textContent = d ? (d.of && d.of === (a && a.id) ? 'par deste antes' : d.of ? 'hoje é par do antes ' + (A.findIndex(x => x.id === d.of) + 1) : 'sem par') : (D.length ? '' : 'nenhum depois ainda');
+  $('pairGo').disabled = !(a && d);
+  $('pairGo').textContent = a && d && d.of === a.id ? 'Montar este par' : 'Parear e montar';
+}
+['ssA', 'ssD'].forEach(id => {
+  let tm = 0;
+  $(id).addEventListener('scroll', () => {
+    clearTimeout(tm);
+    tm = setTimeout(() => { if (Date.now() < ssQuiet) return; const i = ssCenter($(id)); if (i < 0) return; if (id === 'ssA') { if (i !== psA) setPsA(i); } else if (i !== psD) setPsD(i); }, 110);
+  }, { passive: true });
+});
+function openPair(focusA) {
+  if (!Pj) return;
+  show('pair');
+  const A = antesList(), D = depList();
+  ssBuild($('ssA'), A, 'A'); ssBuild($('ssD'), D, 'D');
+  let ia = focusA ? A.indexOf(focusA) : A.findIndex(a => !depOf(a));
+  if (ia < 0) ia = 0;
+  const d = depOf(A[ia]); let id = d ? D.indexOf(d) : D.findIndex(x => !x.of);
+  if (id < 0) id = D.length ? 0 : -1;
+  psA = -1; psD = id;
+  requestAnimationFrame(() => { ssGo($('ssA'), ia, false); if (id >= 0) ssGo($('ssD'), id, false); pairPrev(); });
+}
+$('pairGo').onclick = async () => {
+  const A = antesList(), D = depList(), a = A[psA], d = D[psD]; if (!a || !d) return;
+  if (d.of !== a.id) {
+    const old = depOf(a); if (old && old !== d) { old.of = null; await DB.put('shots', old); }
+    d.of = a.id; if (!d.pose || d.pose === '—') d.pose = a.pose; await DB.put('shots', d); await touchProj();
+  }
+  openEditor(a);
+};
+$('filePair').onchange = async e => {
+  const fs = [...e.target.files]; e.target.value = ''; const k = ssGal; ssGal = null; if (!fs.length || !Pj) return;
+  await importToProject(fs, k === 'A' ? 'A' : 'D', null);
+  const A = antesList(), D = depList();
+  ssBuild($('ssA'), A, 'A'); ssBuild($('ssD'), D, 'D');
+  requestAnimationFrame(() => { if (k === 'A') ssGo($('ssA'), A.length - 1, true); else { ssGo($('ssD'), D.length - 1, true); ssGo($('ssA'), Math.max(0, psA), false); } });
+};
+$('pMount').onclick = () => { stopBg(); openPair(); };
 let projGalFor = null;
 $('pImport').onclick = () => { projGalFor = null; $('fileProj').click(); };
 $('fileProj').onchange = async e => {
@@ -1518,16 +1635,17 @@ $('fileProj').onchange = async e => {
 };
 $('pShare').onclick = async () => {
   if (!Pj) return;
-  const order = antesList().flatMap(a => [a, depOf(a)]).filter(Boolean), files = order.map(s => new File([s.blob], fileName(s), { type: 'image/jpeg' }));
+  const order = allOrdered(), files = order.map(s => new File([s.blob], fileName(s), { type: 'image/jpeg' }));
   if (!await shareFiles(files)) files.forEach(f => download(f, f.name));
 };
 $('pDel').onclick = () => arm($('pDel'), async () => { for (const s of Pj.shots) await DB.del('shots', s.id); await DB.del('projects', Pj.rec.id); stopBg(); Pj = null; show('home'); renderHome(); });
 $('freeMode').onclick = openFree;
 $('back').onclick = () => {
   if (screen === 'edit') {
-    if (linked) { savePair(); clearItems(); linked = false; $('app').classList.remove('proj'); show('proj'); renderProj(); bgCut(); }
+    if (linked) { const fa = pairShots[sel.A] && pairShots[sel.A][0]; savePair(); clearItems(); linked = false; $('app').classList.remove('proj'); openPair(fa); }
     else { show('home'); renderHome(); }
-  } else if (screen === 'proj') { stopBg(); Pj = null; show('home'); renderHome(); }
+  } else if (screen === 'pair') { show('proj'); renderProj(); }
+  else if (screen === 'proj') { stopBg(); Pj = null; show('home'); renderHome(); }
 };
 show('home'); renderHome();
 })();
