@@ -6,11 +6,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Antes e Depois">
+<meta name="apple-mobile-web-app-title" content="Prisma">
 <meta name="theme-color" content="#111214">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>Antes e Depois</title>
+<title>Prisma</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
 <style>
@@ -33,7 +33,7 @@ header{min-height:0;padding-block:0}header .chip{font-size:11.5px;padding:3px 9p
 body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:30;pointer-events:none}
 .chip{font-size:12.5px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-variant-numeric:tabular-nums}
 .chip.busy{color:var(--accent);border-color:#4a4234}
-.chip{display:inline-flex;align-items:center;gap:7px}
+.chip{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
 .pyr{width:16px;height:16px;display:none}
 .chip.busy .pyr{display:inline-block}
 .stage{position:relative}
@@ -99,16 +99,87 @@ input[type=text]{font:inherit;font-size:14px;background:var(--panel);color:var(-
 #camFlash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s}
 #out img{max-height:78vh;max-width:100%;border-radius:8px}
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
-#app{padding-top:max(6px,calc(env(safe-area-inset-top) + 4px));padding-bottom:max(28px,env(safe-area-inset-bottom))}
+#app{padding-top:4px;padding-bottom:max(28px,env(safe-area-inset-bottom))}
+#top{display:flex;align-items:center;gap:10px;max-width:1100px;margin:0 auto;padding:max(8px,calc(env(safe-area-inset-top) + 4px)) 16px 6px}
+#top h1{flex:1}
+#back{white-space:nowrap;max-width:45vw;overflow:hidden;text-overflow:ellipsis;font:inherit;font-size:14px;font-weight:600;color:var(--accent);background:none;border:0;padding:4px 0;cursor:pointer}
+.scr{max-width:720px;margin:0 auto;padding:6px 16px max(28px,env(safe-area-inset-bottom));display:grid;gap:14px}
+.btn.big{font-size:16px;padding:14px}
+.plist{display:grid;gap:8px}
+.pcard{display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 14px 8px 8px;color:var(--fg);font:inherit;cursor:pointer}
+.pcard img,.pcard .ph{width:52px;height:66px;border-radius:8px;object-fit:cover;background:#26272b;display:block}
+.pcard b{display:block;font-size:15.5px;font-weight:600}
+.pcard small{color:var(--muted);font-size:12.5px}
+.pcard i{font-style:normal;color:var(--muted);font-size:20px}
+input.wide{width:100%}
+.pname{font:inherit!important;font-size:21px!important;font-weight:700!important;background:transparent!important;border:0!important;border-bottom:1px dashed transparent!important;border-radius:0!important;color:var(--fg);width:100%!important;padding:2px 0!important}
+.pname:focus{outline:none;border-bottom-color:var(--line)!important}
+.pact{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pact .btn.primary{grid-column:1/-1}
+.pgrid{display:grid;gap:10px}
+.phead{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.prow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cell{position:relative;aspect-ratio:3/4;border-radius:10px;overflow:hidden;background:#1d1e21;border:0;padding:0;cursor:pointer;color:var(--muted);font:inherit;width:100%}
+.cell img{width:100%;height:100%;object-fit:cover;display:block}
+.cell.empty{border:1.5px dashed #3a3c40;background:transparent;display:flex;align-items:center;justify-content:center;font-size:13px;text-align:center;padding:10px}
+.cell .tag{position:absolute;left:6px;top:6px;font-size:11.5px;font-weight:600;background:rgba(0,0,0,.6);color:#eee;padding:2px 8px;border-radius:999px}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+#app.proj .pair .row-head .flex,#app.proj .th .x{display:none!important}
+#saveAll{display:none}#app.proj #saveAll{display:block;flex:1;min-width:180px}
+.camtop{flex-wrap:wrap}
+.camlbl{flex:1;text-align:center;color:#eee;font-weight:600;font-size:14px}
+.poses{flex-basis:100%;display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.poses span{font-size:11.5px;padding:3px 9px;border-radius:999px;border:1px solid rgba(255,255,255,.28);color:#bbb;background:rgba(0,0,0,.35)}
+.poses span.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.poses span.now{border-color:#fff;color:#fff}.poses span.on.now{box-shadow:0 0 0 2px #fff}
+.cstrip{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px;touch-action:pan-x}
+.cstrip::-webkit-scrollbar{display:none}
+.cth{flex:0 0 40px;height:52px;border-radius:6px;overflow:hidden;position:relative;border:0;padding:0;background:#222;opacity:.7;cursor:pointer}
+.cth img{width:100%;height:100%;object-fit:cover;display:block}
+.cth.cur{opacity:1;box-shadow:inset 0 0 0 2px var(--accent)}
+.cth .ok{position:absolute;right:2px;bottom:2px;width:14px;height:14px;border-radius:50%;background:#5fc27e;color:#fff;font-size:10px;line-height:14px;text-align:center}
+.cth .x{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.8);color:#fff;font-size:12px;line-height:18px;text-align:center}
+.shotrow{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px}
+.shotrow>:first-child{justify-self:start}.shotrow>:last-child{justify-self:end}
+#outBtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 </style>
 </head>
 <body>
 
-<div id="app">
-  <header>
-    <h1>PRISMA</h1>
-    <span class="chip" id="statusChip"><canvas class="pyr" id="pyr" width="48" height="48" aria-hidden="true"></canvas><span id="status">Recorte roda no aparelho</span></span>
-  </header>
+<div id="top">
+  <button id="back" type="button" hidden>‹ Pacientes</button>
+  <h1>PRISMA</h1>
+  <span class="chip" id="statusChip"><canvas class="pyr" id="pyr" width="48" height="48" aria-hidden="true"></canvas><span id="status">Fotos ficam só neste aparelho</span></span>
+</div>
+
+<section id="home" class="scr">
+  <button class="btn primary big" id="newProj" type="button">+ Novo paciente</button>
+  <div class="panel" id="newForm" hidden>
+    <input type="text" class="wide" id="newName" placeholder="Nome do paciente" maxlength="60" autocomplete="off">
+    <div class="flex"><button class="btn primary" id="newGo" type="button">Começar pelo antes</button><button class="btn" id="newCancel" type="button">Cancelar</button></div>
+  </div>
+  <div class="plist" id="projList"></div>
+  <div class="tools"><button class="btn small" id="freeMode" type="button">Montagem avulsa</button><button class="btn small" id="restore" type="button">Restaurar backup</button></div>
+  <p class="note">As fotos ficam guardadas só neste aparelho, dentro do app. Ao fechar cada paciente, toque em Backup e guarde o arquivo no Drive ou em Arquivos.</p>
+</section>
+
+<section id="proj" class="scr" hidden>
+  <input type="text" class="pname" id="pName" aria-label="Nome do paciente" maxlength="60" autocomplete="off">
+  <div class="pact">
+    <button class="btn primary big" id="pShootA" type="button">Fotografar antes</button>
+    <button class="btn" id="pShootD" type="button">Fotografar depois</button>
+    <button class="btn" id="pMount" type="button">Montar comparações</button>
+  </div>
+  <div class="pgrid" id="pGrid"></div>
+  <div class="tools">
+    <button class="btn small" id="pImport" type="button">Importar antes da galeria</button>
+    <button class="btn small" id="pShare" type="button">Compartilhar originais</button>
+    <button class="btn small" id="pBackup" type="button">Backup</button>
+    <button class="btn small" id="pDel" type="button">Apagar projeto</button>
+  </div>
+</section>
+
+<div id="app" hidden>
 
   <div class="stage">
     <div class="view" id="view">
@@ -170,6 +241,7 @@ input[type=text]{font:inherit;font-size:14px;background:var(--panel);color:var(-
     </div>
 
     <div class="save-row">
+      <button class="btn primary" id="saveAll">Salvar todos os pares</button>
       <button class="btn primary" id="save" disabled>Salvar na galeria</button>
       <button class="btn" id="saveFile" disabled>Baixar arquivo</button>
     </div>
@@ -179,6 +251,9 @@ input[type=text]{font:inherit;font-size:14px;background:var(--panel);color:var(-
 
 <input type="file" id="fileA" accept="image/*" multiple hidden>
 <input type="file" id="fileD" accept="image/*" multiple hidden>
+<input type="file" id="fileCam" accept="image/*" multiple hidden>
+<input type="file" id="fileProj" accept="image/*" multiple hidden>
+<input type="file" id="fileZip" accept=".zip,application/zip" hidden>
 <div id="cam" hidden>
   <video id="camVid" playsinline muted autoplay></video>
   <img id="camGhost" alt="" hidden>
@@ -186,20 +261,24 @@ input[type=text]{font:inherit;font-size:14px;background:var(--panel);color:var(-
   <div id="camFlash"></div>
   <div class="camtop">
     <button class="btn small" id="camClose">Fechar</button>
-    <div class="seg" role="group" aria-label="Guardar em"><button id="cTA" aria-pressed="false">Antes</button><button id="cTD" aria-pressed="true">Depois</button></div>
+    <div class="seg" id="camSeg" role="group" aria-label="Guardar em"><button id="cTA" aria-pressed="false">Antes</button><button id="cTD" aria-pressed="true">Depois</button></div>
+    <span class="camlbl" id="camLbl" hidden></span>
     <button class="btn small" id="camFlip">Virar</button>
+    <div class="poses" id="camPoses" hidden><span data-p="Perfil E">Perfil E</span><span data-p="45° E">45° E</span><span data-p="Frente">Frente</span><span data-p="45° D">45° D</span><span data-p="Perfil D">Perfil D</span></div>
   </div>
   <div class="cambot">
     <div class="camrow"><span class="chip" id="camFit" style="color:#eee">Procurando o rosto…</span><label class="check" style="color:#eee"><input type="checkbox" id="pyrOn" checked> Pirâmide</label></div>
     <div class="camrow">
       <label class="check" style="color:#eee"><input type="checkbox" id="ghostOn" checked> Fantasma do antes</label>
-      <input type="range" id="ghostA" min="10" max="70" value="40" style="max-width:40%">
+      <input type="range" id="ghostA" min="10" max="70" value="40" style="max-width:34%">
+      <button class="btn small" id="ghostFlip" type="button">Espelhar</button>
     </div>
-    <button class="shut" id="camShot" aria-label="Tirar foto"></button>
+    <div class="cstrip" id="camStrip" hidden></div>
+    <div class="shotrow"><button class="btn small" id="camGal" type="button">Galeria</button><button class="shut" id="camShot" aria-label="Tirar foto"></button><button class="btn small" id="camRedo" type="button" hidden>Refazer anterior</button></div>
     <p class="note" id="camMsg" style="color:#ccc;text-align:center">Alinhe os dois exocantos na linha de cima, o pronasal no vértice e o lábio inferior no ponto de baixo.</p>
   </div>
 </div>
-<div id="out" hidden><img id="outImg" alt="Imagem final"><p class="note" style="color:#ddd">Toque e segure na imagem e escolha "Salvar na Fotos" (ou "Adicionar às Fotos").</p><button class="btn" id="outClose">Fechar</button></div>
+<div id="out" hidden><img id="outImg" alt="Imagem"><p class="note" id="outNote" style="color:#ddd;text-align:center"></p><div id="outBtns"></div></div>
 
 
 <script>
@@ -325,19 +404,19 @@ async function pump() {
   try {
     await loadModel();
     // prioriza a foto selecionada de cada lado
-    while (queue.length && !paused) {
-      let i = queue.findIndex(q => items[q.side][sel[q.side]] === q.it);
+    while (queue.length && !paused && $('cam').hidden) {
+      let i = queue.findIndex(q => items[q.side] && items[q.side][sel[q.side]] === q.it);
       if (i < 0) i = 0;
       const { side, it } = queue.splice(i, 1)[0];
       const left = queue.length;
       setStatus('Recortando · faltam ' + (left + 1), true);
       it.status = 'processando'; markThumb(it);
-      try { await cutout(it); it.status = 'pronto'; }
+      try { await cutout(it); it.status = 'pronto'; if (it.shot && it.raw && it.shot.mask !== it.raw) { it.shot.mask = it.raw; DB.put('shots', it.shot).catch(() => {}); } }
       catch (e) { it.status = 'erro'; console.error(e); }
       markThumb(it); render();
       await new Promise(r => setTimeout(r, 0));
     }
-    if (!queue.length) setStatus('Pronto', false);
+    if (!queue.length) setStatus('Pronto', false); else if (!$('cam').hidden) setStatus('Recorte em pausa', false);
   } catch (e) { setStatus(e.message || 'Erro no recorte', false); }
   working = false; updateSave();
 }
@@ -515,6 +594,7 @@ function buildStrip(side) {
     b.innerHTML = '<img alt="" src="' + it.thumbUrl + '"><span class="st"></span><span class="x" aria-label="Tirar esta foto">×</span>';
     b.dataset.id = it.id; if (i === sel[side]) b.classList.add('sel');
     b.onclick = e => {
+      if (linked) { switchPair(i); setActive(side); return; }
       if (e.target.classList.contains('x') && i === sel[side]) { removeItem(side, i); return; }
       sel[side] = i; setActive(side); markSel(side); scrollToSel(side, true); render(); pump();
     };
@@ -667,19 +747,27 @@ function updateSave() {
 }
 let downloads = null;
 if (false && window.claude && window.claude.use) window.claude.use('downloads').then(d => { downloads = d; }).catch(() => {});
-function makeFile() {
+function makeFile(tag) {
   render();
   const url = cv.toDataURL('image/jpeg', 0.95), bin = atob(url.split(',')[1]), u8 = new Uint8Array(bin.length);
   for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
   const d = new Date(), pad = x => String(x).padStart(2, '0');
-  const name = 'antes-depois-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds()) + '.jpg';
+  const name = tag ? tag + '.jpg' : 'antes-depois-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds()) + '.jpg';
   const blob = new Blob([u8], { type: 'image/jpeg' });
   return { blob, name, file: (typeof File === 'function') ? new File([blob], name, { type: 'image/jpeg' }) : null };
 }
-function showOut(blob) { $('outImg').src = URL.createObjectURL(blob); $('out').hidden = false; }
+function overlay(src, note, btns) {
+  const im = $('outImg'); if (src) { im.src = src; im.hidden = false; } else { im.removeAttribute('src'); im.hidden = true; }
+  $('outNote').textContent = note || '';
+  const box = $('outBtns'); box.innerHTML = '';
+  btns.forEach(([t, fn, cls]) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn' + (cls ? ' ' + cls : ''); b.textContent = t; b.onclick = () => fn(b); box.appendChild(b); });
+  $('out').hidden = false;
+}
+function closeOut() { $('out').hidden = true; const s = $('outImg').getAttribute('src') || ''; if (s.startsWith('blob:')) URL.revokeObjectURL(s); }
+function showOut(blob) { overlay(URL.createObjectURL(blob), 'Toque e segure na imagem e escolha "Salvar na Fotos" (ou "Adicionar às Fotos").', [['Fechar', closeOut]]); }
 // Salvar na galeria: folha de compartilhamento do aparelho (tem "Salvar imagem"); se não houver, o salvamento do app; por último, segurar a imagem
 $('save').onclick = async () => {
-  const { blob, name, file } = makeFile();
+  const { blob, name, file } = makeFile(linked ? pairTag(sel.A) : '');
   if (file && navigator.canShare && navigator.share) {
     try { if (navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); setStatus('Imagem pronta na galeria', false); return; } }
     catch (e) { if (e && e.name === 'AbortError') return; }
@@ -700,7 +788,7 @@ $('saveFile').onclick = async () => {
   catch (e) { showOut(blob); }
 };
 $('vtog').onclick = () => { const v = $('view'), full = v.classList.toggle('full'); $('vtog').textContent = full ? 'Ver ampliado 4:5' : 'Ver 9:16 inteiro'; };
-$('outClose').onclick = () => { $('out').hidden = true; };
+
 
 setInterval(updateSave, 800);
 document.addEventListener('gesturestart', e => { if (!(e.target.closest && e.target.closest('#view'))) e.preventDefault(); }, { passive: false });
@@ -708,20 +796,71 @@ document.addEventListener('touchmove', e => { if (e.touches.length > 1 && !(e.ta
 let lastTap = 0; document.addEventListener('touchend', e => { const n = Date.now(); if (n - lastTap < 300 && !(e.target.closest && e.target.closest('#view, input, textarea, button, label, .strip'))) e.preventDefault(); lastTap = n; }, { passive: false });
 (document.fonts ? document.fonts.ready : Promise.resolve()).then(render);
 render();
-// ---------- câmera com pirâmide (Prisma) e fantasma do antes ----------
-let camStream = null, camFacing = 'environment', camTarget = 'D';
-const cv2 = $('camOv'), vid = $('camVid');
-function camSetTarget(t) { camTarget = t; $('cTA').setAttribute('aria-pressed', t === 'A'); $('cTD').setAttribute('aria-pressed', t === 'D'); camGhost(); target = null; camTargetPyr().then(camDraw); }
-function camGhost() {
-  const g = $('camGhost'), other = camTarget === 'D' ? 'A' : 'D', it = items[other][sel[other]];
-  if (it && $('ghostOn').checked) { g.src = it.prev.toDataURL('image/jpeg', .8); g.hidden = false; g.style.opacity = $('ghostA').value / 100; }
-  else g.hidden = true;
-  g.classList.toggle('mir', camFacing === 'user');
+// ---------- banco local (IndexedDB): projetos e fotos ficam só no aparelho ----------
+const DB = (() => {
+  let op = null;
+  const open = () => op || (op = new Promise((res, rej) => {
+    const r = indexedDB.open('prisma', 1);
+    r.onupgradeneeded = () => { const d = r.result; d.createObjectStore('projects', { keyPath: 'id' }); d.createObjectStore('shots', { keyPath: 'id' }).createIndex('pid', 'pid'); };
+    r.onsuccess = () => res(r.result); r.onerror = () => { op = null; rej(r.error); };
+  }));
+  const tx = (st, mode, fn) => open().then(d => new Promise((res, rej) => {
+    const t = d.transaction(st, mode), q = fn(t.objectStore(st));
+    t.oncomplete = () => res(q ? q.result : undefined); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error || new Error('Sem espaço no aparelho'));
+  }));
+  return {
+    put: (st, v) => tx(st, 'readwrite', s => s.put(v)), get: (st, k) => tx(st, 'readonly', s => s.get(k)),
+    del: (st, k) => tx(st, 'readwrite', s => s.delete(k)), all: st => tx(st, 'readonly', s => s.getAll()),
+    byP: pid => tx('shots', 'readonly', s => s.index('pid').getAll(pid))
+  };
+})();
+const newId = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const pad2 = x => String(x).padStart(2, '0');
+const fmtD = t => { const d = new Date(t); return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1); };
+const fmtDT = t => { const d = new Date(t); return fmtD(t) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()); };
+const slug = s => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/°/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'paciente';
+function loadImg(src) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('Formato de foto não suportado')); i.src = src; }); }
+function previews(src, w, h) {
+  const pk = Math.min(1, 540 / Math.max(w, h)), pv = mkCanvas(Math.round(w * pk), Math.round(h * pk));
+  const pg = pv.getContext('2d'); pg.imageSmoothingQuality = 'high'; pg.drawImage(src, 0, 0, pv.width, pv.height);
+  const tk = 136 / Math.min(w, h), tc = mkCanvas(Math.round(w * tk), Math.round(h * tk));
+  const tg = tc.getContext('2d'); tg.imageSmoothingQuality = 'high'; tg.drawImage(pv, 0, 0, tc.width, tc.height);
+  const out = { prev: pv.toDataURL('image/jpeg', 0.82), thumb: tc.toDataURL('image/jpeg', 0.8), canvas: pv };
+  freeCanvas(tc); return out;
 }
-// Pirâmide do Prisma presa ao rosto: borda lateral da órbita (124 e 353), ponta do nariz (o ponto mais projetado
-// no sentido para onde a face aponta) e lábio inferior (17). Vértice escondido pela rotação é calculado pela forma da cabeça.
+
+// ---------- câmera com pirâmide (Prisma) e fantasma do antes ----------
+let camStream = null, camFacing = 'environment', camTarget = 'D', camMode = 'free', ghostFlip = false;
+const cv2 = $('camOv'), vid = $('camVid');
+let Pj = null, curA = 0, lastDone = -1, camSelA = -1, screen = 'home';
+const pendingDone = new Set();
+const antesList = () => Pj ? Pj.shots.filter(s => s.kind === 'A').sort((a, b) => a.t - b.t) : [];
+const depOf = a => Pj && a ? Pj.shots.find(s => s.kind === 'D' && s.of === a.id) : null;
+
+function camSetTarget(t) { camTarget = t; $('cTA').setAttribute('aria-pressed', t === 'A'); $('cTD').setAttribute('aria-pressed', t === 'D'); camUI(); }
+function ghostSrc() {
+  if (camMode === 'free') {
+    const other = camTarget === 'D' ? 'A' : 'D', it = items[other][sel[other]]; if (!it) return null;
+    return it._g || (it._g = it.prev.toDataURL ? it.prev.toDataURL('image/jpeg', .8) : it.prev.src);
+  }
+  if (camMode === 'D') { const a = antesList()[curA]; return a ? a.prev : null; }
+  return null;
+}
+// a foto é guardada como a cena é (igual à câmera nativa); a prévia da frontal é espelhada como selfie,
+// então o fantasma só é espelhado junto com a prévia. "Espelhar" inverte por cima disso, de reserva.
+function camGhost() {
+  const g = $('camGhost'), s = ghostSrc();
+  if (s && $('ghostOn').checked) { if (g.getAttribute('src') !== s) g.src = s; g.hidden = false; g.style.opacity = $('ghostA').value / 100; }
+  else g.hidden = true;
+  g.classList.toggle('mir', (camFacing === 'user') !== ghostFlip);
+  $('ghostFlip').setAttribute('aria-pressed', ghostFlip);
+}
+
+// Pirâmide do Prisma: exocantos (33 e 263), ponta do nariz (o ponto mais projetado para onde a face aponta) e lábio inferior (17).
+// O tetraedro é medido com o rosto de frente. Quando um vértice some pela rotação, os outros três (vistos) posicionam o tetraedro
+// rígido e o vértice escondido é colocado onde ele estaria, mais apagado.
 const PYR_E = [[0, 1], [0, 2], [1, 2], [0, 3], [1, 3], [2, 3]];
-let fm = null, fmBusy = false, fmLoad = null, live = null, target = null, fmMode = 'live', fmCb = null;
+let fm = null, fmBusy = false, fmLoad = null, live = null, target = null, fmCb = null;
 function loadFM() {
   if (fmLoad) return fmLoad;
   fmLoad = new Promise((res, rej) => {
@@ -729,7 +868,7 @@ function loadFM() {
     sc.onload = async () => {
       try {
         fm = new FaceMesh({ locateFile: f => 'fm/' + f });
-        fm.setOptions({ maxNumFaces: 1, refineLandmarks: false, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5, selfieMode: false });
+        fm.setOptions({ maxNumFaces: 1, refineLandmarks: false, minDetectionConfidence: 0.35, minTrackingConfidence: 0.2, selfieMode: false });
         fm.onResults(r => { const lm = r.multiFaceLandmarks && r.multiFaceLandmarks[0]; const W = r.image && r.image.width || 1, H = r.image && r.image.height || 1; const p = lm ? pyrFromLm(lm, W, H) : null; if (fmCb) { const cb = fmCb; fmCb = null; cb(p); } });
         await fm.initialize(); res(fm);
       } catch (e) { rej(e); }
@@ -740,12 +879,12 @@ function loadFM() {
   fmLoad.catch(() => { fmLoad = null; });
   return fmLoad;
 }
-const NOSE = [1, 4, 5, 19, 195], MID = [10, 151, 9, 8, 168, 6, 197, 195, 5, 4, 1, 2, 0, 13, 14, 17, 152];
-let tmpl = null;
+const NOSE = [1, 4, 5, 19, 195];
+let tmpl = null, tmplDirty = false, tmplSaveT = 0;
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const crs = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const nrm = a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
-// transformação de semelhança (rotação + escala + translação) que leva o conjunto A no B (método de Horn)
+// rotação + escala + translação que leva os pontos A nos pontos B (Horn, quatérnio: rotação própria, sem espelho)
 function simil(A, B) {
   const n = A.length, ca = [0, 0, 0], cb = [0, 0, 0];
   A.forEach(p => { ca[0] += p[0] / n; ca[1] += p[1] / n; ca[2] += p[2] / n; }); B.forEach(p => { cb[0] += p[0] / n; cb[1] += p[1] / n; cb[2] += p[2] / n; });
@@ -755,7 +894,7 @@ function simil(A, B) {
   const N = [[xx + yy + zz, yz - zy, zx - xz, xy - yx], [yz - zy, xx - yy - zz, xy + yx, zx + xz], [zx - xz, xy + yx, -xx + yy - zz, yz + zy], [xy - yx, zx + xz, yz + zy, -xx - yy + zz]];
   const sh = Math.abs(xx) + Math.abs(yy) + Math.abs(zz) + Math.abs(xy) + Math.abs(xz) + Math.abs(yx) + Math.abs(yz) + Math.abs(zx) + Math.abs(zy) + 1;
   let q = [1, 0, 0, 0];
-  for (let it = 0; it < 60; it++) { const v = [0, 0, 0, 0]; for (let i = 0; i < 4; i++) { for (let j = 0; j < 4; j++) v[i] += N[i][j] * q[j]; v[i] += sh * q[i]; } const l = Math.hypot(...v); q = v.map(x => x / l); }
+  for (let it = 0; it < 80; it++) { const v = [0, 0, 0, 0]; for (let i = 0; i < 4; i++) { for (let j = 0; j < 4; j++) v[i] += N[i][j] * q[j]; v[i] += sh * q[i]; } const l = Math.hypot(...v); q = v.map(x => x / l); }
   const [w, x, y, z] = q;
   const R = [[w * w + x * x - y * y - z * z, 2 * (x * y - w * z), 2 * (x * z + w * y)], [2 * (x * y + w * z), w * w - x * x + y * y - z * z, 2 * (y * z - w * x)], [2 * (x * z - w * y), 2 * (y * z + w * x), w * w - x * x - y * y + z * z]];
   const s = Math.sqrt(sb / (sa || 1));
@@ -763,26 +902,101 @@ function simil(A, B) {
 }
 function pyrFromLm(lm, W, H) {
   const P = i => [lm[i].x * W, lm[i].y * H, lm[i].z * W];
-  let n = nrm(crs(sub(P(353), P(124)), sub(P(152), P(10)))); if (n[2] > 0) n = n.map(v => -v);
+  let n = nrm(crs(sub(P(263), P(33)), sub(P(152), P(10)))); if (n[2] > 0) n = n.map(v => -v);
   let tip = NOSE[0], best = -1e9; for (const i of NOSE) { const d = dot(P(i), n); if (d > best) { best = d; tip = i; } }
-  const V = [P(124), P(353), P(tip), P(17)];
+  const V = [P(33), P(263), P(tip), P(17)];
   const yaw = Math.atan2(n[0], -n[2]) * 180 / Math.PI;
-  if (Math.abs(yaw) < 14) tmpl = { M: MID.map(P), V: V.map(v => v.slice()) };
-  else if (tmpl && Math.abs(yaw) > 22) {
-    const T = simil(tmpl.M, MID.map(P)), far = V[0][2] > V[1][2] ? 0 : 1;
-    const pr = T(tmpl.V[far]), k = Math.min(1, (Math.abs(yaw) - 22) / 12);
+  let hid = -1;
+  if (Math.abs(yaw) < 12) {
+    // de frente: mede o tetraedro (média móvel, para não tremer)
+    const scl = Math.hypot(...sub(V[0], V[1])) || 1, c = V.reduce((a, v) => [a[0] + v[0] / 4, a[1] + v[1] / 4, a[2] + v[2] / 4], [0, 0, 0]);
+    const nv = V.map(v => sub(v, c).map(x => x / scl));
+    if (!tmpl || !tmpl.T) tmpl = { T: nv }; else tmpl.T = tmpl.T.map((v, i) => v.map((x, j) => x * 0.8 + nv[i][j] * 0.2));
+    tmplDirty = true;
+  } else if (tmpl && tmpl.T && Math.abs(yaw) > 22) {
+    // o exocanto mais longe da câmera é o que some: os outros três posicionam o tetraedro rígido
+    const far = V[0][2] > V[1][2] ? 0 : 1, vis = [0, 1, 2, 3].filter(i => i !== far);
+    const T = simil(vis.map(i => tmpl.T[i]), vis.map(i => V[i])), pr = T(tmpl.T[far]);
+    const k = Math.min(1, (Math.abs(yaw) - 22) / 14);
     V[far] = V[far].map((v, i) => v * (1 - k) + pr[i] * k);
+    if (k > 0.5) hid = far;
   }
-  return V.map(v => ({ x: v[0] / W, y: v[1] / H, z: v[2] / W }));
+  const out = V.map(v => ({ x: v[0] / W, y: v[1] / H, z: v[2] / W })); out.yaw = yaw; out.hid = hid;
+  return out;
 }
 function fmDetect(image) { return new Promise(res => { fmCb = res; fm.send({ image }).catch(() => { fmCb = null; res(null); }); }); }
-// pirâmide-alvo: a do antes selecionado (guardada na captura, ou detectada na foto da galeria)
+async function detectOn(el) {
+  await loadFM();
+  while (fmBusy) await new Promise(r => setTimeout(r, 30));
+  fmBusy = true; try { return await fmDetect(el); } finally { fmBusy = false; }
+}
+function poseOf(yaw) {
+  if (yaw == null || isNaN(yaw)) return '—';
+  const a = Math.abs(yaw), sd = yaw > 0 ? 'D' : 'E';
+  return a < 12 ? 'Frente' : a < 50 ? '45° ' + sd : 'Perfil ' + sd;
+}
+
+// ---------- rastreio de pontos quando a malha perde o rosto ----------
+// guarda um quadro pequeno em tons de cinza; se a malha cair, os três vértices visíveis são seguidos pela imagem
+// e o tetraedro inteiro acompanha esses três pontos.
+const TW = 240, gc = mkCanvas(TW, TW), gg = gc.getContext('2d', { willReadFrequently: true });
+let trk = null; // { gray, w, h, pts (pirâmide de referência), cur:[[x,y]...] (em px do quadro pequeno), idx:[3 vértices seguidos], miss }
+function grayFrame() {
+  const vw = vid.videoWidth, vh = vid.videoHeight; if (!vw) return null;
+  const h = Math.round(TW * vh / vw); if (gc.height !== h) gc.height = h;
+  gg.drawImage(vid, 0, 0, TW, h);
+  const d = gg.getImageData(0, 0, TW, h).data, g = new Float32Array(TW * h);
+  for (let i = 0, j = 0; j < g.length; i += 4, j++) g[j] = d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11;
+  return { g, w: TW, h };
+}
+function trkStart(p) {
+  const f = grayFrame(); if (!f) { trk = null; return; }
+  const far = p.hid >= 0 ? p.hid : (p[0].z > p[1].z ? 0 : 1), idx = [0, 1, 2, 3].filter(i => i !== far);
+  trk = { prev: f, base: p, ref: idx.map(i => [p[i].x * f.w, p[i].y * f.h]), cur: idx.map(i => [p[i].x * f.w, p[i].y * f.h]), idx, hid: far, n: 0 };
+}
+function trkStep() {
+  if (!trk) return null;
+  const f = grayFrame(); if (!f || f.h !== trk.prev.h) { trk = null; return null; }
+  const R = 7, S = 12, A = trk.prev.g, B = f.g, w = f.w, h = f.h; let bad = 0;
+  trk.cur = trk.cur.map(([x0, y0]) => {
+    const cx = Math.round(x0), cy = Math.round(y0);
+    if (cx < R + S + 1 || cy < R + S + 1 || cx > w - R - S - 2 || cy > h - R - S - 2) { bad++; return [x0, y0]; }
+    let best = 1e18, bx = 0, by = 0, mA = 0; for (let v = -R; v <= R; v++) for (let u = -R; u <= R; u++) mA += A[(cy + v) * w + cx + u]; mA /= (2 * R + 1) ** 2;
+    for (let dy = -S; dy <= S; dy++) for (let dx = -S; dx <= S; dx++) {
+      let mB = 0; for (let v = -R; v <= R; v += 2) for (let u = -R; u <= R; u += 2) mB += B[(cy + dy + v) * w + cx + dx + u];
+      mB /= ((R + 1) * (R + 1)); let e = 0;
+      for (let v = -R; v <= R; v += 2) { const ra = (cy + v) * w + cx, rb = (cy + dy + v) * w + cx + dx; for (let u = -R; u <= R; u += 2) { const q = (A[ra + u] - mA) - (B[rb + u] - mB); e += q * q; } if (e > best) break; }
+      if (e < best) { best = e; bx = dx; by = dy; }
+    }
+    if (best / ((R + 1) * (R + 1)) > 900) bad++;
+    return [cx + bx + (x0 - cx), cy + by + (y0 - cy)];
+  });
+  trk.prev = f; trk.n++;
+  if (bad >= 2 || trk.n > 240) { trk = null; return null; }
+  // semelhança 2D dos três pontos de referência para os atuais, aplicada ao tetraedro de referência
+  const P = trk.ref, Q = trk.cur, n = 3;
+  const pc = [0, 0], qc = [0, 0]; P.forEach(p => { pc[0] += p[0] / n; pc[1] += p[1] / n; }); Q.forEach(q => { qc[0] += q[0] / n; qc[1] += q[1] / n; });
+  let a = 0, b = 0, dd = 0;
+  for (let i = 0; i < n; i++) { const px = P[i][0] - pc[0], py = P[i][1] - pc[1], qx = Q[i][0] - qc[0], qy = Q[i][1] - qc[1]; a += px * qx + py * qy; b += px * qy - py * qx; dd += px * px + py * py; }
+  a /= dd || 1; b /= dd || 1;
+  const out = trk.base.map(p => { const x = p.x * w - pc[0], y = p.y * h - pc[1]; return { x: (qc[0] + a * x - b * y) / w, y: (qc[1] + b * x + a * y) / h, z: p.z }; });
+  out.yaw = trk.base.yaw; out.hid = trk.hid; out.tracked = true;
+  return out;
+}
+
+// pirâmide-alvo: a do antes (guardada na captura, ou detectada na foto)
+let tgtTok = 0;
 async function camTargetPyr() {
-  target = null;
-  const it = items.A[sel.A];
-  if (camTarget !== 'D' || !it) return;
-  if (!it.pyr) { await loadFM(); while (fmBusy) await new Promise(r => setTimeout(r, 30)); fmBusy = true; const p = await fmDetect(it.prev); fmBusy = false; it.pyr = p ? { pts: p, w: it.w, h: it.h } : null; }
-  target = it.pyr;
+  const tok = ++tgtTok; target = null;
+  let holder = null, img = null;
+  if (camMode === 'free') { const it = items.A[sel.A]; if (camTarget !== 'D' || !it) return; holder = it; img = it.prev; }
+  else if (camMode === 'D') { const a = antesList()[curA]; if (!a) return; holder = a; img = a.prev; }
+  else return;
+  if (holder.pyr === undefined) {
+    try { const el = typeof img === 'string' ? await loadImg(img) : img; const p = await detectOn(el); holder.pyr = p ? { pts: [...p], w: holder.w, h: holder.h, hid: p.hid } : null; if (holder.pid) DB.put('shots', holder).catch(() => {}); }
+    catch (e) { holder.pyr = null; }
+  }
+  if (tok === tgtTok) { target = holder.pyr; camDraw(); }
 }
 function toScreen(p, r, sw, sh) {
   const vw = sw || vid.videoWidth || 1, vh = sh || vid.videoHeight || 1, k = Math.max(r.width / vw, r.height / vh);
@@ -790,37 +1004,60 @@ function toScreen(p, r, sw, sh) {
   if (camFacing === 'user') x = r.width - x;
   return [x, y, p.z || 0];
 }
-function drawPyr(g, P, color, dashed) {
-  g.lineWidth = dashed ? 1.5 : 2; g.strokeStyle = color; g.setLineDash(dashed ? [5, 5] : []);
-  for (const [a, b] of PYR_E) { g.beginPath(); g.moveTo(P[a][0], P[a][1]); g.lineTo(P[b][0], P[b][1]); g.stroke(); }
+function drawPyr(g, P, color, dashed, hid, alpha) {
+  g.save(); g.globalAlpha = alpha == null ? 1 : alpha;
+  g.lineWidth = dashed ? 1.5 : 2; g.strokeStyle = color;
+  for (const [a, b] of PYR_E) {
+    const ghost = a === hid || b === hid;
+    g.setLineDash(dashed || ghost ? [5, 5] : []); g.globalAlpha = (alpha == null ? 1 : alpha) * (ghost ? 0.4 : 1);
+    g.beginPath(); g.moveTo(P[a][0], P[a][1]); g.lineTo(P[b][0], P[b][1]); g.stroke();
+  }
   g.setLineDash([]); g.fillStyle = color;
-  P.forEach(p => { const rr = Math.max(2.5, 4.5 - p[2] * 20); g.beginPath(); g.arc(p[0], p[1], rr, 0, 7); g.fill(); });
-  return P;
+  P.forEach((p, i) => { g.globalAlpha = (alpha == null ? 1 : alpha) * (i === hid ? 0.35 : 1); const rr = Math.max(2.5, 4.5 - p[2] * 20); g.beginPath(); g.arc(p[0], p[1], rr, 0, 7); g.fill(); });
+  g.restore();
 }
+let liveT = 0, lastYaw = null, lastYawT = 0;
+const curYaw = () => live && !live.tracked ? live.yaw : (performance.now() - lastYawT < 1500 ? lastYaw : null);
 function camDraw() {
   if ($('cam').hidden) return;
   const r = cv2.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
   if (cv2.width !== Math.round(r.width * dpr)) { cv2.width = r.width * dpr; cv2.height = r.height * dpr; }
   const g = cv2.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, r.width, r.height);
+  if (camMode === 'A') { const pz = poseOf(curYaw()); [...$('camPoses').children].forEach(c => c.classList.toggle('now', c.dataset.p === pz)); }
   if (!$('pyrOn').checked) return;
   const T = target ? target.pts.map(p => toScreen(p, r, target.w, target.h)) : null;
-  if (T) drawPyr(g, T, 'rgba(255,255,255,.85)', true);
+  if (T) drawPyr(g, T, 'rgba(255,255,255,.85)', true, target.hid);
   if (live) {
     const L = live.map(p => toScreen(p, r)), ok = T ? fitScore(L, T) : null;
-    drawPyr(g, L, ok != null && ok >= 92 ? 'rgba(120,220,140,.95)' : 'rgba(216,195,160,.95)', false);
-    $('camFit').textContent = target ? 'Alinhamento ' + ok + '%' + (ok >= 92 ? ' · pode fotografar' : '') : 'Rosto encontrado';
-  } else $('camFit').textContent = fm ? 'Procurando o rosto…' : 'Carregando a pirâmide…';
+    drawPyr(g, L, ok != null && ok >= 92 ? 'rgba(120,220,140,.95)' : 'rgba(216,195,160,.95)', false, live.hid, live.tracked ? 0.75 : 1);
+    const pz = poseOf(live.yaw);
+    $('camFit').textContent = target ? 'Alinhamento ' + ok + '%' + (ok >= 92 ? ' · pode fotografar' : '') : (live.tracked ? 'Seguindo pelos pontos' : 'Rosto encontrado' + (pz !== '—' ? ' · ' + pz : ''));
+  } else $('camFit').textContent = fm ? 'Procurando o rosto… comece de frente' : 'Carregando a pirâmide…';
 }
 function fitScore(a, b) {
   const d = Math.hypot(b[0][0] - b[1][0], b[0][1] - b[1][1]) || 1;
   let e = 0; for (let i = 0; i < 4; i++) e += Math.hypot(a[i][0] - b[i][0], a[i][1] - b[i][1]);
   return Math.max(0, Math.round(100 - (e / 4) / d * 250));
 }
+function saveTmpl() {
+  if (!tmplDirty || !Pj || camMode === 'free') return;
+  const n = performance.now(); if (n - tmplSaveT < 3000) return;
+  tmplSaveT = n; tmplDirty = false; Pj.rec.tmpl = tmpl; DB.put('projects', Pj.rec).catch(() => {});
+}
+let loopOn = false;
 async function camLoop() {
   try { await loadFM(); } catch (e) { $('camFit').textContent = 'Pirâmide indisponível'; return; }
+  if (loopOn) return; loopOn = true;
+  let fr = 0;
   const tick = async () => {
-    if ($('cam').hidden) return;
-    if (!fmBusy && vid.readyState >= 2) { fmBusy = true; live = await fmDetect(vid); fmBusy = false; camDraw(); }
+    if ($('cam').hidden) { loopOn = false; return; }
+    if (!fmBusy && vid.readyState >= 2) {
+      fmBusy = true; const p = await fmDetect(vid); fmBusy = false;
+      const now = performance.now();
+      if (p) { live = p; liveT = now; lastYaw = p.yaw; lastYawT = now; if (++fr % 3 === 0 || !trk) { try { trkStart(p); } catch (e) { trk = null; } } }
+      else { let t = null; try { t = trkStep(); } catch (e) { trk = null; } live = t || (live && now - liveT < 600 ? live : null); }
+      camDraw(); saveTmpl();
+    }
     requestAnimationFrame(tick);
   };
   tick();
@@ -830,28 +1067,384 @@ async function camStart() {
   try {
     camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: camFacing, width: { ideal: 3840 }, height: { ideal: 2160 } }, audio: false });
     vid.srcObject = camStream; vid.classList.toggle('mir', camFacing === 'user'); await vid.play();
-    $('camMsg').textContent = camTarget === 'D' ? 'Encaixe a pirâmide dourada (ao vivo) na branca (a do antes). Fica verde quando estiver alinhada.' : 'A pirâmide acompanha o rosto. Posicione do jeito que quiser e fotografe: ela fica guardada para o depois.';
   } catch (e) { $('camMsg').textContent = 'Não consegui abrir a câmera. Permita o acesso à câmera para este app nos Ajustes do iPhone.'; }
-  camGhost(); camDraw();
+  trk = null; camGhost(); camDraw();
 }
-function camOpen(t) { $('cam').hidden = false; live = null; tmpl = null; camSetTarget(t); camStart().then(() => { camLoop(); }); }
-function camClose() { $('cam').hidden = true; if (camStream) camStream.getTracks().forEach(x => x.stop()); camStream = null; }
+function camStripBuild(L) {
+  const s = $('camStrip'); s.innerHTML = ''; let curEl = null;
+  L.forEach((a, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'cth';
+    const cur = camMode === 'D' ? i === curA : i === camSelA; if (cur) { b.classList.add('cur'); curEl = b; }
+    b.innerHTML = '<img alt="" src="' + a.thumb + '">' + (camMode === 'D' && (depOf(a) || pendingDone.has(a.id)) ? '<span class="ok">✓</span>' : '') + (camMode === 'A' && cur ? '<span class="x" aria-label="Apagar esta foto">×</span>' : '');
+    b.onclick = async e => {
+      if (camMode === 'D') { curA = i; camUI(); return; }
+      if (cur && e.target.classList.contains('x')) { await removeShot(a); await touchProj(); camSelA = -1; }
+      else camSelA = cur ? -1 : i;
+      camUI();
+    };
+    s.appendChild(b);
+  });
+  requestAnimationFrame(() => { if (curEl) s.scrollLeft = curEl.offsetLeft - s.clientWidth / 2 + 20; else if (camMode === 'A') s.scrollLeft = s.scrollWidth; });
+}
+function camUI() {
+  const free = camMode === 'free';
+  $('camSeg').hidden = !free; $('camLbl').hidden = free; $('camClose').textContent = free ? 'Fechar' : 'Concluir';
+  $('camPoses').hidden = camMode !== 'A'; $('camStrip').hidden = free;
+  $('camRedo').hidden = camMode !== 'D' || lastDone < 0;
+  if (camMode === 'A') {
+    const L = antesList(), have = new Set(L.map(s => s.pose));
+    $('camLbl').textContent = Pj.rec.name + ' · antes · ' + L.length;
+    [...$('camPoses').children].forEach(c => c.classList.toggle('on', have.has(c.dataset.p)));
+    camStripBuild(L);
+    $('camMsg').textContent = 'Fotografe as poses em sequência. Cada clique já fica salvo no projeto. Toque numa miniatura para apagar.';
+  } else if (camMode === 'D') {
+    const L = antesList(), a = L[curA];
+    $('camLbl').textContent = a ? 'Depois · ' + (a.pose && a.pose !== '—' ? a.pose + ' · ' : '') + (curA + 1) + ' de ' + L.length : 'Depois';
+    camStripBuild(L);
+    const all = L.length && L.every(x => depOf(x) || pendingDone.has(x.id));
+    $('camMsg').textContent = all ? 'Todos os pares completos. Toque em Concluir para montar, ou numa miniatura para refazer.' : 'Encaixe a pirâmide dourada na branca. Ao fotografar, o próximo antes entra sozinho.';
+  } else {
+    $('camMsg').textContent = camTarget === 'D' ? 'Encaixe a pirâmide dourada (ao vivo) na branca (a do antes). Fica verde quando estiver alinhada.' : 'A pirâmide acompanha o rosto. Posicione e fotografe: ela fica guardada para o depois.';
+  }
+  camGhost(); camTargetPyr(); camDraw();
+}
+function advance() {
+  const L = antesList(), n = L.length;
+  for (let k = 1; k <= n; k++) { const j = (curA + k) % n; if (!depOf(L[j]) && !pendingDone.has(L[j].id)) { curA = j; return true; } }
+  return false;
+}
+function camOpenCommon() { $('cam').hidden = false; live = null; trk = null; camStart().then(camLoop); }
+function camOpen(t) { camMode = 'free'; tmpl = null; camSetTarget(t); camOpenCommon(); }
+function camOpenProj(kind, idx) {
+  if (!Pj) return;
+  camMode = kind; tmpl = Pj.rec.tmpl || null; lastDone = -1; camSelA = -1; pendingDone.clear();
+  if (kind === 'D') { const L = antesList(); if (!L.length) return; curA = idx != null ? idx : Math.max(0, L.findIndex(a => !depOf(a))); }
+  camUI(); camOpenCommon();
+}
+function camClose() {
+  $('cam').hidden = true; if (camStream) camStream.getTracks().forEach(x => x.stop()); camStream = null; trk = null;
+  if (camMode !== 'free' && screen === 'proj') shotChain.then(() => { renderProj(); bgCut(); });
+  setTimeout(pump, 300);
+}
 $('camA').onclick = () => camOpen('A'); $('camD').onclick = () => camOpen('D');
 $('camClose').onclick = camClose;
-$('camFlip').onclick = () => { camFacing = camFacing === 'environment' ? 'user' : 'environment'; camStart(); };
+$('camFlip').onclick = () => { camFacing = camFacing === 'environment' ? 'user' : 'environment'; camStart(); camDraw(); };
 $('cTA').onclick = () => camSetTarget('A'); $('cTD').onclick = () => camSetTarget('D');
 $('pyrOn').onchange = camDraw;
 $('ghostOn').onchange = camGhost; $('ghostA').oninput = camGhost;
+$('ghostFlip').onclick = () => { ghostFlip = !ghostFlip; camGhost(); };
+$('camRedo').onclick = () => { if (lastDone < 0) return; curA = lastDone; lastDone = -1; camUI(); };
 window.addEventListener('resize', camDraw);
+
+let shotChain = Promise.resolve();
+async function shotFromCanvas(c, extra) {
+  const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.92));
+  if (!blob) throw new Error('falha ao gerar a foto');
+  const pv = previews(c, c.width, c.height);
+  const rec = Object.assign({ id: newId('s'), pid: Pj.rec.id, blob, w: c.width, h: c.height, prev: pv.prev, thumb: pv.thumb, t: Date.now() }, extra);
+  freeCanvas(pv.canvas); freeCanvas(c); return rec;
+}
 $('camShot').onclick = () => {
   if (!vid.videoWidth) return;
-  const c = document.createElement('canvas'); c.width = vid.videoWidth; c.height = vid.videoHeight;
-  const g = c.getContext('2d'); if (camFacing === 'user') { g.translate(c.width, 0); g.scale(-1, 1); }
-  g.drawImage(vid, 0, 0);
+  const c = mkCanvas(vid.videoWidth, vid.videoHeight); c.getContext('2d').drawImage(vid, 0, 0); // sem espelho, como a câmera nativa
   const fl = $('camFlash'); fl.style.transition = 'none'; fl.style.opacity = .8; requestAnimationFrame(() => { fl.style.transition = 'opacity .3s'; fl.style.opacity = 0; });
-  c.toBlob(b => { if (!b) return; const f = new File([b], 'camera.jpg', { type: 'image/jpeg' }); const shotPyr = live ? live.map(p => ({ ...p })) : null; const n0 = items[camTarget].length; addFiles(camTarget, [f]).then(() => { const it = items[camTarget][n0]; if (it && shotPyr) it.pyr = { pts: shotPyr, w: vid.videoWidth, h: vid.videoHeight }; if (camTarget === 'A') camTargetPyr(); }); $('camMsg').textContent = 'Foto guardada em ' + (camTarget === 'A' ? 'Antes' : 'Depois') + '. Pode tirar outra ou fechar.'; }, 'image/jpeg', 0.95);
+  const pyr = live ? { pts: live.map(p => ({ x: p.x, y: p.y, z: p.z })), w: c.width, h: c.height, hid: live.hid } : null, yaw = curYaw();
+  if (camMode === 'free') {
+    const side = camTarget;
+    c.toBlob(b => { if (!b) return; const f = new File([b], 'camera.jpg', { type: 'image/jpeg' }); const n0 = items[side].length; addFiles(side, [f]).then(() => { const it = items[side][n0]; if (it) it.pyr = pyr || undefined; if (side === 'A') camTargetPyr(); }); }, 'image/jpeg', 0.95);
+    $('camMsg').textContent = 'Foto guardada em ' + (side === 'A' ? 'Antes' : 'Depois') + '. Pode tirar outra ou fechar.';
+    return;
+  }
+  const mode = camMode; let a = null;
+  if (mode === 'D') { a = antesList()[curA]; if (!a) return; pendingDone.add(a.id); lastDone = curA; advance(); camUI(); }
+  shotChain = shotChain.then(async () => {
+    const rec = await shotFromCanvas(c, { kind: mode, pyr, yaw, pose: mode === 'D' ? a.pose : poseOf(yaw) });
+    if (mode === 'D') { rec.of = a.id; const old = depOf(a); if (old) await removeShot(old); }
+    Pj.shots.push(rec); await DB.put('shots', rec); pendingDone.delete(rec.of); await touchProj();
+    if (!$('cam').hidden && camMode === mode) camUI();
+  }).catch(e => { if (a) pendingDone.delete(a.id); $('camMsg').textContent = 'Não consegui guardar a foto (' + e.message + '). Tente de novo.'; });
+};
+$('camGal').onclick = () => $('fileCam').click();
+$('fileCam').onchange = async e => {
+  const fs = [...e.target.files]; e.target.value = ''; if (!fs.length) return;
+  if (camMode === 'free') { await addFiles(camTarget, fs); camUI(); return; }
+  await importToProject(fs, camMode, camMode === 'D' ? antesList()[curA] : null);
+  if (camMode === 'D') { advance(); } camUI();
 };
 
+// ---------- projetos ----------
+async function removeShot(s) {
+  const del = [s]; if (s.kind === 'A') { const d = depOf(s); if (d) del.push(d); }
+  for (const x of del) { const i = Pj.shots.indexOf(x); if (i >= 0) Pj.shots.splice(i, 1); await DB.del('shots', x.id); }
+}
+function touchProj() {
+  const L = antesList(); Pj.rec.nA = L.length; Pj.rec.nP = L.filter(depOf).length; Pj.rec.cover = L[0] ? L[0].thumb : null; Pj.rec.u = Date.now();
+  return DB.put('projects', Pj.rec);
+}
+async function importToProject(files, kind, startA) {
+  if (kind === 'D' && !startA) return;
+  let a = startA, n = 0;
+  for (const f of files) {
+    setStatus('Importando ' + (++n) + ' de ' + files.length, true);
+    if (kind === 'D' && !a) break;
+    let img, url = URL.createObjectURL(f);
+    try { img = await loadImg(url); } catch (e) { URL.revokeObjectURL(url); continue; }
+    const w = img.naturalWidth, h = img.naturalHeight, pv = previews(img, w, h); URL.revokeObjectURL(url);
+    let p = null; try { p = await detectOn(pv.canvas); } catch (e) {}
+    freeCanvas(pv.canvas);
+    const blob = new Blob([await f.arrayBuffer()], { type: f.type || 'image/jpeg' });
+    const rec = { id: newId('s'), pid: Pj.rec.id, kind, blob, w, h, prev: pv.prev, thumb: pv.thumb, t: Date.now() + n, pyr: p ? { pts: [...p], w, h, hid: p.hid } : null, yaw: p ? p.yaw : null };
+    if (kind === 'A') rec.pose = poseOf(rec.yaw);
+    else { rec.pose = a.pose; rec.of = a.id; const old = depOf(a); if (old) await removeShot(old); }
+    Pj.shots.push(rec); await DB.put('shots', rec);
+    if (kind === 'D') { const L = antesList(); a = L.find((x, j) => j > L.indexOf(a) && !depOf(x)) || null; }
+  }
+  await touchProj(); setStatus('Pronto', false);
+}
+function show(s) {
+  screen = s;
+  $('home').hidden = s !== 'home'; $('proj').hidden = s !== 'proj'; $('app').hidden = s !== 'edit';
+  $('back').hidden = s === 'home';
+  $('back').textContent = s === 'proj' ? '‹ Pacientes' : s === 'edit' && linked && Pj ? '‹ ' + Pj.rec.name : '‹ Início';
+  window.scrollTo(0, 0);
+  if (s === 'edit') requestAnimationFrame(render);
+}
+async function renderHome() {
+  let ps = []; try { ps = (await DB.all('projects')).sort((a, b) => (b.u || 0) - (a.u || 0)); } catch (e) { setStatus('Armazenamento indisponível', false); }
+  const box = $('projList'); box.innerHTML = '';
+  if (!ps.length) { box.innerHTML = '<p class="note">Nenhum paciente ainda. Toque em Novo paciente para começar.</p>'; return; }
+  ps.forEach(p => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'pcard';
+    b.innerHTML = (p.cover ? '<img alt="" src="' + p.cover + '">' : '<span class="ph"></span>') + '<span><b></b><small></small></span><i>›</i>';
+    b.querySelector('b').textContent = p.name;
+    b.querySelector('small').textContent = fmtD(p.t) + ' · ' + (p.nA || 0) + ' antes · ' + (p.nP || 0) + ' ' + ((p.nP || 0) === 1 ? 'par' : 'pares');
+    b.onclick = () => openProject(p.id);
+    box.appendChild(b);
+  });
+}
+async function openProject(id) {
+  const rec = await DB.get('projects', id); if (!rec) return;
+  Pj = { rec, shots: await DB.byP(id) };
+  show('proj'); renderProj(); bgCut();
+}
+function cellBtn(s, tag) {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'cell';
+  b.innerHTML = '<img alt="" src="' + s.prev + '"><span class="tag"></span>'; b.querySelector('.tag').textContent = tag;
+  b.onclick = () => viewShot(s); return b;
+}
+function renderProj() {
+  if (!Pj) return;
+  $('pName').value = Pj.rec.name;
+  const L = antesList(), g = $('pGrid'); g.innerHTML = '';
+  if (!L.length) g.innerHTML = '<p class="note">Nenhuma foto ainda. Comece pelo antes: a câmera fotografa em sequência e cada clique já fica salvo.</p>';
+  L.forEach((a, i) => {
+    const d = depOf(a), row = document.createElement('div'); row.className = 'prow';
+    row.appendChild(cellBtn(a, (i + 1) + (a.pose && a.pose !== '—' ? ' · ' + a.pose : '')));
+    if (d) row.appendChild(cellBtn(d, 'Depois'));
+    else { const e = document.createElement('button'); e.type = 'button'; e.className = 'cell empty'; e.textContent = 'Fotografar depois'; e.onclick = () => camOpenProj('D', i); row.appendChild(e); }
+    g.appendChild(row);
+  });
+  const nP = L.filter(depOf).length;
+  $('pShootA').textContent = L.length ? 'Fotografar mais antes' : 'Fotografar antes';
+  $('pShootD').disabled = !L.length; $('pMount').disabled = !nP;
+  $('pMount').textContent = nP ? 'Montar ' + nP + (nP === 1 ? ' comparação' : ' comparações') : 'Montar comparações';
+  $('pShare').disabled = $('pBackup').disabled = !Pj.shots.length;
+}
+function fileName(s) {
+  const L = antesList(), a = s.kind === 'A' ? s : L.find(x => x.id === s.of), i = L.indexOf(a);
+  return slug(Pj.rec.name) + '_' + pad2(i + 1) + '_' + (s.kind === 'A' ? 'antes' : 'depois') + (s.pose && s.pose !== '—' ? '_' + slug(s.pose) : '') + '.jpg';
+}
+function arm(b, fn) {
+  if (b.dataset.arm) { fn(); return; }
+  b.dataset.arm = 1; const t = b.textContent; b.textContent = 'Toque de novo para apagar';
+  setTimeout(() => { if (b.isConnected) { delete b.dataset.arm; b.textContent = t; } }, 3000);
+}
+async function shareFiles(files) {
+  try { if (navigator.canShare && navigator.share && navigator.canShare({ files })) { await navigator.share({ files }); return true; } }
+  catch (e) { if (e && e.name === 'AbortError') return true; }
+  return false;
+}
+function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
+function viewShot(s) {
+  const L = antesList(), a = s.kind === 'A' ? s : L.find(x => x.id === s.of), i = L.indexOf(a), name = fileName(s);
+  const btns = [['Compartilhar', async () => { if (!await shareFiles([new File([s.blob], name, { type: 'image/jpeg' })])) download(s.blob, name); }]];
+  btns.push([s.kind === 'D' ? 'Refazer depois' : depOf(s) ? 'Refazer depois' : 'Fotografar depois', () => { closeOut(); camOpenProj('D', i); }]);
+  btns.push(['Apagar', b => arm(b, async () => { closeOut(); await removeShot(s); await touchProj(); renderProj(); })]);
+  btns.push(['Fechar', closeOut, 'primary']);
+  overlay(URL.createObjectURL(s.blob), (s.kind === 'A' ? 'Antes ' : 'Depois ') + (i + 1) + (s.pose && s.pose !== '—' ? ' · ' + s.pose : '') + ' · ' + fmtDT(s.t) + (s.kind === 'A' && depOf(s) ? ' · apagar o antes apaga o depois junto' : ''), btns);
+}
+// recorte em segundo plano das fotos do projeto, para a montagem já abrir pronta
+function bgCut() {
+  if (!Pj) return;
+  for (const s of Pj.shots) if (!s.mask && !queue.some(q => q.it.shot === s)) itemFromShot(s, 'P');
+  pump();
+}
+function stopBg() { for (let i = queue.length - 1; i >= 0; i--) if (queue[i].side === 'P') queue.splice(i, 1); }
+function itemFromShot(s, side) {
+  const k = Math.min(1, MAX_SRC / Math.max(s.w, s.h)), img = new Image(); img.onload = () => { if (screen === 'edit') render(); }; img.src = s.prev;
+  const it = { id: ++uid, file: s.blob, w: Math.round(s.w * k), h: Math.round(s.h * k), prev: img, src: null, thumbUrl: s.thumb, cut: null, meta: null, status: 'fila', shot: s, edge: s.edge != null ? s.edge : 20, pyr: s.pyr };
+  if (s.mask) { it.raw = s.mask; it.meta = analyse(it.raw, it.w, it.h); it.status = 'pronto'; } else queue.push({ side, it });
+  return it;
+}
+
+// ---------- montagem dos pares do projeto ----------
+let linked = false, pairTf = [], pairShots = [], freeStash = null;
+const T0 = () => ({ s: 1, dx: 0, dy: 0, r: 0 });
+function clearItems() { queue.length = 0; ['A', 'D'].forEach(s => { items[s].forEach(release); items[s] = []; sel[s] = 0; tf[s] = T0(); }); }
+function pairTag(i) { return Pj ? slug(Pj.rec.name) + '_par' + pad2(i + 1) + (pairShots[i] && pairShots[i][0].pose !== '—' ? '_' + slug(pairShots[i][0].pose) : '') : ''; }
+function savePair() {
+  if (!linked || !pairShots.length) return;
+  const i = sel.A, [a, d] = pairShots[i] || []; if (!d) return;
+  pairTf[i] = { A: { ...tf.A }, D: { ...tf.D } };
+  d.adj = { tf: pairTf[i] }; a.edge = items.A[i].edge; d.edge = items.D[i].edge;
+  DB.put('shots', a).catch(() => {}); DB.put('shots', d).catch(() => {});
+}
+function loadPairTf(i) { const p = pairTf[i]; tf.A = p ? { ...p.A } : T0(); tf.D = p ? { ...p.D } : T0(); }
+function switchPair(i) {
+  if (i !== sel.A) savePair();
+  sel.A = sel.D = i; loadPairTf(i);
+  markSel('A'); markSel('D'); scrollToSel('A', true); scrollToSel('D', true); syncSliders(); render(); pump();
+}
+function openEditor() {
+  const pairs = antesList().map(a => [a, depOf(a)]).filter(p => p[1]); if (!pairs.length) return;
+  if (!linked && (items.A.length || items.D.length)) { freeStash = { A: items.A, D: items.D, sel: { ...sel }, tf: { A: { ...tf.A }, D: { ...tf.D } } }; ['A', 'D'].forEach(s => items[s].forEach(release)); items.A = []; items.D = []; }
+  clearItems(); linked = true; pairShots = pairs;
+  items.A = pairs.map(p => itemFromShot(p[0], 'A')); items.D = pairs.map(p => itemFromShot(p[1], 'D'));
+  pairTf = pairs.map(p => p[1].adj && p[1].adj.tf ? p[1].adj.tf : null);
+  sel.A = sel.D = 0; loadPairTf(0);
+  $('app').classList.add('proj'); show('edit');
+  buildStrip('A'); buildStrip('D'); markSel('A'); markSel('D'); setActive('A'); render(); updateSave(); pump();
+}
+function openFree() {
+  if (linked) { savePair(); clearItems(); linked = false; }
+  $('app').classList.remove('proj');
+  if (freeStash) { items.A = freeStash.A; items.D = freeStash.D; Object.assign(sel, freeStash.sel); tf.A = freeStash.tf.A; tf.D = freeStash.tf.D; ['A', 'D'].forEach(s => items[s].forEach(it => { if (!it.raw) queue.push({ side: s, it }); })); freeStash = null; }
+  show('edit'); buildStrip('A'); buildStrip('D'); markSel('A'); markSel('D'); setActive('A'); render(); updateSave(); pump();
+}
+$('saveAll').onclick = async () => {
+  if (!linked) return;
+  const all = items.A.concat(items.D);
+  if (all.some(it => !it.raw && it.status !== 'erro')) {
+    $('saveAll').disabled = true; pump();
+    while (linked && all.some(it => !it.raw && it.status !== 'erro')) { setStatus('Terminando o recorte · faltam ' + all.filter(it => !it.raw).length, true); await new Promise(r => setTimeout(r, 500)); }
+    $('saveAll').disabled = false; if (!linked) return;
+  }
+  if (all.some(it => !it.raw)) { setStatus('Uma foto não recortou; confira as marcadas em vermelho', false); return; }
+  savePair(); const n = items.A.length, cur = sel.A, files = [];
+  for (let i = 0; i < n; i++) {
+    setStatus('Montando ' + (i + 1) + ' de ' + n, true);
+    sel.A = sel.D = i; loadPairTf(i);
+    await ensureLive(items.A[i]); await ensureLive(items.D[i]);
+    const { file, blob, name } = makeFile(pairTag(i)); files.push(file || new File([blob], name, { type: 'image/jpeg' }));
+    if (i !== cur) { release(items.A[i]); release(items.D[i]); }
+    await new Promise(r => setTimeout(r, 0));
+  }
+  sel.A = sel.D = cur; loadPairTf(cur); keepLive(); render(); setStatus('Pronto', false);
+  overlay(URL.createObjectURL(files[0]), n + (n === 1 ? ' comparação pronta.' : ' comparações prontas.') + ' Na folha que abrir, escolha "Salvar imagens".', [
+    ['Compartilhar ' + n + (n === 1 ? ' imagem' : ' imagens'), async () => { if (!await shareFiles(files)) files.forEach(f => download(f, f.name)); }, 'primary'],
+    ['Fechar', closeOut]]);
+};
+
+// ---------- backup (.zip sem compressão: as fotos já são JPEG) ----------
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u) { let c = 0xFFFFFFFF; for (let i = 0; i < u.length; i++) c = CRC[(c ^ u[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function zip(entries) {
+  const enc = new TextEncoder(), parts = [], cd = []; let off = 0;
+  for (const e of entries) {
+    const nm = enc.encode(e.name), d = e.data, crc = crc32(d);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(12, 0x21, true);
+    h.setUint32(14, crc, true); h.setUint32(18, d.length, true); h.setUint32(22, d.length, true); h.setUint16(26, nm.length, true);
+    parts.push(h.buffer, nm, d);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(14, 0x21, true);
+    c.setUint32(16, crc, true); c.setUint32(20, d.length, true); c.setUint32(24, d.length, true); c.setUint16(28, nm.length, true); c.setUint32(42, off, true);
+    cd.push(c.buffer, nm); off += 30 + nm.length + d.length;
+  }
+  const cds = cd.reduce((s, x) => s + x.byteLength, 0), end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, entries.length, true); end.setUint16(10, entries.length, true); end.setUint32(12, cds, true); end.setUint32(16, off, true);
+  return new Blob([...parts, ...cd, end.buffer], { type: 'application/zip' });
+}
+function unzip(buf) {
+  const dv = new DataView(buf), u = new Uint8Array(buf), dec = new TextDecoder(), out = {}; let p = 0;
+  while (p + 30 <= u.length && dv.getUint32(p, true) === 0x04034b50) {
+    const method = dv.getUint16(p + 8, true), size = dv.getUint32(p + 18, true), nl = dv.getUint16(p + 26, true), xl = dv.getUint16(p + 28, true);
+    const name = dec.decode(u.subarray(p + 30, p + 30 + nl)), st = p + 30 + nl + xl;
+    if (method !== 0) throw new Error('Este arquivo não é um backup do Prisma');
+    out[name] = u.subarray(st, st + size); p = st + size;
+  }
+  return out;
+}
+$('pBackup').onclick = async () => {
+  if (!Pj) return; setStatus('Montando backup…', true);
+  const enc = new TextEncoder(), entries = [], meta = { app: 'prisma', v: 1, project: { id: Pj.rec.id, name: Pj.rec.name, t: Pj.rec.t, tmpl: Pj.rec.tmpl || null }, shots: [] };
+  const order = antesList().flatMap(a => [a, depOf(a)]).filter(Boolean);
+  for (const s of order) {
+    const name = fileName(s); entries.push({ name, data: new Uint8Array(await s.blob.arrayBuffer()) });
+    meta.shots.push({ id: s.id, kind: s.kind, of: s.of || null, w: s.w, h: s.h, pyr: s.pyr || null, pose: s.pose, yaw: s.yaw, t: s.t, adj: s.adj || null, edge: s.edge, file: name });
+  }
+  entries.unshift({ name: 'projeto.json', data: enc.encode(JSON.stringify(meta)) });
+  const d = new Date(), zname = 'prisma_' + slug(Pj.rec.name) + '_' + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) + '.zip';
+  const file = new File([zip(entries)], zname, { type: 'application/zip' });
+  setStatus('Pronto', false);
+  overlay(null, 'Backup de ' + Pj.rec.name + ' pronto (' + (file.size / 1048576).toFixed(1).replace('.', ',') + ' MB). Guarde em Arquivos ou no Drive. Para recuperar, use Restaurar backup na tela inicial.', [
+    ['Compartilhar backup', async () => { if (!await shareFiles([file])) download(file, zname); }, 'primary'],
+    ['Baixar', () => download(file, zname)], ['Fechar', closeOut]]);
+};
+$('restore').onclick = () => $('fileZip').click();
+$('fileZip').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    setStatus('Restaurando…', true);
+    const files = unzip(await f.arrayBuffer()), meta = JSON.parse(new TextDecoder().decode(files['projeto.json'] || new Uint8Array()));
+    if (meta.app !== 'prisma') throw new Error('Este arquivo não é um backup do Prisma');
+    const clash = !!(await DB.get('projects', meta.project.id)), pid = clash ? newId('p') : meta.project.id, map = {};
+    const rec = { id: pid, name: meta.project.name + (clash ? ' (restaurado)' : ''), t: meta.project.t || Date.now(), u: Date.now(), tmpl: meta.project.tmpl || null };
+    Pj = { rec, shots: [] };
+    meta.shots.forEach(s => { map[s.id] = clash ? newId('s') : s.id; });
+    for (const s of meta.shots) {
+      const blob = new Blob([files[s.file]], { type: 'image/jpeg' }), url = URL.createObjectURL(blob), img = await loadImg(url);
+      const pv = previews(img, s.w, s.h); freeCanvas(pv.canvas); URL.revokeObjectURL(url);
+      const r = { ...s, id: map[s.id], of: s.of ? map[s.of] : undefined, pid, blob, prev: pv.prev, thumb: pv.thumb };
+      if (!r.pyr) delete r.pyr; delete r.file; Pj.shots.push(r); await DB.put('shots', r);
+    }
+    await touchProj(); setStatus('Backup restaurado', false); show('proj'); renderProj(); bgCut();
+  } catch (err) { Pj = null; setStatus(err.message || 'Não consegui restaurar', false); }
+};
+
+// ---------- telas ----------
+$('newProj').onclick = () => { $('newForm').hidden = false; $('newProj').hidden = true; $('newName').value = ''; $('newName').focus(); };
+$('newCancel').onclick = () => { $('newForm').hidden = true; $('newProj').hidden = false; };
+async function createProj() {
+  const name = $('newName').value.trim(); if (!name) { $('newName').focus(); return; }
+  const rec = { id: newId('p'), name, t: Date.now(), u: Date.now(), nA: 0, nP: 0 };
+  try { await DB.put('projects', rec); } catch (e) { setStatus('Não consegui criar o projeto', false); return; }
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  $('newForm').hidden = true; $('newProj').hidden = false;
+  Pj = { rec, shots: [] }; show('proj'); renderProj(); camOpenProj('A');
+}
+$('newGo').onclick = createProj;
+$('newName').addEventListener('keydown', e => { if (e.key === 'Enter') createProj(); });
+$('pName').addEventListener('change', () => { const v = $('pName').value.trim(); if (!Pj || !v) { $('pName').value = Pj ? Pj.rec.name : ''; return; } Pj.rec.name = v; touchProj(); });
+$('pShootA').onclick = () => camOpenProj('A');
+$('pShootD').onclick = () => camOpenProj('D');
+$('pMount').onclick = () => { stopBg(); openEditor(); };
+$('pImport').onclick = () => $('fileProj').click();
+$('fileProj').onchange = async e => { const fs = [...e.target.files]; e.target.value = ''; if (!fs.length || !Pj) return; await importToProject(fs, 'A', null); renderProj(); bgCut(); };
+$('pShare').onclick = async () => {
+  if (!Pj) return;
+  const order = antesList().flatMap(a => [a, depOf(a)]).filter(Boolean), files = order.map(s => new File([s.blob], fileName(s), { type: 'image/jpeg' }));
+  if (!await shareFiles(files)) files.forEach(f => download(f, f.name));
+};
+$('pDel').onclick = () => arm($('pDel'), async () => { for (const s of Pj.shots) await DB.del('shots', s.id); await DB.del('projects', Pj.rec.id); stopBg(); Pj = null; show('home'); renderHome(); });
+$('freeMode').onclick = openFree;
+$('back').onclick = () => {
+  if (screen === 'edit') {
+    if (linked) { savePair(); clearItems(); linked = false; $('app').classList.remove('proj'); show('proj'); renderProj(); bgCut(); }
+    else { show('home'); renderHome(); }
+  } else if (screen === 'proj') { stopBg(); Pj = null; show('home'); renderHome(); }
+};
+show('home'); renderHome();
 })();
 </script>
 
