@@ -186,6 +186,7 @@ input.wide{width:100%}
 .ccard .cth2 img{width:100%;height:100%;object-fit:cover;display:block}
 .ccard .cth2.one{grid-template-columns:1fr}
 .ccard b{display:block;font-size:15px;font-weight:600}.ccard small{color:var(--muted);font-size:12.5px}.ccard i{font-style:normal;color:var(--muted);font-size:20px}
+.psearch{font:inherit;font-size:15px;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;-webkit-user-select:text;user-select:text;-webkit-appearance:none}
 .pmore{display:grid;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
 .pmore .btn{background:transparent}
 .pkrow{display:grid;grid-template-columns:58px 1fr 58px;gap:8px;align-items:center}
@@ -216,10 +217,11 @@ input.wide{width:100%}
     <input type="text" class="wide" id="newName" placeholder="Nome do paciente" maxlength="60" autocomplete="off">
     <div class="flex"><button class="btn primary" id="newGo" type="button">Criar paciente</button><button class="btn" id="newCancel" type="button">Cancelar</button></div>
   </div>
+  <input type="search" class="wide psearch" id="pSearch" placeholder="🔍  Buscar paciente" autocomplete="off" aria-label="Buscar paciente">
   <div class="plist" id="projList"></div>
   <div class="tools"><button class="btn small" id="freeMode" type="button">Montagem avulsa</button><button class="btn small" id="restore" type="button">Restaurar backup</button></div>
   <p class="note">As fotos ficam guardadas só neste aparelho, dentro do app. Ao fechar cada paciente, toque em Backup e guarde o arquivo no Drive ou em Arquivos.</p>
-  <p class="note" style="opacity:.6">Versão 18</p>
+  <p class="note" style="opacity:.6">Versão 19</p>
 </section>
 
 <section id="proj" class="scr" hidden>
@@ -1418,6 +1420,9 @@ async function renderHome() {
   let ps = []; try { ps = (await DB.all('projects')).sort((a, b) => (b.u || 0) - (a.u || 0)); } catch (e) { setStatus('Armazenamento indisponível', false); }
   const box = $('projList'); box.innerHTML = '';
   if (!ps.length) { box.innerHTML = '<p class="note">Nenhum paciente ainda. Toque em Novo paciente para começar.</p>'; return; }
+  const q = slug($('pSearch').value || '').replace(/-/g, ' ').trim();
+  if (q) ps = ps.filter(p => slug(p.name).replace(/-/g, ' ').includes(q));
+  if (!ps.length) { box.innerHTML = '<p class="note">Nenhum paciente com esse nome.</p>'; return; }
   ps.forEach(p => {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'pcard';
     b.innerHTML = (p.cover ? '<img alt="" src="' + p.cover + '">' : '<span class="ph"></span>') + '<span><b></b><small></small></span><i>›</i>';
@@ -1860,6 +1865,7 @@ $('pShare').onclick = async () => {
 };
 $('pDel').onclick = () => arm($('pDel'), async () => { for (const s of Pj.shots) await DB.del('shots', s.id); await DB.del('projects', Pj.rec.id); stopBg(); Pj = null; show('home'); renderHome(); });
 $('freeMode').onclick = openFree;
+$('pSearch').addEventListener('input', renderHome);
 $('back').onclick = () => {
   if (screen === 'edit') {
     if (picking || linked) {
