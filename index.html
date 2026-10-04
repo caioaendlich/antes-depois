@@ -307,7 +307,7 @@ let session = null, sessionP = null;
 const queue = []; let working = false;
 let uid = 0;
 
-function setStatus(t, busy) { $('status').textContent = t; $('statusChip').classList.toggle('busy', !!busy); if (busy) spin(); }
+function setStatus(t, busy) { $('status').textContent = t; $('statusChip').classList.toggle('busy', !!busy); $('statusChip').style.visibility = !$('app').hidden && /^(Recortando|Preparando recorte|Pronto)/.test(t) ? 'hidden' : ''; if (busy) spin(); }
 // quatro pontos nos vértices de um tetraedro girando em 3D, como pontos de carregamento
 let spinOn = false;
 function spin() {
@@ -457,9 +457,9 @@ async function ensureLive(it) {
   if (it._live) return it._live;
   it._live = (async () => {
     if (!it.src) it.src = await fileToCanvas(it.file);
-    if (it.raw && !it.cut) { buildBase(it); composeCut(it); }
+    if (it.raw && (!it.cut || !it.fin)) { it.cut = null; buildBase(it); composeCut(it); }
   })();
-  try { await it._live; } finally { it._live = null; }
+  try { await it._live; } catch (e) { console.error(e); it._liveErr = (it._liveErr || 0) + 1; if (it._liveErr > 2) it.status = 'erro'; } finally { it._live = null; }
   render(); updateSave();
 }
 // só as fotos selecionadas ficam em resolução cheia; as outras guardam só arquivo, prévia e máscara
@@ -531,17 +531,44 @@ function analyse(m, w, h) {
 }
 
 // ---------- desenho ----------
+// enquanto o recorte não está pronto: moldura fixa no lugar do rosto, com a foto bem apagada e o aviso embaixo do lado
+function tetraAt(g, cx, cy, r, t) {
+  const a = 1 / Math.sqrt(3), V = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]].map(v => v.map(x => x * a));
+  const ay = t * 4.6, ax = 0.6 + Math.sin(t * 1.8) * 0.35;
+  const P = V.map(([x, y, z]) => { let X = x * Math.cos(ay) + z * Math.sin(ay), Z = -x * Math.sin(ay) + z * Math.cos(ay); let Y = y * Math.cos(ax) - Z * Math.sin(ax); Z = y * Math.sin(ax) + Z * Math.cos(ax); const k = 2.6 / (2.6 + Z); return [cx + X * r * k, cy + Y * r * k, Z, k]; });
+  g.lineWidth = 2; g.strokeStyle = 'rgba(216,195,160,.35)';
+  [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]].forEach(([i, j]) => { g.beginPath(); g.moveTo(P[i][0], P[i][1]); g.lineTo(P[j][0], P[j][1]); g.stroke(); });
+  P.forEach(p => { g.fillStyle = 'rgba(216,195,160,' + (0.5 + (1 - p[2]) * 0.35) + ')'; g.beginPath(); g.arc(p[0], p[1], 6 * p[3], 0, 7); g.fill(); });
+}
+let pendAnim = false;
+function animPending() { if (pendAnim) return; pendAnim = true; setTimeout(() => requestAnimationFrame(() => { pendAnim = false; if (!$('app').hidden && ['A', 'D'].some(s => items[s][sel[s]] && !items[s][sel[s]].cut)) render(); }), 70); }
+function drawPending(g, side, it) {
+  const cx = COL[side], w = 0.40 * W, h = w * 4 / 3, x = cx - w / 2, y = HEAD_TOP - 0.07 * H, r = 26;
+  g.save(); g.beginPath(); g.roundRect ? g.roundRect(x, y, w, h, r) : g.rect(x, y, w, h); g.fillStyle = 'rgba(255,255,255,.05)'; g.fill(); g.clip();
+  const im = it.prev; const iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height;
+  if (iw && ih) { const k = Math.max(w / iw, h / ih); g.globalAlpha = 0.22; g.drawImage(im, cx - iw * k / 2, y + h / 2 - ih * k / 2, iw * k, ih * k); }
+  g.restore();
+  g.save(); g.beginPath(); g.roundRect ? g.roundRect(x, y, w, h, r) : g.rect(x, y, w, h); g.lineWidth = 2; g.strokeStyle = 'rgba(255,255,255,.12)'; g.stroke(); g.restore();
+  const label = it.status === 'erro' ? 'Não recortou' : it.status === 'processando' ? 'Recortando' : it.raw ? 'Carregando' : session ? 'Na fila' : 'Preparando';
+  g.save(); g.font = '500 30px Figtree, system-ui, sans-serif'; g.textBaseline = 'middle'; g.textAlign = 'left';
+  const tw = g.measureText(label).width, ly = y + h + 56, lx = cx - (tw + 46) / 2;
+  if (it.status !== 'erro') tetraAt(g, lx + 14, ly, 15, performance.now() / 1000);
+  g.fillStyle = it.status === 'erro' ? 'rgba(240,120,120,.9)' : 'rgba(236,235,232,.7)'; g.fillText(label, lx + (it.status === 'erro' ? 23 : 46), ly);
+  g.restore();
+  if (it.raw && isSelected(it) && !it._live) ensureLive(it);
+  if (it.status !== 'erro') animPending();
+}
 function drawSide(g, side) {
   const it = items[side][sel[side]]; if (!it) return false;
+  if (!it.cut) { drawPending(g, side, it); return true; }
   const t = tf[side];
-  const img = it.cut || it.src || it.prev;
+  const img = it.cut;
   const meta = it.meta || { top: it.h * 0.12, cx: it.w / 2, hw: it.w * 0.55 };
   const k = (HEAD_W / meta.hw) * t.s;
   g.save();
   g.translate(COL[side] + t.dx, HEAD_TOP + t.dy);
   g.rotate(t.r * Math.PI / 180);
   g.scale(k, k);
-  if (!it.cut) g.globalAlpha = 0.35;
   g.imageSmoothingQuality = 'high';
   g.drawImage(img, -meta.cx, -meta.top, it.w, it.h);
   g.restore();
@@ -582,7 +609,7 @@ function render() {
     g.fillText('Adicione as fotos de', W / 2, H * 0.40);
     g.fillText('antes e de depois', W / 2, H * 0.40 + 54);
   }
-  $('hint').hidden = !any;
+  $('hint').hidden = !any || ['A', 'D'].some(s => items[s][sel[s]] && !items[s][sel[s]].cut);
   if (brushing && ring) { const it = items[active][sel[active]]; g.beginPath(); g.arc(ring.x, ring.y, brushR, 0, Math.PI * 2); g.lineWidth = 3; g.strokeStyle = tool === 'add' ? 'rgba(120,220,160,.9)' : 'rgba(240,110,110,.9)'; g.stroke(); }
 }
 
@@ -1233,6 +1260,7 @@ function show(s) {
   $('back').textContent = s === 'proj' ? '‹ Pacientes' : s === 'edit' && linked && Pj ? '‹ ' + Pj.rec.name : '‹ Início';
   window.scrollTo(0, 0);
   if (s === 'edit') requestAnimationFrame(render);
+  $('statusChip').style.visibility = s === 'edit' && /^(Recortando|Preparando recorte|Pronto)/.test($('status').textContent) ? 'hidden' : '';
 }
 async function renderHome() {
   let ps = []; try { ps = (await DB.all('projects')).sort((a, b) => (b.u || 0) - (a.u || 0)); } catch (e) { setStatus('Armazenamento indisponível', false); }
@@ -1431,9 +1459,16 @@ async function offerBackup(auto) {
   setStatus('Pronto', false);
   const done = () => { rec.dirty = 0; rec.bkAt = Date.now(); DB.put('projects', rec).catch(() => {}); closeOut(); if (screen === 'proj') renderProj(); if (screen === 'home') renderHome(); };
   const n = unbacked(rec);
+  const fresh = Pj.shots.filter(x => x.t > (rec.galAt || 0)).sort((a, b) => a.t - b.t);
+  const galBtn = fresh.length ? [['Salvar ' + fresh.length + (fresh.length === 1 ? ' foto' : ' fotos') + ' na galeria', async b => {
+    const files = fresh.map(x => new File([x.blob], fileName(x), { type: 'image/jpeg' }));
+    if (await shareFiles(files)) { rec.galAt = Math.max(...fresh.map(x => x.t)); DB.put('projects', rec).catch(() => {}); b.disabled = true; b.textContent = 'Fotos enviadas'; }
+  }]] : [];
   overlay(null, (auto && n ? n + (n === 1 ? ' alteração' : ' alterações') + ' sem backup em ' + rec.name + '. ' : 'Backup de ' + rec.name + ' pronto (' + mb + ' MB). ') + 'Toque em Salvar backup e escolha "Salvar em Arquivos", na pasta Prisma do iCloud Drive. Da próxima vez o iPhone já sugere a mesma pasta.', [
-    ['Salvar backup', async () => { try { if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); done(); return; } } catch (e) { if (e && e.name === 'AbortError') return; } download(file, file.name); done(); }, 'primary'],
+    ['Backup completo', async () => { try { if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); done(); return; } } catch (e) { if (e && e.name === 'AbortError') return; } download(file, file.name); done(); }, 'primary'],
+    ...galBtn,
     [auto ? 'Agora não' : 'Fechar', closeOut]]);
+  const nt = $('outNote'); nt.textContent = (auto && n ? n + (n === 1 ? ' alteração' : ' alterações') + ' sem backup em ' + rec.name + '.' : 'Backup de ' + rec.name + ' pronto (' + mb + ' MB).') + ' Backup completo vai para Arquivos (pasta Prisma do iCloud Drive) e restaura o projeto inteiro. Na galeria ficam só as fotos.';
 }
 $('pBackup').onclick = () => offerBackup(false);
 $('restore').onclick = () => $('fileZip').click();
