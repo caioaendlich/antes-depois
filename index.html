@@ -187,7 +187,7 @@ input.wide{width:100%}
   <div class="plist" id="projList"></div>
   <div class="tools"><button class="btn small" id="freeMode" type="button">Montagem avulsa</button><button class="btn small" id="restore" type="button">Restaurar backup</button></div>
   <p class="note">As fotos ficam guardadas só neste aparelho, dentro do app. Ao fechar cada paciente, toque em Backup e guarde o arquivo no Drive ou em Arquivos.</p>
-  <p class="note" style="opacity:.6">Versão 15</p>
+  <p class="note" style="opacity:.6">Versão 16</p>
 </section>
 
 <section id="proj" class="scr" hidden>
@@ -334,7 +334,7 @@ input.wide{width:100%}
 (() => {
 const W = 1080, H = 1920;
 const COL = { A: 0.27 * W, D: 0.73 * W };
-const HEAD_TOP = 0.30 * H, HEAD_W = 0.40 * W;
+const HEAD_TOP = 0.30 * H, HEAD_W = 0.40 * W, EYE_Y = 0.43 * H, FACE_D = 0.165 * W;
 const MAX_SRC = 2200, RES = 1024, CHUNKS = 11, MODEL_SIZE = 44342436;
 const $ = id => document.getElementById(id);
 const cv = $('cv'), ctx = cv.getContext('2d');
@@ -436,6 +436,8 @@ async function addFiles(side, files) {
   buildStrip(side);
   sel[side] = startLen; markSel(side); scrollToSel(side, false);
   render(); pump();
+  const fresh = items[side].slice(startLen);
+  (async () => { for (const it of fresh) { await new Promise(r => setTimeout(r, 0)); if (it.pyr !== undefined) continue; try { const p = await detectOn(it.prev); if (it.pyr === undefined) it.pyr = p ? { pts: [...p], w: it.w, h: it.h } : null; } catch (e) { it.pyr = null; } render(); } })();
 }
 
 // ---------- recorte ----------
@@ -460,7 +462,7 @@ async function pump() {
       const left = queue.length;
       setStatus('Recortando · faltam ' + (left + 1), true);
       it.status = 'processando'; markThumb(it);
-      try { await cutout(it); it.status = 'pronto'; if (it.shot && it.raw && it.shot.mask !== it.raw) { it.shot.mask = it.raw; DB.put('shots', it.shot).catch(() => {}); } }
+      try { await cutout(it); it.status = 'pronto'; if (it.shot && it.raw && it.shot.mask !== it.raw) { it.shot.mask = it.raw; it.shot.mc = 1; DB.put('shots', it.shot).catch(() => {}); } }
       catch (e) { it.status = 'erro'; console.error(e); }
       markThumb(it); render();
       await new Promise(r => setTimeout(r, 0));
@@ -481,13 +483,46 @@ async function cutout(it) {
   }
   const out = await runModel(inp), u8 = new Uint8Array(out.length);
   for (let j = 0; j < out.length; j++) { const v = out[j]; u8[j] = v <= 0 ? 0 : v >= 1 ? 255 : Math.round(v * 255); }
-  it.raw = u8;
+  it.raw = cleanMask(u8);
   if (it.edge == null) it.edge = 20;
   it.meta = analyse(it.raw, it.w, it.h);
   if (isSelected(it)) { it.src = src; buildBase(it); composeCut(it); }
   else if (src !== it.src) { src.width = src.height = 0; }
 }
 
+// limpeza da máscara: fica só o corpo principal (some a poeira solta no fundo) e furos pequenos dentro do rosto são preenchidos
+function cleanMask(m) {
+  const N = RES, n = N * N, lab = new Int32Array(n), q = new Int32Array(n), on = i => m[i] > 127;
+  const areas = [0]; let nl = 0;
+  const grow = (i, test, id) => {
+    let h = 0, t = 0, border = false; q[t++] = i; lab[i] = id;
+    while (h < t) {
+      const j = q[h++], x = j % N, y = (j / N) | 0;
+      if (x === 0 || y === 0 || x === N - 1 || y === N - 1) border = true;
+      if (x > 0 && !lab[j - 1] && test(j - 1)) { lab[j - 1] = id; q[t++] = j - 1; }
+      if (x < N - 1 && !lab[j + 1] && test(j + 1)) { lab[j + 1] = id; q[t++] = j + 1; }
+      if (y > 0 && !lab[j - N] && test(j - N)) { lab[j - N] = id; q[t++] = j - N; }
+      if (y < N - 1 && !lab[j + N] && test(j + N)) { lab[j + N] = id; q[t++] = j + N; }
+    }
+    return { a: t, border };
+  };
+  for (let i = 0; i < n; i++) if (!lab[i] && on(i)) areas.push(grow(i, on, ++nl).a);
+  if (!nl) return m;
+  const big = Math.max(...areas), K = new Uint8Array(n);
+  for (let i = 0; i < n; i++) if (lab[i] && areas[lab[i]] >= big * 0.08) K[i] = 1;
+  lab.fill(0); let id = 0;
+  for (let i = 0; i < n; i++) if (!K[i] && !lab[i]) {
+    const r = grow(i, j => !K[j], ++id);
+    if (!r.border && r.a < n * 0.004) for (let k = 0; k < r.a; k++) K[q[k]] = 2;
+  }
+  // dilatação de 10 px para não cortar fios de cabelo na borda do corpo principal
+  const R = 10, D1 = new Uint8Array(n), D2 = new Uint8Array(n), pre = new Int32Array(N + 1);
+  for (let y = 0; y < N; y++) { const o = y * N; for (let x = 0; x < N; x++) pre[x + 1] = pre[x] + (K[o + x] ? 1 : 0); for (let x = 0; x < N; x++) D1[o + x] = pre[Math.min(N, x + R + 1)] - pre[Math.max(0, x - R)] > 0 ? 1 : 0; }
+  for (let x = 0; x < N; x++) { for (let y = 0; y < N; y++) pre[y + 1] = pre[y] + D1[y * N + x]; for (let y = 0; y < N; y++) D2[y * N + x] = pre[Math.min(N, y + R + 1)] - pre[Math.max(0, y - R)] > 0 ? 1 : 0; }
+  const out = new Uint8Array(n);
+  for (let i = 0; i < n; i++) out[i] = K[i] === 2 ? 255 : D2[i] ? m[i] : 0;
+  return out;
+}
 function isSelected(it) { return items.A[sel.A] === it || items.D[sel.D] === it; }
 function freeCanvas(c) { if (c) { c.width = c.height = 0; } }
 function release(it) {
@@ -599,19 +634,33 @@ function drawPending(g, side, it) {
   if (it.raw && isSelected(it) && !it._live) ensureLive(it);
   if (it.status !== 'erro') animPending();
 }
+// posição inicial: com os pontos do rosto (exocantos e lábio inferior), os olhos ficam na mesma altura e o rosto no mesmo tamanho
+// nos dois lados (escala pela distância olhos-lábio, que muda pouco com a rotação). Sem pontos, usa o topo e a largura da silhueta.
+function place(it) {
+  const meta = it.meta || { top: it.h * 0.12, cx: it.w / 2, hw: it.w * 0.55 };
+  const p = it.pyr && it.pyr.pts;
+  if (p && p.length === 4) {
+    const ex = (p[0].x + p[1].x) / 2 * it.w, ey = (p[0].y + p[1].y) / 2 * it.h, lx = p[3].x * it.w, ly = p[3].y * it.h;
+    const d = Math.hypot(lx - ex, ly - ey);
+    if (d > it.h * 0.02) {
+      const dx = (p[1].x - p[0].x) * it.w, dy = (p[1].y - p[0].y) * it.h;
+      let r0 = 0; if (Math.abs(dx) > d * 0.6) { r0 = -Math.atan2(dy, dx) * 180 / Math.PI; if (r0 > 90) r0 -= 180; if (r0 < -90) r0 += 180; r0 = Math.max(-12, Math.min(12, r0)); }
+      return { ax: it.meta ? meta.cx : ex, ay: ey, oy: EYE_Y, k0: FACE_D / d, r0 };
+    }
+  }
+  return { ax: meta.cx, ay: meta.top, oy: HEAD_TOP, k0: HEAD_W / meta.hw, r0: 0 };
+}
 function drawSide(g, side) {
   const it = items[side][sel[side]]; if (!it) return false;
   if (!it.cut) { drawPending(g, side, it); return true; }
   const t = tf[side];
-  const img = it.cut;
-  const meta = it.meta || { top: it.h * 0.12, cx: it.w / 2, hw: it.w * 0.55 };
-  const k = (HEAD_W / meta.hw) * t.s;
+  const img = it.cut, P = place(it), k = P.k0 * t.s;
   g.save();
-  g.translate(COL[side] + t.dx, HEAD_TOP + t.dy);
-  g.rotate(t.r * Math.PI / 180);
+  g.translate(COL[side] + t.dx, P.oy + t.dy);
+  g.rotate((t.r + P.r0) * Math.PI / 180);
   g.scale(k, k);
   g.imageSmoothingQuality = 'high';
-  g.drawImage(img, -meta.cx, -meta.top, it.w, it.h);
+  g.drawImage(img, -P.ax, -P.ay, it.w, it.h);
   g.restore();
   return true;
 }
@@ -750,10 +799,10 @@ $('brush').oninput = e => { brushR = +e.target.value; $('brushV').textContent = 
 $('edge').oninput = e => { const it = items[active][sel[active]]; $('edgeV').textContent = e.target.value; if (!it || !it.raw) return; it.edge = +e.target.value; scheduleRecut(it, true); };
 $('undoBrush').onclick = () => { const it = items[active][sel[active]]; if (!it || !it.plus) return; [it.plus, it.minus].forEach(c => c.getContext('2d').clearRect(0, 0, c.width, c.height)); composeCut(it); render(); };
 function toImage(side, p) {
-  const it = items[side][sel[side]], t = tf[side], meta = it.meta;
-  const k = (HEAD_W / meta.hw) * t.s;
-  const x = p.x - (COL[side] + t.dx), y = p.y - (HEAD_TOP + t.dy), a = -t.r * Math.PI / 180;
-  return { x: (x * Math.cos(a) - y * Math.sin(a)) / k + meta.cx, y: (x * Math.sin(a) + y * Math.cos(a)) / k + meta.top, k };
+  const it = items[side][sel[side]], t = tf[side], P = place(it);
+  const k = P.k0 * t.s;
+  const x = p.x - (COL[side] + t.dx), y = p.y - (P.oy + t.dy), a = -(t.r + P.r0) * Math.PI / 180;
+  return { x: (x * Math.cos(a) - y * Math.sin(a)) / k + P.ax, y: (x * Math.sin(a) + y * Math.cos(a)) / k + P.ay, k };
 }
 function stamp(it, from, to) {
   it.edited = true; const ms = it.plus.width / it.w, r = Math.max(2, brushR / to.k * ms);
@@ -1398,6 +1447,7 @@ function stopBg() { for (let i = queue.length - 1; i >= 0; i--) if (queue[i].sid
 function itemFromShot(s, side, noQueue) {
   const k = Math.min(1, MAX_SRC / Math.max(s.w, s.h)), img = new Image(); img.onload = () => { if (screen === 'edit') render(); }; img.src = s.prev;
   const it = { id: ++uid, file: s.blob, w: Math.round(s.w * k), h: Math.round(s.h * k), prev: img, src: null, thumbUrl: s.thumb, cut: null, meta: null, status: 'fila', shot: s, edge: s.edge != null ? s.edge : 20, pyr: s.pyr };
+  if (s.mask && !s.mc) { s.mask = cleanMask(s.mask); s.mc = 1; DB.put('shots', s).catch(() => {}); }
   if (s.mask) { it.raw = s.mask; it.meta = analyse(it.raw, it.w, it.h); it.status = 'pronto'; } else if (!noQueue) queue.push({ side, it });
   return it;
 }
