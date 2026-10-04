@@ -162,6 +162,12 @@ input.wide{width:100%}
 .st2 .ok{position:absolute;right:3px;bottom:3px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:#5fc27e;color:#fff;font-size:9.5px;line-height:15px;text-align:center;font-weight:700}
 .st2.add{background:transparent;border:1.5px dashed #3a3c40;color:var(--muted);font:inherit;font-size:12px;line-height:1.2}
 #app.picking .controls>:not(#pickBox){display:none!important}
+.pkrow{display:grid;grid-template-columns:58px 1fr 58px;gap:8px;align-items:center}
+.pkb{font-size:26px;line-height:1;padding:10px 0;font-weight:500}
+.pkmid{text-align:center;display:grid;gap:2px}.pkmid b{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}.pkmid span{font-size:14.5px;font-variant-numeric:tabular-nums}
+.pchips{display:flex;gap:6px;flex-wrap:wrap}
+.pchips button{font:inherit;font-size:12.5px;padding:5px 11px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer}
+.pchips button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .st2.on{box-shadow:inset 0 0 0 2px var(--accent)}
 #pickAgain{display:none}#app.proj #pickAgain{display:block}
 .swrap.mini::after{width:36px;border-radius:7px}
@@ -182,12 +188,12 @@ input.wide{width:100%}
   <button class="btn primary big" id="newProj" type="button">+ Novo paciente</button>
   <div class="panel" id="newForm" hidden>
     <input type="text" class="wide" id="newName" placeholder="Nome do paciente" maxlength="60" autocomplete="off">
-    <div class="flex"><button class="btn primary" id="newGo" type="button">Começar pelo antes</button><button class="btn" id="newCancel" type="button">Cancelar</button></div>
+    <div class="flex"><button class="btn primary" id="newGo" type="button">Fotografar</button><button class="btn primary" id="newAlbum" type="button">Do álbum</button><button class="btn" id="newCancel" type="button">Cancelar</button></div>
   </div>
   <div class="plist" id="projList"></div>
   <div class="tools"><button class="btn small" id="freeMode" type="button">Montagem avulsa</button><button class="btn small" id="restore" type="button">Restaurar backup</button></div>
   <p class="note">As fotos ficam guardadas só neste aparelho, dentro do app. Ao fechar cada paciente, toque em Backup e guarde o arquivo no Drive ou em Arquivos.</p>
-  <p class="note" style="opacity:.6">Versão 16</p>
+  <p class="note" style="opacity:.6">Versão 17</p>
 </section>
 
 <section id="proj" class="scr" hidden>
@@ -228,12 +234,12 @@ input.wide{width:100%}
 
   <div class="controls">
     <div class="panel" id="pickBox" hidden>
-      <div class="row-head"><span class="lbl">Antes · lado esquerdo</span><span class="note" id="pkLl"></span></div>
-      <div class="swrap mini"><div class="sstrip mini" id="pkL"></div></div>
-      <div class="row-head"><span class="lbl">Depois · lado direito</span><span class="note" id="pkRl"></span></div>
-      <div class="swrap mini"><div class="sstrip mini" id="pkR"></div></div>
+      <div class="pchips" id="pkPose"></div>
+      <div class="pkrow"><button class="btn pkb" id="pkLp" type="button" aria-label="Antes anterior">‹</button><div class="pkmid"><b>Antes · esquerda</b><span id="pkLl"></span></div><button class="btn pkb" id="pkLn" type="button" aria-label="Próximo antes">›</button></div>
+      <div class="pkrow"><button class="btn pkb" id="pkRp" type="button" aria-label="Depois anterior">‹</button><div class="pkmid"><b>Depois · direita</b><span id="pkRl"></span></div><button class="btn pkb" id="pkRn" type="button" aria-label="Próximo depois">›</button></div>
+      <div class="flex"><button class="btn small" id="pkAddA" type="button">+ Antes do álbum</button><button class="btn small" id="pkAddD" type="button">+ Depois do álbum</button></div>
       <button class="btn primary big" id="pkGo" type="button">Concluído</button>
-      <p class="note">Deslize as barras. A de cima troca a foto da esquerda, a de baixo a da direita. O fundo só é removido quando você tocar em Concluído.</p>
+      <p class="note">Toque nas setas para trocar a foto de cada lado. Arraste e pince na foto para encaixar. O fundo só é removido em Concluído.</p>
     </div>
     <div class="pair">
     <div class="row">
@@ -300,7 +306,7 @@ input.wide{width:100%}
 <input type="file" id="fileCam" accept="image/*" multiple hidden>
 <input type="file" id="fileProj" accept="image/*" multiple hidden>
 <input type="file" id="filePair" accept="image/*" multiple hidden>
-<input type="file" id="filePick" accept="image/*" multiple hidden>
+<input type="file" id="fileAlbum" accept="image/*" multiple hidden>
 <input type="file" id="fileZip" accept=".zip,application/zip" hidden>
 <div id="cam" hidden>
   <video id="camVid" playsinline muted autoplay></video>
@@ -644,8 +650,8 @@ function place(it) {
     const d = Math.hypot(lx - ex, ly - ey);
     if (d > it.h * 0.02) {
       const dx = (p[1].x - p[0].x) * it.w, dy = (p[1].y - p[0].y) * it.h;
-      let r0 = 0; if (Math.abs(dx) > d * 0.6) { r0 = -Math.atan2(dy, dx) * 180 / Math.PI; if (r0 > 90) r0 -= 180; if (r0 < -90) r0 += 180; r0 = Math.max(-12, Math.min(12, r0)); }
-      return { ax: it.meta ? meta.cx : ex, ay: ey, oy: EYE_Y, k0: FACE_D / d, r0 };
+      let r0 = 0; if (Math.abs(dx) > d * 0.9) { r0 = -Math.atan2(dy, dx) * 180 / Math.PI; if (r0 > 90) r0 -= 180; if (r0 < -90) r0 += 180; r0 = Math.max(-12, Math.min(12, r0)); }
+      return { ax: ex, ay: ey, oy: EYE_Y, k0: FACE_D / d, r0 };
     }
   }
   return { ax: meta.cx, ay: meta.top, oy: HEAD_TOP, k0: HEAD_W / meta.hw, r0: 0 };
@@ -1312,7 +1318,7 @@ $('fileCam').onchange = async e => {
   let L = null, R = null;
   if (galFor) { const a = galFor; galFor = null; const ad = await importToProject(fs.slice(0, 1), 'D', a); L = a; R = ad[0]; }
   else if (camMode === 'D') { const a = antesList()[curA]; const ad = await importToProject(fs.slice(0, 1), 'D', a); L = a; R = ad[0]; }
-  else { const ad = await importToProject(fs, 'A', null); L = ad[0]; R = null; }
+  else { const ad = await importToProject(fs, 'A', null); camClose(true); show('proj'); renderProj(); askDepois(ad[0]); return; }
   camClose(true); openPick(L, R);
 };
 
@@ -1604,15 +1610,24 @@ $('fileZip').onchange = async e => {
 // ---------- telas ----------
 $('newProj').onclick = () => { $('newForm').hidden = false; $('newProj').hidden = true; $('newName').value = ''; $('newName').focus(); };
 $('newCancel').onclick = () => { $('newForm').hidden = true; $('newProj').hidden = false; };
-async function createProj() {
-  const name = $('newName').value.trim(); if (!name) { $('newName').focus(); return; }
+async function newProjRec(name) {
   const rec = { id: newId('p'), name, t: Date.now(), u: Date.now(), nA: 0, nP: 0 };
-  try { await DB.put('projects', rec); } catch (e) { setStatus('Não consegui criar o projeto', false); return; }
+  try { await DB.put('projects', rec); } catch (e) { setStatus('Não consegui criar o projeto', false); return false; }
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   $('newForm').hidden = true; $('newProj').hidden = false;
-  Pj = { rec, shots: [] }; show('proj'); renderProj(); camOpenProj('A');
+  Pj = { rec, shots: [] }; return true;
+}
+async function createProj() {
+  const name = $('newName').value.trim(); if (!name) { $('newName').focus(); return; }
+  if (!await newProjRec(name)) return;
+  show('proj'); renderProj(); camOpenProj('A');
 }
 $('newGo').onclick = createProj;
+// o seletor de fotos precisa abrir no mesmo toque; o projeto é criado enquanto você escolhe
+$('newAlbum').onclick = () => {
+  const name = $('newName').value.trim(); if (!name) { $('newName').focus(); return; }
+  pkAdd = 'A'; albumProj = newProjRec(name); $('fileAlbum').click();
+};
 $('newName').addEventListener('keydown', e => { if (e.key === 'Enter') createProj(); });
 $('pName').addEventListener('change', () => { const v = $('pName').value.trim(); if (!Pj || !v) { $('pName').value = Pj ? Pj.rec.name : ''; return; } Pj.rec.name = v; touchProj(); });
 $('pShootA').onclick = () => camOpenProj('A');
@@ -1697,86 +1712,67 @@ $('filePair').onchange = async e => {
   requestAnimationFrame(() => { if (k === 'A') ssGo($('ssA'), A.length - 1, true); else { ssGo($('ssD'), D.length - 1, true); ssGo($('ssA'), Math.max(0, psA), false); } });
 };
 // ---------- montagem: escolha das fotos direto na tela final (sem recorte até Concluído) ----------
-let pickA = [], pickD = [], pickL = 0, pickR = 0, pkGal = null;
+// Cada metade mostra uma foto inteira (com fundo) já enquadrada pelos olhos, no mesmo enquadramento que a montagem final usa.
+// Setas trocam a foto de cada lado; chips filtram pelo ângulo; arrastar e pinçar ajustam o encaixe, que segue para a montagem.
+let allA = [], allD = [], pickA = [], pickD = [], pickL = 0, pickR = 0, pkPose = 'Todos', pkAdd = null;
 const pimg = {};
 function pickImg(s) { let im = pimg[s.id]; if (!im) { im = pimg[s.id] = new Image(); im.onload = () => { if (picking) render(); }; im.src = s.prev; } return im; }
-function drawPickSide(g, s, x0) {
+function drawPickSide(g, s, side) {
   if (!s) return false;
-  const im = pickImg(s); if (!im.naturalWidth) return true;
-  const iw = im.naturalWidth, ih = im.naturalHeight, hw = W / 2;
-  let cx = 0.5, cy = 0.45;
-  if (s.pyr && s.pyr.pts) { cx = s.pyr.pts.reduce((a, p) => a + p.x, 0) / 4; cy = s.pyr.pts.reduce((a, p) => a + p.y, 0) / 4; }
-  const k = Math.max(hw / iw * 1.25, H * 0.55 / ih);
-  g.save(); g.beginPath(); g.rect(x0, 0, hw, H); g.clip();
-  g.imageSmoothingQuality = 'high';
-  g.drawImage(im, x0 + hw / 2 - cx * iw * k, H * 0.40 - cy * ih * k, iw * k, ih * k);
+  const im = pickImg(s), x0 = side === 'A' ? 0 : W / 2;
+  if (!im.naturalWidth) return true;
+  const ps = { w: s.w, h: s.h, pyr: s.pyr, meta: null }, P = place(ps), t = tf[side], k = P.k0 * t.s;
+  g.save(); g.beginPath(); g.rect(x0, 0, W / 2, H); g.clip();
+  g.fillStyle = '#111'; g.fillRect(x0, 0, W / 2, H);
+  g.translate(COL[side] + t.dx, P.oy + t.dy); g.rotate((t.r + P.r0) * Math.PI / 180); g.scale(k, k);
+  g.imageSmoothingQuality = 'high'; g.drawImage(im, -P.ax, -P.ay, ps.w, ps.h);
   g.restore(); return true;
 }
 function drawPick(g) {
-  const a = drawPickSide(g, pickA[pickL], 0), b = drawPickSide(g, pickD[pickR], W / 2);
-  g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '500 34px Figtree, system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.7)';
-  if (!a) g.fillText('Toque em + na barra de cima', W / 4, H * 0.38);
-  if (!b) { g.fillText('Toque em + na barra', W * 3 / 4, H * 0.36); g.fillText('de baixo para escolher', W * 3 / 4, H * 0.36 + 46); g.fillText('o depois', W * 3 / 4, H * 0.36 + 92); }
-  g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(W / 2 - 1, 0, 2, H);
+  const a = drawPickSide(g, pickA[pickL], 'A'), b = drawPickSide(g, pickD[pickR], 'D');
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '500 34px Figtree, system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.75)';
+  if (!a) { g.fillText('Sem antes', W / 4, H * 0.38); g.fillText('neste ângulo', W / 4, H * 0.38 + 46); }
+  if (!b) { g.fillText('Sem depois', W * 3 / 4, H * 0.38); g.fillText('neste ângulo', W * 3 / 4, H * 0.38 + 46); }
+  g.fillStyle = 'rgba(0,0,0,.6)'; g.fillRect(W / 2 - 2, 0, 4, H);
   return true;
 }
-function pkBuild(el, list) {
-  el.innerHTML = '';
-  list.forEach((s, i) => {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'st2';
-    b.innerHTML = '<img alt="" src="' + s.thumb + '">' + (s.kind === 'A' && depOf(s) ? '<span class="ok">✓</span>' : '');
-    b.onclick = () => pkGoTo(el, i, true);
-    el.appendChild(b);
+function pkChips() {
+  const poses = ['Perfil E', '45° E', 'Frente', '45° D', 'Perfil D'].filter(p => allA.concat(allD).some(s => s.pose === p));
+  const box = $('pkPose'); box.innerHTML = '';
+  ['Todos', ...poses].forEach(p => {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = p; b.setAttribute('aria-pressed', p === pkPose);
+    b.onclick = () => { const cl = pickA[pickL], cr = pickD[pickR]; pkPose = p; pkFilter(); pickL = Math.max(0, pickA.indexOf(cl)); pickR = Math.max(0, pickD.indexOf(cr)); tf.A = T0(); tf.D = T0(); pkChips(); pkLabels(); render(); };
+    box.appendChild(b);
   });
-  const add = document.createElement('button'); add.type = 'button'; add.className = 'st2 add'; add.textContent = '+';
-  add.style.fontSize = '20px';
-  add.onclick = () => { pkGal = el.id; $('filePick').click(); };
-  el.appendChild(add);
 }
-function pkMark(el, i) { [...el.children].forEach((t, j) => t.classList.toggle('on', j === i)); }
-function pkScroll(el, i) { const t = el.children[i]; if (t) el.scrollLeft = t.offsetLeft + t.offsetWidth / 2 - el.clientWidth / 2; }
-function pkGoTo(el, i, smooth) {
-  const t = el.children[i]; if (!t || t.classList.contains('add')) return;
-  el.scrollTo({ left: t.offsetLeft + t.offsetWidth / 2 - el.clientWidth / 2, behavior: smooth ? 'smooth' : 'auto' });
-  pkSet(el.id === 'pkL' ? 'L' : 'R', i, true);
-}
-function pkSet(side, i, force) {
-  if (side === 'L') { if (i === pickL && !force) return; pickL = i; pkMark($('pkL'), i); } else { if (i === pickR && !force) return; pickR = i; pkMark($('pkR'), i); }
-  pkLabels(); render();
+function pkFilter() { pickA = pkPose === 'Todos' ? allA : allA.filter(s => s.pose === pkPose); pickD = pkPose === 'Todos' ? allD : allD.filter(s => s.pose === pkPose); }
+function pkStep(side, dir) {
+  const L = side === 'A' ? pickA : pickD; if (L.length < 2) return;
+  if (side === 'A') pickL = (pickL + dir + L.length) % L.length; else pickR = (pickR + dir + L.length) % L.length;
+  tf[side] = T0(); pkLabels(); render();
+  const nx = L[((side === 'A' ? pickL : pickR) + dir + L.length) % L.length]; if (nx) pickImg(nx); // pré-carrega a próxima
 }
 function pkLabels() {
-  const lab = (L, i) => L[i] ? (i + 1) + ' de ' + L.length + (L[i].pose && L[i].pose !== '—' ? ' · ' + L[i].pose : '') : (L.length ? '' : 'nenhuma ainda');
+  const lab = (L, i) => L[i] ? (i + 1) + ' de ' + L.length + (L[i].pose && L[i].pose !== '—' ? ' · ' + L[i].pose : '') + (L[i].kind === 'A' && depOf(L[i]) ? ' · já pareado' : '') : 'nenhuma';
   $('pkLl').textContent = lab(pickA, pickL); $('pkRl').textContent = lab(pickD, pickR);
+  $('pkLp').disabled = $('pkLn').disabled = pickA.length < 2; $('pkRp').disabled = $('pkRn').disabled = pickD.length < 2;
   const ok = !!(pickA[pickL] && pickD[pickR]);
-  $('pkGo').disabled = !ok; $('pkGo').textContent = ok ? 'Concluído' : pickA[pickL] ? 'Escolha o depois' : 'Escolha o antes';
+  $('pkGo').disabled = !ok; $('pkGo').textContent = ok ? 'Concluído' : !allD.length ? 'Adicione o depois' : 'Escolha antes e depois';
 }
-function pkPlace() {
-  // posiciona as barras depois que a tela já foi desenhada (com nova tentativa, o iPhone às vezes atrasa o layout)
-  const go = () => { pkScroll($('pkL'), pickL); pkScroll($('pkR'), pickR); pkMark($('pkL'), pickL); pkMark($('pkR'), pickR); };
-  requestAnimationFrame(() => requestAnimationFrame(go)); setTimeout(go, 120); setTimeout(go, 400);
-}
-['pkL', 'pkR'].forEach(id => {
-  let raf = 0;
-  $(id).addEventListener('scroll', () => {
-    if (raf) return;
-    raf = requestAnimationFrame(() => {
-      raf = 0; const el = $(id), c = el.scrollLeft + el.clientWidth / 2; let best = 0, bd = 1e9;
-      [...el.children].forEach((t, i) => { if (t.classList.contains('add')) return; const d = Math.abs(t.offsetLeft + t.offsetWidth / 2 - c); if (d < bd) { bd = d; best = i; } });
-      if (el.children.length > 1) pkSet(id === 'pkL' ? 'L' : 'R', best);
-    });
-  }, { passive: true });
-});
+$('pkLp').onclick = () => pkStep('A', -1); $('pkLn').onclick = () => pkStep('A', 1);
+$('pkRp').onclick = () => pkStep('D', -1); $('pkRn').onclick = () => pkStep('D', 1);
 function openPick(Ls, Rs) {
   if (!Pj) return;
   if (linked) { savePair(); clearItems(); linked = false; }
-  pickA = antesList(); pickD = depList();
-  let l = Ls ? pickA.indexOf(Ls) : -1;
-  if (l < 0) { const f = pickA.find(a => !depOf(a)) || pickA[0]; l = Math.max(0, pickA.indexOf(f)); }
-  let r = Rs ? pickD.indexOf(Rs) : -1;
-  if (r < 0) { const d = depOf(pickA[l]) || loose()[0] || pickD[pickD.length - 1]; r = d ? pickD.indexOf(d) : 0; }
-  pickL = l; pickR = Math.max(0, r); picking = true;
+  allA = antesList(); allD = depList();
+  if (!Ls) Ls = allA.find(a => !depOf(a)) || allA[0];
+  if (!Rs) Rs = depOf(Ls) || loose().find(d => !Ls || d.pose === Ls.pose) || loose()[0] || allD[allD.length - 1];
+  pkPose = Ls && Ls.pose && Ls.pose !== '—' && (!Rs || Rs.pose === Ls.pose) ? Ls.pose : 'Todos';
+  pkFilter();
+  pickL = Math.max(0, pickA.indexOf(Ls)); pickR = Math.max(0, pickD.indexOf(Rs));
+  tf.A = T0(); tf.D = T0(); picking = true; setActive('A');
   $('app').classList.add('picking', 'proj'); $('pickBox').hidden = false; show('edit');
-  pkBuild($('pkL'), pickA); pkBuild($('pkR'), pickD); pkLabels(); pkPlace();
+  pkChips(); pkLabels(); allA.concat(allD).forEach(pickImg);
   render();
 }
 function closePick() { picking = false; $('app').classList.remove('picking'); $('pickBox').hidden = true; }
@@ -1784,14 +1780,31 @@ $('pkGo').onclick = async () => {
   const a = pickA[pickL], d = pickD[pickR]; if (!a || !d) return;
   const old = depOf(a); if (old && old !== d) { old.of = null; await DB.put('shots', old); }
   if (d.of !== a.id) { d.of = a.id; d.pose = a.pose; }
+  d.adj = { tf: { A: { ...tf.A }, D: { ...tf.D }, front: defaultFront(a) } }; // o encaixe feito aqui segue para a montagem
   await DB.put('shots', a); await DB.put('shots', d); await touchProj();
   closePick(); openEditor(a);
 };
-$('filePick').onchange = async e => {
-  const fs = [...e.target.files]; e.target.value = ''; const side = pkGal; pkGal = null; if (!fs.length || !Pj) return;
-  const keepA = pickA[pickL], keepD = pickD[pickR];
-  const ad = await importToProject(fs, side === 'pkL' ? 'A' : 'D', null);
-  openPick(side === 'pkL' ? ad[0] : keepA, side === 'pkR' ? ad[0] : keepD);
+$('pkAddA').onclick = () => { pkAdd = 'A'; $('fileAlbum').click(); };
+$('pkAddD').onclick = () => { pkAdd = 'D'; $('fileAlbum').click(); };
+// ---------- álbum: escolhe os antes, depois os depois, e cai direto na escolha do par ----------
+let albumProj = null, albumFirstA = null;
+function askDepois(firstA) {
+  albumFirstA = firstA;
+  overlay(null, 'Antes guardados. Agora escolha no álbum as fotos de depois.', [
+    ['Escolher os depois', () => { closeOut(); pkAdd = 'D'; $('fileAlbum').click(); }, 'primary'],
+    ['Montar só com estes', () => { closeOut(); openPick(firstA, null); }]]);
+}
+$('fileAlbum').onchange = async e => {
+  const fs = [...e.target.files]; e.target.value = ''; const kind = pkAdd || 'A'; pkAdd = null;
+  if (albumProj) { const p = albumProj; albumProj = null; const ok = await p; if (!ok) return; }
+  if (!Pj) return;
+  if (!fs.length) { if (kind === 'A' && !antesList().length) { show('proj'); renderProj(); } return; }
+  const keepA = picking ? pickA[pickL] : null, keepD = picking ? pickD[pickR] : null, wasPicking = picking;
+  const ad = await importToProject(fs, kind, null);
+  if (kind === 'A' && !wasPicking) { show('proj'); renderProj(); askDepois(ad[0]); return; }
+  if (kind === 'A') openPick(ad[0], keepD);
+  else openPick(albumFirstA && Pj.shots.includes(albumFirstA) ? albumFirstA : keepA, ad[0]);
+  albumFirstA = null;
 };
 $('pickAgain').onclick = () => { const cur = pairShots[sel.A]; openPick(cur && cur[0], cur && cur[1]); };
 $('pMount').onclick = () => { stopBg(); openPick(); };
