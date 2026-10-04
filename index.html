@@ -71,7 +71,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .check{display:flex;align-items:center;gap:8px;font-size:14px}
 .check input{accent-color:var(--accent);width:18px;height:18px}
 input[type=text]{font:inherit;font-size:14px;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0;width:170px}
-.pair{display:grid;gap:6px}.pair .row{gap:3px}.pair .btn.small{padding:4px 10px;font-size:12.5px}
+.pair{display:grid;gap:6px;min-width:0}.pair .row,.strip-wrap{min-width:0;max-width:100%}html,body{overflow-x:hidden}.pair .row{gap:3px}.pair .btn.small{padding:4px 10px;font-size:12.5px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:12px}
 .save-row{display:flex;gap:10px;flex-wrap:wrap}
 .save-row .btn.primary{flex:1;min-width:180px;font-size:15px;padding:12px}
