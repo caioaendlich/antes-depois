@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Termos">
+<meta name="theme-color" content="#E8E1D5">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Termos · Le Quartier</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Jost:wght@300;400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<style>
+:root{--bg:#E8E1D5;--paper:#F6F2EB;--ink:#2A1C15;--ink2:#5F534B;--mute:#958A80;--line:rgba(42,28,21,.14);--rust:#B4432A;--sage:#6F8C6A}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--ink);font-family:Jost,-apple-system,system-ui,sans-serif;font-weight:300;font-size:17px;min-height:100%}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+h1,h2,h3{font-family:"Cormorant Garamond",Georgia,serif;font-weight:500}
+h1{font-size:34px;line-height:1.1}h2{font-size:28px}h3{font-size:22px}
+.wrap{max-width:860px;margin:0 auto;padding:20px 22px 120px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0 18px;border-bottom:1px solid var(--line);margin-bottom:22px}
+.top img{height:46px}
+.kick{font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:var(--rust);font-weight:400}
+.muted{color:var(--mute)}.small{font-size:14px}
+button,.btn{font:inherit;font-weight:400;border:1px solid var(--ink);background:var(--ink);color:var(--paper);border-radius:999px;padding:13px 22px;font-size:16px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;justify-content:center}
+button.ghost{background:transparent;color:var(--ink)}
+button.rust{background:var(--rust);border-color:var(--rust)}
+button.link{background:none;border:none;color:var(--ink2);padding:8px 4px;text-decoration:underline;text-underline-offset:3px}
+button:disabled{opacity:.35}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.sp{flex:1}
+input,textarea,select{font:inherit;font-weight:300;width:100%;border:1px solid var(--line);background:var(--paper);border-radius:12px;padding:13px 14px;color:var(--ink);font-size:17px}
+textarea{min-height:90px;resize:vertical;line-height:1.4}
+label.f{display:block;margin:14px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink2)}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:16px 18px;margin-bottom:12px}
+.list .card{display:flex;align-items:center;gap:12px;cursor:pointer}
+.list .card:active{transform:scale(.995)}
+.pill{font-size:12px;letter-spacing:.08em;border-radius:999px;padding:4px 10px;border:1px solid var(--line);color:var(--ink2);white-space:nowrap}
+.pill.warn{border-color:var(--rust);color:var(--rust)}.pill.ok{border-color:var(--sage);color:var(--sage)}
+.cat{margin:22px 0 8px}
+.chk{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;background:var(--paper);border:1px solid var(--line);border-radius:14px;margin-bottom:8px;cursor:pointer}
+.chk input{width:26px;height:26px;flex:none;accent-color:var(--rust);margin-top:1px}
+.chk.on{border-color:var(--rust);box-shadow:inset 0 0 0 1px var(--rust)}
+.doc{background:#fff;border:1px solid var(--line);border-radius:14px;padding:26px 26px;font-size:17px;line-height:1.55;color:#1f1712}
+.doc h3{margin:18px 0 6px;font-size:22px}.doc p{margin:6px 0}.doc b{font-weight:500}
+.doc .hd{text-align:center;margin-bottom:14px}.doc .hd img{height:60px}
+.doc ol{padding-left:22px}.doc li{margin:6px 0}
+.sigbox{position:relative;background:#fff;border:1.5px dashed var(--ink2);border-radius:14px;height:240px;margin-top:10px;touch-action:none}
+.sigbox canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;border-radius:14px}
+.sigbox .hint{position:absolute;left:0;right:0;bottom:44px;text-align:center;color:var(--mute);pointer-events:none;font-size:15px}
+.sigbox .base{position:absolute;left:8%;right:8%;bottom:56px;border-bottom:1px solid var(--ink2);pointer-events:none}
+.bar{position:fixed;left:0;right:0;bottom:0;background:rgba(232,225,213,.96);border-top:1px solid var(--line);padding:12px 22px calc(12px + env(safe-area-inset-bottom));display:flex;gap:12px;justify-content:flex-end;z-index:5}
+.center{text-align:center}
+.big{font-size:20px;padding:16px 28px}
+.pin{display:flex;gap:10px;justify-content:center;margin:18px 0}
+.pin input{width:64px;height:64px;text-align:center;font-size:28px;padding:0}
+.toast{position:fixed;left:50%;top:18px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:999px;font-size:15px;z-index:20;opacity:0;transition:opacity .3s}
+.toast.on{opacity:1}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast" class="toast"></div>
+<script src="jspdf.umd.min.js"></script>
+<script src="catalogo.js"></script>
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const uid=()=>(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2)).replace(/-/g,'').slice(0,20).toUpperCase();
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),2600);}
+// ---------- IndexedDB ----------
+let DB;
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('lqtermos',1);r.onupgradeneeded=()=>{const d=r.result;d.createObjectStore('pacientes',{keyPath:'id'});const t=d.createObjectStore('termos',{keyPath:'id'});t.createIndex('pid','pid');d.createObjectStore('cfg',{keyPath:'k'});};r.onsuccess=()=>{DB=r.result;res();};r.onerror=()=>rej(r.error);});}
+function tx(store,mode,fn){return new Promise((res,rej)=>{const t=DB.transaction(store,mode);const s=t.objectStore(store);let out;const r=fn(s);if(r&&'onsuccess' in r)r.onsuccess=()=>{out=r.result};t.oncomplete=()=>res(out);t.onerror=()=>rej(t.error);});}
+const put=(s,v)=>tx(s,'readwrite',x=>x.put(v));
+const get=(s,k)=>tx(s,'readonly',x=>x.get(k));
+const all=s=>tx(s,'readonly',x=>x.getAll());
+const del=(s,k)=>tx(s,'readwrite',x=>x.delete(k));
+const byPid=pid=>tx('termos','readonly',x=>x.index('pid').getAll(pid));
+async function cfg(k,d){const r=await get('cfg',k);return r?r.v:d;}
+const setCfg=(k,v)=>put('cfg',{k,v});
+async function catalogo(){return await cfg('catalogo',null)||JSON.parse(JSON.stringify(window.CATALOGO_PADRAO));}
+// ---------- formatting ----------
+const cpfMask=v=>{v=v.replace(/\D/g,'').slice(0,11);return v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');};
+const dataBR=iso=>{if(!iso)return'';const[y,m,d]=iso.split('-');return `${d}/${m}/${y}`;};
+function agoraBR(d=new Date()){const f=new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});return f.format(d)+' (horário de Brasília)';}
+function nomeArq(p,t){const d=new Date(t.criado);const z=n=>String(n).padStart(2,'0');return `TCLE ${p.nome} ${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())} ${z(d.getHours())}h${z(d.getMinutes())}.pdf`.replace(/[\/\\:*?"<>|]/g,'');}
+// ---------- router ----------
+const S={view:'home',pid:null,sel:new Set(),outros:'',prof:'',unlocked:false,pending:null};
+async function go(v,o={}){Object.assign(S,o,{view:v});window.scrollTo(0,0);await render();}
+async function render(){const a=$('#app');const V={home,paciente,pasta,novo,revisao,pronto,ajustes,proced,lock}[S.view];a.innerHTML='';await V(a);}
+function topo(title,back){return `<div class="top">${back?`<button class="ghost" data-back="${back}">‹ Voltar</button>`:'<img src="logo.png" alt="Le Quartier">'}<div class="sp center">${title?`<div class="kick">${title}</div>`:''}</div>${back?'<span style="width:96px"></span>':'<button class="ghost" id="cfgBtn">Ajustes</button>'}</div>`;}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-back]');if(b)go(b.dataset.back);});
+// ---------- PIN gate ----------
+async function needPin(next){const pin=await cfg('pin','');if(!pin||S.unlocked){S.unlocked=true;return go(next);}go('lock',{after:next});}
+async function lock(a){a.innerHTML=`<div class="wrap center" style="padding-top:12vh"><img src="logo.png" style="height:70px;margin-bottom:28px"><h2>Área da recepção</h2><p class="muted" style="margin-top:6px">Digite o PIN</p><div class="pin">${[0,1,2,3].map(i=>`<input inputmode="numeric" maxlength="1" type="password" data-i="${i}">`).join('')}</div><p id="pinErr" class="small" style="color:var(--rust);min-height:22px"></p></div>`;
+ const ins=[...a.querySelectorAll('.pin input')];ins[0].focus();
+ ins.forEach((el,i)=>el.addEventListener('input',async()=>{el.value=el.value.replace(/\D/g,'');if(el.value&&i<3)ins[i+1].focus();const v=ins.map(x=>x.value).join('');if(v.length===4){if(v===await cfg('pin','')){S.unlocked=true;go(S.after||'home');}else{$('#pinErr').textContent='PIN incorreto';ins.forEach(x=>x.value='');ins[0].focus();}}}));}
+// ---------- home ----------
+async function home(a){
+ const pacs=(await all('pacientes')).sort((x,y)=>(y.atual||0)-(x.atual||0));const ts=await all('termos');const pend=ts.filter(t=>!t.exportado);
+ a.innerHTML=`<div class="wrap">${topo('Termos de consentimento')}
+ ${pend.length?`<div class="card" style="border-color:var(--rust)"><div class="row"><div class="sp"><b style="font-weight:500">${pend.length} termo${pend.length>1?'s':''} ainda não salvo${pend.length>1?'s':''} em Arquivos ou no Drive</b><div class="small muted">Eles estão guardados neste iPad. Salve uma cópia fora dele.</div></div><button class="rust" id="expPend">Salvar agora</button></div></div>`:''}
+ <div class="row" style="margin:6px 0 14px"><input id="q" placeholder="Buscar paciente por nome ou CPF" style="flex:1"><button id="novoPac" class="big">+ Novo paciente</button></div>
+ <div class="list" id="lista"></div></div>`;
+ const draw=q=>{q=(q||'').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,'');const qd=q.replace(/\D/g,'');const L=pacs.filter(p=>!q||p.nome.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,'').includes(q)||(qd&&p.cpf.replace(/\D/g,'').includes(qd)));
+  $('#lista').innerHTML=L.length?L.slice(0,60).map(p=>{const n=ts.filter(t=>t.pid===p.id).length;return `<div class="card" data-pid="${p.id}"><div class="sp"><div style="font-size:19px">${esc(p.nome)}</div><div class="small muted">${esc(p.cpf)}${p.nasc?' · '+dataBR(p.nasc):''}</div></div><span class="pill">${n} termo${n===1?'':'s'}</span></div>`;}).join(''):`<p class="muted center" style="margin-top:40px">${pacs.length?'Nenhum paciente encontrado.':'Nenhum paciente cadastrado ainda.'}</p>`;
+  a.querySelectorAll('[data-pid]').forEach(c=>c.onclick=()=>go('pasta',{pid:c.dataset.pid}));};
+ draw('');$('#q').oninput=e=>draw(e.target.value);
+ $('#novoPac').onclick=()=>go('paciente',{pid:null});
+ $('#cfgBtn').onclick=()=>needPin('ajustes');
+ if($('#expPend'))$('#expPend').onclick=()=>exportar(pend);
+}
+// ---------- paciente ----------
+async function paciente(a){const p=S.pid?await get('pacientes',S.pid):{};
+ a.innerHTML=`<div class="wrap">${topo(S.pid?'Editar paciente':'Novo paciente',S.pid?'pasta':'home')}
+ <label class="f">Nome completo</label><input id="nome" value="${esc(p.nome)}" autocomplete="off" autocapitalize="words">
+ <div class="row"><div class="sp"><label class="f">CPF</label><input id="cpf" inputmode="numeric" value="${esc(p.cpf)}"></div><div class="sp"><label class="f">Data de nascimento</label><input id="nasc" type="date" value="${esc(p.nasc)}"></div></div>
+ <div class="row"><div class="sp"><label class="f">Telefone</label><input id="tel" inputmode="tel" value="${esc(p.tel)}"></div><div class="sp"><label class="f">E-mail (opcional)</label><input id="email" type="email" value="${esc(p.email)}"></div></div>
+ <p id="err" class="small" style="color:var(--rust);margin-top:12px;min-height:20px"></p></div>
+ <div class="bar"><button id="salvar" class="big">Salvar e abrir a pasta</button></div>`;
+ $('#cpf').oninput=e=>e.target.value=cpfMask(e.target.value);
+ $('#salvar').onclick=async()=>{const nome=$('#nome').value.trim().replace(/\s+/g,' '),cpf=$('#cpf').value.trim();
+  if(nome.split(' ').length<2)return $('#err').textContent='Preencha o nome completo.';
+  if(cpf.replace(/\D/g,'').length!==11)return $('#err').textContent='CPF precisa ter 11 dígitos.';
+  const dup=(await all('pacientes')).find(x=>x.cpf.replace(/\D/g,'')===cpf.replace(/\D/g,'')&&x.id!==S.pid);if(dup)return $('#err').innerHTML=`Já existe paciente com esse CPF: <a href="#" id="abrDup">${esc(dup.nome)}</a>`,$('#abrDup').onclick=e=>{e.preventDefault();go('pasta',{pid:dup.id});};
+  const rec={...p,id:p.id||uid(),nome,cpf,nasc:$('#nasc').value,tel:$('#tel').value.trim(),email:$('#email').value.trim(),criado:p.criado||Date.now(),atual:Date.now()};
+  await put('pacientes',rec);go('pasta',{pid:rec.id});};
+ if(!S.pid)$('#nome').focus();}
+// ---------- pasta ----------
+async function pasta(a){const p=await get('pacientes',S.pid);const ts=(await byPid(S.pid)).sort((x,y)=>y.criado-x.criado);
+ a.innerHTML=`<div class="wrap">${topo('Pasta do paciente','home')}
+ <div class="row" style="margin-bottom:18px"><div class="sp"><h1>${esc(p.nome)}</h1><div class="muted">${esc(p.cpf)}${p.nasc?' · nasc. '+dataBR(p.nasc):''}${p.tel?' · '+esc(p.tel):''}</div></div><button class="link" id="edit">Editar dados</button></div>
+ <button id="novoT" class="big rust" style="width:100%;margin-bottom:22px">+ Novo termo</button>
+ <div class="kick" style="margin-bottom:10px">Termos assinados</div>
+ <div class="list">${ts.length?ts.map(t=>`<div class="card" data-tid="${t.id}"><div class="sp"><div>${new Date(t.criado).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})} · ${esc(t.profissional)}</div><div class="small muted">${esc(t.procNomes.join(', '))}${t.outros?' · outros':''}</div></div>${t.exportado?'<span class="pill ok">salvo</span>':'<span class="pill warn">só no iPad</span>'}</div>`).join(''):'<p class="muted">Nenhum termo ainda.</p>'}</div></div>`;
+ $('#edit').onclick=()=>go('paciente');
+ $('#novoT').onclick=async()=>{S.sel=new Set();S.outros='';S.prof=await cfg('ultProf','');go('novo');};
+ a.querySelectorAll('[data-tid]').forEach(c=>c.onclick=async()=>{const t=await get('termos',c.dataset.tid);acoesTermo(p,t);});}
+function acoesTermo(p,t){const d=document.createElement('div');d.style.cssText='position:fixed;inset:0;background:rgba(42,28,21,.35);display:flex;align-items:flex-end;justify-content:center;z-index:10';
+ d.innerHTML=`<div class="card" style="width:min(560px,100%);margin:0 0 20px;padding:22px"><h3>${esc(nomeArq(p,t))}</h3><p class="small muted" style="margin:6px 0 16px">Documento ${t.id} · SHA-256 ${t.hash.slice(0,16)}…</p><div class="row"><button id="aSh">Salvar em Arquivos ou Drive</button><button class="ghost" id="aVer">Abrir PDF</button><span class="sp"></span><button class="link" id="aX">Fechar</button></div></div>`;
+ document.body.appendChild(d);d.onclick=e=>{if(e.target===d)d.remove();};
+ d.querySelector('#aX').onclick=()=>d.remove();
+ d.querySelector('#aSh').onclick=async()=>{await exportar([t]);d.remove();render();};
+ d.querySelector('#aVer').onclick=()=>{const u=URL.createObjectURL(t.pdf);window.open(u,'_blank');};}
+// ---------- novo termo ----------
+async function novo(a){const C=await catalogo();const profs=C.profissionais||[];const cats=[...new Set(C.procedimentos.map(p=>p.cat))];
+ a.innerHTML=`<div class="wrap">${topo('Novo termo','pasta')}
+ <label class="f">Profissional responsável</label><select id="prof"><option value="">Escolha</option>${profs.map(x=>`<option ${x===S.prof?'selected':''}>${esc(x)}</option>`).join('')}</select>
+ ${cats.map(c=>`<div class="kick cat">${esc(c)}</div>${C.procedimentos.filter(p=>p.cat===c).map(p=>`<label class="chk ${S.sel.has(p.id)?'on':''}"><input type="checkbox" value="${p.id}" ${S.sel.has(p.id)?'checked':''}><span style="font-size:18px">${esc(p.nome)}</span></label>`).join('')}`).join('')}
+ <div class="kick cat">Outros</div><textarea id="outros" placeholder="Procedimento que não está na lista, com uma descrição curta dos riscos explicados">${esc(S.outros)}</textarea></div>
+ <div class="bar"><span class="muted small sp" id="cnt" style="align-self:center"></span><button id="gerar" class="big">Gerar termo</button></div>`;
+ const upd=()=>{const n=S.sel.size+(S.outros.trim()?1:0);$('#cnt').textContent=n?`${n} procedimento${n>1?'s':''} marcado${n>1?'s':''}`:'Marque ao menos um procedimento';$('#gerar').disabled=!n||!$('#prof').value;};
+ a.querySelectorAll('.chk input').forEach(i=>i.onchange=()=>{i.checked?S.sel.add(i.value):S.sel.delete(i.value);i.closest('.chk').classList.toggle('on',i.checked);upd();});
+ $('#outros').oninput=e=>{S.outros=e.target.value;upd();};$('#prof').onchange=e=>{S.prof=e.target.value;upd();};upd();
+ $('#gerar').onclick=()=>{setCfg('ultProf',S.prof);go('revisao');};}
+// ---------- documento ----------
+async function montar(){const C=await catalogo();const p=await get('pacientes',S.pid);const procs=C.procedimentos.filter(x=>S.sel.has(x.id));return {p,procs,geral:C.geral,outros:S.outros.trim(),prof:S.prof};}
+function docHTML(m){return `<div class="hd"><img src="logo.png"><h2 style="margin-top:10px">Termo de consentimento livre e esclarecido</h2></div>
+ <p><b>Paciente:</b> ${esc(m.p.nome)} · <b>CPF:</b> ${esc(m.p.cpf)}${m.p.nasc?' · <b>Nascimento:</b> '+dataBR(m.p.nasc):''}</p><p><b>Profissional responsável:</b> ${esc(m.prof)}</p>
+ <p><b>Procedimento(s):</b> ${esc([...m.procs.map(x=>x.nome),...(m.outros?['Outros (descrito abaixo)']:[])].join('; '))}</p>
+ ${m.procs.map(x=>`<h3>${esc(x.nome)}</h3><p><b>O que é.</b> ${esc(x.oque)}</p><p><b>O que esperar.</b> ${esc(x.esperar)}</p><p><b>Riscos e possíveis intercorrências.</b> ${esc(x.riscos)}</p><p><b>Cuidados.</b> ${esc(x.cuidados)}</p>`).join('')}
+ ${m.outros?`<h3>Outros</h3><p>${esc(m.outros)}</p>`:''}
+ <h3>Declarações</h3><ol>${m.geral.map(g=>`<li>${esc(g)}</li>`).join('')}</ol>`;}
+// ---------- revisão + assinatura ----------
+let pad;
+async function revisao(a){const m=await montar();
+ a.innerHTML=`<div class="wrap"><div class="top"><button class="ghost" data-back="novo">‹ Voltar</button><div class="sp center"><div class="kick">Leia com calma</div></div><span style="width:96px"></span></div>
+ <div class="doc">${docHTML(m)}</div>
+ <label class="chk" style="margin-top:18px"><input type="checkbox" id="li"><span>Li este termo, entendi as informações e concordo com o(s) procedimento(s) descrito(s).</span></label>
+ <div class="kick" style="margin-top:18px">Assinatura do paciente</div>
+ <div class="sigbox"><div class="base"></div><div class="hint">Assine aqui com o dedo ou a caneta</div><canvas id="sig"></canvas></div>
+ <div class="row" style="margin-top:8px"><span class="small muted">${esc(m.p.nome)} · ${esc(m.p.cpf)}</span><span class="sp"></span><button class="link" id="limpar">Limpar assinatura</button></div></div>
+ <div class="bar"><button id="assinar" class="big rust" disabled>Assinar</button></div>`;
+ pad=sigPad($('#sig'),()=>chk());const chk=()=>{$('#assinar').disabled=!($('#li').checked&&pad.ok());};
+ $('#li').onchange=chk;$('#limpar').onclick=()=>{pad.clear();chk();};
+ $('#assinar').onclick=async()=>{$('#assinar').disabled=true;$('#assinar').textContent='Gerando…';try{await finalizar(m);}catch(e){console.error(e);alert('Não foi possível gerar o termo: '+e.message+'\nNada foi perdido. Tente de novo ou use o termo em papel.');$('#assinar').disabled=false;$('#assinar').textContent='Assinar';}};}
+function sigPad(cv,onchange){const box=cv.parentElement;let ctx,len=0,last=null,dpr=window.devicePixelRatio||1;
+ const fit=()=>{const r=box.getBoundingClientRect();cv.width=r.width*dpr;cv.height=r.height*dpr;ctx=cv.getContext('2d');ctx.scale(dpr,dpr);ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#1a120d';len=0;};fit();
+ const pt=e=>{const r=cv.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top,p:e.pressure||.5};};
+ cv.onpointerdown=e=>{cv.setPointerCapture(e.pointerId);last=pt(e);box.querySelector('.hint').style.opacity=0;};
+ cv.onpointermove=e=>{if(!last)return;const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];for(const ev of evs){const q=pt(ev);ctx.lineWidth=e.pointerType==='pen'?1.2+q.p*2.6:2.4;ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(q.x,q.y);ctx.stroke();len+=Math.hypot(q.x-last.x,q.y-last.y);last=q;}};
+ cv.onpointerup=cv.onpointercancel=()=>{last=null;onchange();};
+ return{ok:()=>len>60,clear:()=>{ctx.clearRect(0,0,cv.width,cv.height);len=0;box.querySelector('.hint').style.opacity=1;},png:()=>trim(cv)};}
+function trim(cv){const c=cv.getContext('2d');const{width:w,height:h}=cv;const d=c.getImageData(0,0,w,h).data;let x0=w,y0=h,x1=0,y1=0;for(let y=0;y<h;y+=2)for(let x=0;x<w;x+=2){if(d[(y*w+x)*4+3]>10){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}}
+ const pad=12;x0=Math.max(0,x0-pad);y0=Math.max(0,y0-pad);x1=Math.min(w,x1+pad);y1=Math.min(h,y1+pad);const o=document.createElement('canvas');o.width=x1-x0;o.height=y1-y0;o.getContext('2d').drawImage(cv,x0,y0,o.width,o.height,0,0,o.width,o.height);return{url:o.toDataURL('image/png'),w:o.width,h:o.height};}
+async function sha256(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+const L1=s=>String(s).replace(/₂/g,'2').replace(/[‐-―]/g,'-').replace(/[^\x00-\xFF‘’“”•…€]/g,'');
+let LOGO64=null;async function logo64(){if(LOGO64)return LOGO64;const r=await fetch('logo.png');const b=await r.blob();LOGO64=await new Promise(res=>{const f=new FileReader();f.onload=()=>res(f.result);f.readAsDataURL(b);});return LOGO64;}
+async function finalizar(m){const sig=pad.png();const id=uid();const now=new Date();const quando=agoraBR(now);
+ const disp=`${navigator.platform||''} · ${navigator.userAgent}`.slice(0,180);
+ const conteudo={id,paciente:{nome:m.p.nome,cpf:m.p.cpf,nasc:m.p.nasc},profissional:m.prof,procedimentos:m.procs.map(x=>({nome:x.nome,oque:x.oque,esperar:x.esperar,riscos:x.riscos,cuidados:x.cuidados})),outros:m.outros,declaracoes:m.geral,assinadoEm:now.toISOString(),dispositivo:disp,assinatura:sig.url};
+ const hash=await sha256(JSON.stringify(conteudo));
+ const pdf=await gerarPDF(m,{id,quando,disp,hash,sig});
+ const t={id,pid:m.p.id,criado:now.getTime(),profissional:m.prof,procNomes:m.procs.map(x=>x.nome),outros:m.outros,hash,conteudo,pdf,exportado:false};
+ await put('termos',t);m.p.atual=Date.now();await put('pacientes',m.p);
+ S.pending=id;S.unlocked=false;go('pronto');}
+async function gerarPDF(m,x){const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4'});const W=210,M=18,TW=W-2*M;let y=M;
+ const lg=await logo64();doc.addImage(lg,'PNG',W/2-22,y,44,44*503/1042);y+=27;
+ doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text('TERMO DE CONSENTIMENTO LIVRE E ESCLARECIDO',W/2,y,{align:'center'});y+=9;
+ const need=h=>{if(y+h>297-22){doc.addPage();y=M;}};
+ const para=(t,{b=false,size=12,gap=2.2,lead}={})=>{doc.setFontSize(size);if(lead){doc.setFont('helvetica','bold');}const full=L1((lead?lead+' ':'')+t);doc.setFont('helvetica',b?'bold':'normal');
+  // render lead bold then rest normal using split on the full text width
+  const lines=doc.splitTextToSize(full,TW);const lh=size*0.42;
+  lines.forEach((ln,i)=>{need(lh);if(lead&&i===0&&ln.startsWith(L1(lead))){doc.setFont('helvetica','bold');doc.text(L1(lead),M,y);const wl=doc.getTextWidth(L1(lead)+' ');doc.setFont('helvetica','normal');doc.text(ln.slice(L1(lead).length+1),M+wl,y);}else doc.text(ln,M,y);y+=lh;});y+=gap;doc.setFont('helvetica','normal');};
+ para(`${m.p.nome}   ·   CPF ${m.p.cpf}${m.p.nasc?'   ·   Nascimento '+dataBR(m.p.nasc):''}`,{lead:'Paciente:'});
+ para(m.prof,{lead:'Profissional responsável:'});
+ para([...m.procs.map(p=>p.nome),...(m.outros?['Outros (descrito abaixo)']:[])].join('; '),{lead:'Procedimento(s):',gap:4});
+ for(const p of m.procs){need(16);para(p.nome,{b:true,size:13,gap:1.5});para(p.oque,{lead:'O que é.'});para(p.esperar,{lead:'O que esperar.'});para(p.riscos,{lead:'Riscos e possíveis intercorrências.'});para(p.cuidados,{lead:'Cuidados.',gap:4});}
+ if(m.outros){need(16);para('Outros',{b:true,size:13,gap:1.5});para(m.outros,{gap:4});}
+ need(16);para('Declarações',{b:true,size:13,gap:1.5});m.geral.forEach((g,i)=>para(g,{lead:(i+1)+'.'}));
+ need(70);y+=4;const sw=70,sh=Math.min(32,sw*x.sig.h/x.sig.w);doc.addImage(x.sig.url,'PNG',M,y,sh*x.sig.w/x.sig.h,sh);y+=sh+2;doc.setDrawColor(60);doc.line(M,y,M+95,y);y+=5;
+ doc.setFontSize(11);doc.text(L1(`${m.p.nome} · CPF ${m.p.cpf}`),M,y);y+=5;doc.text(L1(`Assinado eletronicamente em ${x.quando}`),M,y);y+=8;
+ doc.setFontSize(8.5);doc.setTextColor(90);const au=doc.splitTextToSize(L1(`Registro de autenticidade · Documento ${x.id} · SHA-256 do conteúdo e da assinatura: ${x.hash} · Dispositivo: ${x.disp}`),TW);need(au.length*3.6);au.forEach(l=>{doc.text(l,M,y);y+=3.6;});doc.setTextColor(0);
+ const n=doc.getNumberOfPages();for(let i=1;i<=n;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(120);doc.text(L1(`Le Quartier Clinic · TCLE ${x.id} · página ${i} de ${n}`),W/2,297-10,{align:'center'});doc.setTextColor(0);}
+ return doc.output('blob');}
+// ---------- pronto ----------
+async function pronto(a){const t=await get('termos',S.pending);const p=await get('pacientes',t.pid);const pin=await cfg('pin','');
+ if(!S.unlocked){a.innerHTML=`<div class="wrap center" style="padding-top:16vh"><img src="logo.png" style="height:80px"><h1 style="margin-top:30px">Obrigado, ${esc(p.nome.split(' ')[0])}.</h1><p class="muted" style="margin:10px 0 34px;font-size:19px">Seu termo foi assinado.<br>Pode devolver o iPad à recepção.</p><button id="rec" class="ghost">Recepção</button></div>`;
+  $('#rec').onclick=()=>{if(pin)go('lock',{after:'pronto'});else{S.unlocked=true;render();}};return;}
+ a.innerHTML=`<div class="wrap">${topo('Termo assinado')}<div class="card"><h3>${esc(nomeArq(p,t))}</h3><p class="small muted" style="margin-top:6px">Documento ${t.id} · SHA-256 ${t.hash.slice(0,16)}…</p><p style="margin-top:12px">${t.exportado?'Cópia já salva fora do iPad.':'Agora salve uma cópia em <b style="font-weight:500">Arquivos</b> ou no <b style="font-weight:500">Drive</b>. O termo também fica guardado aqui.'}</p></div>
+ <div class="row" style="margin-top:14px"><button id="sh" class="big rust">Salvar em Arquivos ou Drive</button><button id="ver" class="ghost">Abrir PDF</button><span class="sp"></span><button class="link" id="pas">Ir para a pasta</button></div></div>`;
+ $('#sh').onclick=async()=>{await exportar([t]);render();};$('#ver').onclick=()=>window.open(URL.createObjectURL(t.pdf),'_blank');$('#pas').onclick=()=>go('pasta',{pid:t.pid});}
+// ---------- exportar ----------
+async function exportar(ts){const pacs=Object.fromEntries((await all('pacientes')).map(p=>[p.id,p]));const files=ts.map(t=>new File([t.pdf],nomeArq(pacs[t.pid]||{nome:'Paciente'},t),{type:'application/pdf'}));
+ let ok=false;try{if(navigator.canShare&&navigator.canShare({files})){await navigator.share({files,title:'Termos assinados'});ok=true;}}catch(e){if(e.name==='AbortError'){toast('Cancelado. O termo continua guardado aqui.');return;}}
+ if(!ok){for(const f of files){const u=URL.createObjectURL(f);const l=document.createElement('a');l.href=u;l.download=f.name;document.body.appendChild(l);l.click();l.remove();await new Promise(r=>setTimeout(r,400));}ok=true;}
+ for(const t of ts){t.exportado=Date.now();await put('termos',t);}toast(files.length>1?`${files.length} termos enviados para salvar`:'Termo enviado para salvar');}
+// ---------- ajustes ----------
+async function ajustes(a){const C=await catalogo();const pin=await cfg('pin','');const ts=await all('termos');
+ a.innerHTML=`<div class="wrap">${topo('Ajustes','home')}
+ <div class="card"><h3>PIN da recepção</h3><p class="small muted" style="margin:4px 0 10px">Protege os ajustes e a tela depois da assinatura, para o paciente não navegar em outras pastas.</p><div class="row"><input id="pin" inputmode="numeric" maxlength="4" placeholder="4 dígitos" value="${esc(pin)}" style="max-width:160px"><button id="pinS">Salvar PIN</button></div></div>
+ <div class="card"><h3>Profissionais</h3><textarea id="profs">${esc((C.profissionais||[]).join('\n'))}</textarea><p class="small muted">Um por linha.</p><button id="profS" style="margin-top:8px">Salvar</button></div>
+ <div class="card"><div class="row"><h3 class="sp">Procedimentos e textos</h3><button id="procAdd" class="ghost">+ Adicionar</button></div><p class="small muted" style="margin:4px 0 10px">Os textos iniciais são modelos para revisão. Troque pelos textos dos termos em papel da clínica.</p><div class="list">${C.procedimentos.map(p=>`<div class="card" data-proc="${p.id}" style="margin-bottom:8px"><div class="sp">${esc(p.nome)}<div class="small muted">${esc(p.cat)}</div></div><span class="pill">editar</span></div>`).join('')}</div></div>
+ <div class="card"><h3>Declarações gerais</h3><textarea id="geral" style="min-height:220px">${esc(C.geral.join('\n\n'))}</textarea><p class="small muted">Separe as declarações com uma linha em branco.</p><button id="geralS" style="margin-top:8px">Salvar</button></div>
+ <div class="card"><h3>Cópia de segurança</h3><p class="small muted" style="margin:4px 0 10px">${ts.length} termo(s) neste iPad. A cópia inclui pacientes, termos e textos.</p><div class="row"><button id="bk">Fazer cópia de segurança</button><button class="ghost" id="rs">Restaurar cópia</button><input type="file" id="rsF" accept=".json,application/json" class="hidden"></div></div>
+ <div class="card"><button class="link" id="padrao">Voltar os textos ao modelo inicial</button></div></div>`;
+ $('#pinS').onclick=async()=>{const v=$('#pin').value.replace(/\D/g,'');if(v&&v.length!==4)return toast('O PIN precisa ter 4 dígitos');await setCfg('pin',v);toast(v?'PIN salvo':'PIN removido');};
+ $('#profS').onclick=async()=>{C.profissionais=$('#profs').value.split('\n').map(s=>s.trim()).filter(Boolean);await setCfg('catalogo',C);toast('Profissionais salvos');};
+ $('#geralS').onclick=async()=>{C.geral=$('#geral').value.split(/\n\s*\n/).map(s=>s.trim().replace(/\s*\n\s*/g,' ')).filter(Boolean);await setCfg('catalogo',C);toast('Declarações salvas');};
+ a.querySelectorAll('[data-proc]').forEach(c=>c.onclick=()=>go('proced',{proc:c.dataset.proc}));$('#procAdd').onclick=()=>go('proced',{proc:null});
+ $('#padrao').onclick=async()=>{if(confirm('Voltar todos os textos ao modelo inicial? Os termos já assinados não mudam.')){await del('cfg','catalogo');toast('Textos restaurados');render();}};
+ $('#bk').onclick=backup;$('#rs').onclick=()=>$('#rsF').click();$('#rsF').onchange=e=>restaurar(e.target.files[0]);}
+async function proced(a){const C=await catalogo();const p=C.procedimentos.find(x=>x.id===S.proc)||{id:'p'+uid().slice(0,8),cat:'Injetáveis',nome:'',oque:'',esperar:'',riscos:'',cuidados:''};const novo=!C.procedimentos.find(x=>x.id===S.proc);
+ const F=[['nome','Nome do procedimento',0],['cat','Categoria',0],['oque','O que é',1],['esperar','O que esperar',1],['riscos','Riscos e possíveis intercorrências',1],['cuidados','Cuidados',1]];
+ a.innerHTML=`<div class="wrap">${topo(novo?'Novo procedimento':'Editar procedimento','ajustes')}${F.map(([k,l,t])=>`<label class="f">${l}</label>${t?`<textarea id="${k}">${esc(p[k])}</textarea>`:`<input id="${k}" value="${esc(p[k])}">`}`).join('')}${novo?'':'<button class="link" id="rm" style="margin-top:16px;color:var(--rust)">Remover este procedimento</button>'}</div><div class="bar"><button id="ok" class="big">Salvar</button></div>`;
+ $('#ok').onclick=async()=>{F.forEach(([k])=>p[k]=$('#'+k).value.trim());if(!p.nome)return toast('Dê um nome ao procedimento');if(novo)C.procedimentos.push(p);await setCfg('catalogo',C);toast('Salvo');go('ajustes');};
+ if($('#rm'))$('#rm').onclick=async()=>{if(!confirm('Remover '+p.nome+'? Termos já assinados não mudam.'))return;C.procedimentos=C.procedimentos.filter(x=>x.id!==p.id);await setCfg('catalogo',C);go('ajustes');};}
+const b64=blob=>new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.readAsDataURL(blob);});
+async function backup(){const pacs=await all('pacientes');const ts=await all('termos');const out={app:'lqtermos',versao:1,gerado:new Date().toISOString(),catalogo:await cfg('catalogo',null),pacientes:pacs,termos:await Promise.all(ts.map(async t=>({...t,pdf:await b64(t.pdf)})))};
+ const d=new Date(),z=n=>String(n).padStart(2,'0');const f=new File([JSON.stringify(out)],`Termos backup ${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}.json`,{type:'application/json'});
+ try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f]});await setCfg('ultBackup',Date.now());return toast('Cópia enviada');}}catch(e){if(e.name==='AbortError')return;}
+ const l=document.createElement('a');l.href=URL.createObjectURL(f);l.download=f.name;l.click();await setCfg('ultBackup',Date.now());}
+async function restaurar(file){if(!file)return;try{const j=JSON.parse(await file.text());if(j.app!=='lqtermos')throw new Error('arquivo não é uma cópia deste app');
+ let n=0;for(const p of j.pacientes){if(!await get('pacientes',p.id)){await put('pacientes',p);}}for(const t of j.termos){if(!await get('termos',t.id)){const r=await fetch(t.pdf);t.pdf=await r.blob();await put('termos',t);n++;}}
+ if(j.catalogo&&confirm('Usar também os textos de procedimentos da cópia?'))await setCfg('catalogo',j.catalogo);toast(`${n} termo(s) restaurado(s)`);render();}catch(e){alert('Não foi possível restaurar: '+e.message);}}
+// ---------- start ----------
+(async()=>{await openDB();if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
+ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js',{scope:'./',updateViaCache:'none'}).then(r=>{document.addEventListener('visibilitychange',()=>{if(!document.hidden)r.update().catch(()=>{});});}).catch(()=>{});
+ render();})();
+</script>
+</body>
+</html>
