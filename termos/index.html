@@ -57,6 +57,14 @@ label.f{display:block;margin:14px 0 6px;font-size:13px;letter-spacing:.12em;text
 .toast{position:fixed;left:50%;top:18px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:999px;font-size:15px;z-index:20;opacity:0;transition:opacity .3s}
 .toast.on{opacity:1}
 .hidden{display:none!important}
+.thx{position:fixed;inset:0;z-index:30;background:#E8E1D5 url(shade.jpg) center/cover;background-blend-mode:multiply;display:flex;align-items:center;justify-content:center;text-align:center}
+.thx::after{content:"";position:absolute;inset:0;background:url(grain.png);mix-blend-mode:multiply;pointer-events:none}
+.thx-in{position:relative;z-index:1;opacity:0;animation:surge 2.2s ease .25s forwards}
+.thx-in img{width:min(62vw,360px);display:block;margin:0 auto 34px}
+.thx-in h1{font-size:44px}.thx-in p{margin-top:12px;font-size:19px;color:var(--ink2);line-height:1.5}
+.thx-rec{position:absolute;bottom:calc(28px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:2;opacity:.55}
+@keyframes surge{from{opacity:0;filter:blur(6px);transform:scale(.985)}to{opacity:1;filter:blur(0);transform:none}}
+.revog{background:var(--rust);color:#fff;border-radius:14px;padding:14px 18px;margin-bottom:16px}
 </style>
 </head>
 <body>
@@ -103,13 +111,13 @@ async function home(a){
  const pacs=(await all('pacientes')).sort((x,y)=>(y.atual||0)-(x.atual||0));const ts=await all('termos');const pend=ts.filter(t=>!t.exportado);
  a.innerHTML=`<div class="wrap">${topo('Termos de consentimento')}
  ${pend.length?`<div class="card" style="border-color:var(--rust)"><div class="row"><div class="sp"><b style="font-weight:500">${pend.length} termo${pend.length>1?'s':''} ainda não salvo${pend.length>1?'s':''} em Arquivos ou no Drive</b><div class="small muted">Eles estão guardados neste iPad. Salve uma cópia fora dele.</div></div><button class="rust" id="expPend">Salvar agora</button></div></div>`:''}
- <div class="row" style="margin:6px 0 14px"><input id="q" placeholder="Buscar paciente por nome ou CPF" style="flex:1"><button id="novoPac" class="big">+ Novo paciente</button></div>
+ ${S.revogado?'<div class="revog">A licença de uso deste app foi encerrada. Os termos já assinados continuam disponíveis para salvar e fazer cópia de segurança.</div>':''}<div class="row" style="margin:6px 0 14px"><input id="q" placeholder="Buscar paciente por nome ou CPF" style="flex:1"><button id="novoPac" class="big">+ Novo paciente</button></div>
  <div class="list" id="lista"></div></div>`;
  const draw=q=>{q=(q||'').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,'');const qd=q.replace(/\D/g,'');const L=pacs.filter(p=>!q||p.nome.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,'').includes(q)||(qd&&p.cpf.replace(/\D/g,'').includes(qd)));
   $('#lista').innerHTML=L.length?L.slice(0,60).map(p=>{const n=ts.filter(t=>t.pid===p.id).length;return `<div class="card" data-pid="${p.id}"><div class="sp"><div style="font-size:19px">${esc(p.nome)}</div><div class="small muted">${esc(p.cpf)}${p.nasc?' · '+dataBR(p.nasc):''}</div></div><span class="pill">${n} termo${n===1?'':'s'}</span></div>`;}).join(''):`<p class="muted center" style="margin-top:40px">${pacs.length?'Nenhum paciente encontrado.':'Nenhum paciente cadastrado ainda.'}</p>`;
   a.querySelectorAll('[data-pid]').forEach(c=>c.onclick=()=>go('pasta',{pid:c.dataset.pid}));};
  draw('');$('#q').oninput=e=>draw(e.target.value);
- $('#novoPac').onclick=()=>go('paciente',{pid:null});
+ $('#novoPac').onclick=()=>S.revogado?toast('Licença de uso encerrada. Só é possível salvar os termos já assinados.'):go('paciente',{pid:null});
  $('#cfgBtn').onclick=()=>needPin('ajustes');
  if($('#expPend'))$('#expPend').onclick=()=>exportar(pend);
 }
@@ -137,7 +145,7 @@ async function pasta(a){const p=await get('pacientes',S.pid);const ts=(await byP
  <div class="kick" style="margin-bottom:10px">Termos assinados</div>
  <div class="list">${ts.length?ts.map(t=>`<div class="card" data-tid="${t.id}"><div class="sp"><div>${new Date(t.criado).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})} · ${esc(t.profissional)}</div><div class="small muted">${esc(t.procNomes.join(', '))}${t.outros?' · outros':''}</div></div>${t.exportado?'<span class="pill ok">salvo</span>':'<span class="pill warn">só no iPad</span>'}</div>`).join(''):'<p class="muted">Nenhum termo ainda.</p>'}</div></div>`;
  $('#edit').onclick=()=>go('paciente');
- $('#novoT').onclick=async()=>{S.sel=new Set();S.outros='';S.prof=await cfg('ultProf','');go('novo');};
+ $('#novoT').onclick=async()=>{if(S.revogado)return toast('Licença de uso encerrada. Só é possível salvar os termos já assinados.');S.sel=new Set();S.outros='';S.prof=await cfg('ultProf','');go('novo');};
  a.querySelectorAll('[data-tid]').forEach(c=>c.onclick=async()=>{const t=await get('termos',c.dataset.tid);acoesTermo(p,t);});}
 function acoesTermo(p,t){const d=document.createElement('div');d.style.cssText='position:fixed;inset:0;background:rgba(42,28,21,.35);display:flex;align-items:flex-end;justify-content:center;z-index:10';
  d.innerHTML=`<div class="card" style="width:min(560px,100%);margin:0 0 20px;padding:22px"><h3>${esc(nomeArq(p,t))}</h3><p class="small muted" style="margin:6px 0 16px">Documento ${t.id} · SHA-256 ${t.hash.slice(0,16)}…</p><div class="row"><button id="aSh">Salvar em Arquivos ou Drive</button><button class="ghost" id="aVer">Abrir PDF</button><span class="sp"></span><button class="link" id="aX">Fechar</button></div></div>`;
@@ -218,7 +226,7 @@ async function gerarPDF(m,x){const{jsPDF}=window.jspdf;const doc=new jsPDF({unit
  return doc.output('blob');}
 // ---------- pronto ----------
 async function pronto(a){const t=await get('termos',S.pending);const p=await get('pacientes',t.pid);const pin=await cfg('pin','');
- if(!S.unlocked){a.innerHTML=`<div class="wrap center" style="padding-top:16vh"><img src="logo.png" style="height:80px"><h1 style="margin-top:30px">Obrigado, ${esc(p.nome.split(' ')[0])}.</h1><p class="muted" style="margin:10px 0 34px;font-size:19px">Seu termo foi assinado.<br>Pode devolver o iPad à recepção.</p><button id="rec" class="ghost">Recepção</button></div>`;
+ if(!S.unlocked){a.innerHTML=`<div class="thx"><div class="thx-in"><img src="logo.png" alt="Le Quartier"><h1>Obrigado, ${esc(p.nome.split(' ')[0])}.</h1><p>Seu termo foi assinado.<br>Pode devolver o iPad à recepção.</p></div><button id="rec" class="link thx-rec">Recepção</button></div>`;
   $('#rec').onclick=()=>{if(pin)go('lock',{after:'pronto'});else{S.unlocked=true;render();}};return;}
  a.innerHTML=`<div class="wrap">${topo('Termo assinado')}<div class="card"><h3>${esc(nomeArq(p,t))}</h3><p class="small muted" style="margin-top:6px">Documento ${t.id} · SHA-256 ${t.hash.slice(0,16)}…</p><p style="margin-top:12px">${t.exportado?'Cópia já salva fora do iPad.':'Agora salve uma cópia em <b style="font-weight:500">Arquivos</b> ou no <b style="font-weight:500">Drive</b>. O termo também fica guardado aqui.'}</p></div>
  <div class="row" style="margin-top:14px"><button id="sh" class="big rust">Salvar em Arquivos ou Drive</button><button id="ver" class="ghost">Abrir PDF</button><span class="sp"></span><button class="link" id="pas">Ir para a pasta</button></div></div>`;
@@ -257,7 +265,8 @@ async function restaurar(file){if(!file)return;try{const j=JSON.parse(await file
  let n=0;for(const p of j.pacientes){if(!await get('pacientes',p.id)){await put('pacientes',p);}}for(const t of j.termos){if(!await get('termos',t.id)){const r=await fetch(t.pdf);t.pdf=await r.blob();await put('termos',t);n++;}}
  if(j.catalogo&&confirm('Usar também os textos de procedimentos da cópia?'))await setCfg('catalogo',j.catalogo);toast(`${n} termo(s) restaurado(s)`);render();}catch(e){alert('Não foi possível restaurar: '+e.message);}}
 // ---------- start ----------
-(async()=>{await openDB();if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
+async function licenca(){try{const r=await fetch('status.json?t='+Date.now(),{cache:'no-store'});if(r.ok){const j=await r.json();if('ativo' in j)await setCfg('revogado',j.ativo===false);}}catch(e){}return await cfg('revogado',false);}
+(async()=>{await openDB();S.revogado=await licenca();if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
  if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js',{scope:'./',updateViaCache:'none'}).then(r=>{document.addEventListener('visibilitychange',()=>{if(!document.hidden)r.update().catch(()=>{});});}).catch(()=>{});
  render();})();
 </script>

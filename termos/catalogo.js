@@ -1,6 +1,6 @@
 // Modelos iniciais para revisão da clínica. Cada texto pode ser trocado em Ajustes > Procedimentos.
 window.CATALOGO_PADRAO = {
-  versao: 1,
+  versao: 2,
   geral: [
     'Fui atendido(a) em consulta, tive meu caso avaliado e recebi explicações claras sobre o(s) procedimento(s) marcado(s) neste termo, suas alternativas, os resultados esperados e os riscos.',
     'Tive oportunidade de fazer perguntas e todas foram respondidas. Entendi que a medicina não é uma ciência exata e que o resultado depende também da resposta do meu organismo e dos cuidados que eu seguir, não havendo garantia de resultado específico.',
@@ -15,7 +15,7 @@ window.CATALOGO_PADRAO = {
       oque: 'Laser ablativo que cria microcolunas de lesão controlada na pele para estimular renovação e colágeno. Pode ser associado a ativos aplicados logo após o laser.',
       esperar: 'Vermelhidão, inchaço e sensação de calor nos primeiros dias, seguidos de descamação ou crostas finas por cerca de 5 a 10 dias. O resultado se constrói ao longo de semanas a meses.',
       riscos: 'Dor ou ardor; vermelhidão prolongada; manchas escuras (hiperpigmentação) ou claras (hipopigmentação); acne ou milium; infecção bacteriana, viral (reativação de herpes) ou fúngica; cicatriz; queimadura; resultado abaixo do esperado.',
-      cuidados: 'Proteção solar rigorosa, não remover crostas, usar os produtos indicados, evitar sol, piscina, sauna e exercício intenso no período orientado. O manual do fabricante recomenda intervalo de 3 a 6 meses após toxina botulínica ou ácido hialurônico; quando combinados, o médico avaliou meu caso e considerou a associação apropriada, e fui informado(a) disso.' },
+      cuidados: 'Proteção solar rigorosa, não remover crostas, usar os produtos indicados, evitar sol, piscina, sauna e exercício intenso no período orientado.' },
     { id: 'fotona', cat: 'Tecnologias', nome: 'Laser Fotona',
       oque: 'Plataforma de laser (Er:YAG e Nd:YAG) usada para textura, poros, firmeza, manchas e rejuvenescimento, em modos ablativos ou não ablativos conforme a indicação.',
       esperar: 'Calor, vermelhidão e leve inchaço por horas a poucos dias, conforme a intensidade. Pode haver descamação fina.',
