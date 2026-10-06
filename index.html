@@ -129,9 +129,10 @@ input.wide{width:100%}
 .camtop{flex-wrap:wrap}
 .camlbl{flex:1;text-align:center;color:#eee;font-weight:600;font-size:14px}
 .poses{flex-basis:100%;display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
-.poses span{font-size:11.5px;padding:3px 9px;border-radius:999px;border:1px solid rgba(255,255,255,.28);color:#bbb;background:rgba(0,0,0,.35)}
-.poses span.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-.poses span.now{border-color:#fff;color:#fff}.poses span.on.now{box-shadow:0 0 0 2px #fff}
+.poses button{font:inherit;font-size:13px;padding:7px 11px;border-radius:999px;border:1px solid rgba(255,255,255,.35);color:#ddd;background:rgba(0,0,0,.45);cursor:pointer}
+.poses button b{font-weight:600;margin-left:4px;opacity:.75}
+.poses button.sel{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.poses button.has:not(.sel){border-color:var(--accent);color:#fff}
 .cstrip{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px;touch-action:pan-x}
 .cstrip::-webkit-scrollbar{display:none}
 .cth{flex:0 0 40px;height:52px;border-radius:6px;overflow:hidden;position:relative;border:0;padding:0;background:#222;opacity:.7;cursor:pointer}
@@ -227,6 +228,7 @@ input.wide{width:100%}
   </div>
   <input type="search" class="wide psearch" id="pSearch" placeholder="🔍  Buscar paciente" autocomplete="off" aria-label="Buscar paciente">
   <div class="plist" id="projList"></div>
+  <p class="note" id="storeNote" style="text-align:center;margin-top:14px"></p>
   <div class="tools"><button class="btn small" id="freeMode" type="button">Montagem avulsa</button><button class="btn small" id="restore" type="button">Restaurar backup</button></div>
   <p class="note">As fotos ficam guardadas só neste aparelho, dentro do app. Ao fechar cada paciente, toque em Backup e guarde o arquivo no Drive ou em Arquivos.</p>
   <p class="note" style="opacity:.6">Versão 22</p>
@@ -265,7 +267,7 @@ input.wide{width:100%}
       <div class="side-hint" id="hint">Arraste para mover · pinça para zoom e giro</div>
       <div class="halves" id="halves" hidden>
         <div class="half"><span class="htag">Antes</span><button class="plus" id="plusA" type="button" aria-label="Escolher fotos de antes no álbum">+</button><button class="hcam" id="camHA" type="button">Câmera</button></div>
-        <div class="half"><span class="htag">Depois</span><button class="plus" id="plusD" type="button" aria-label="Escolher fotos de depois no álbum">+</button><button class="hcam" id="camHD" type="button">Câmera</button></div>
+        <div class="half"><span class="htag">Depois</span><button class="plus" id="plusD" type="button" aria-label="Escolher fotos de depois no álbum">+</button><button class="hcam" id="camHD" type="button">Câmera com o antes</button></div>
       </div>
     </div>
     <div class="etools" id="etools" hidden>
@@ -366,7 +368,7 @@ input.wide{width:100%}
     <div class="seg" id="camSeg" role="group" aria-label="Guardar em"><button id="cTA" aria-pressed="false">Antes</button><button id="cTD" aria-pressed="true">Depois</button></div>
     <span class="camlbl" id="camLbl" hidden></span>
     <button class="btn small" id="camFlip">Virar</button>
-    <div class="poses" id="camPoses" hidden><span data-p="Perfil E">Perfil E</span><span data-p="45° E">45° E</span><span data-p="Frente">Frente</span><span data-p="45° D">45° D</span><span data-p="Perfil D">Perfil D</span></div>
+    <div class="poses" id="camPoses" role="group" aria-label="Ângulo da foto" hidden><button type="button" data-p="Perfil E">Perfil E</button><button type="button" data-p="45° E">45° E</button><button type="button" data-p="Frente">Frente</button><button type="button" data-p="45° D">45° D</button><button type="button" data-p="Perfil D">Perfil D</button></div>
   </div>
   <div class="cambot">
     <div class="camrow"><span class="chip" id="camFit" style="color:#eee">Procurando o rosto…</span><label class="check" style="color:#eee"><input type="checkbox" id="pyrOn" checked> Pirâmide</label></div>
@@ -376,7 +378,7 @@ input.wide{width:100%}
       <button class="btn small" id="ghostFlip" type="button">Espelhar</button>
     </div>
     <div class="cstrip" id="camStrip" hidden></div>
-    <div class="shotrow"><button class="btn small" id="camGal" type="button">Galeria</button><button class="shut" id="camShot" aria-label="Tirar foto"></button><button class="btn small" id="camRedo" type="button" hidden>Refazer anterior</button></div>
+    <div class="shotrow"><button class="btn small" id="camGal" type="button">Galeria</button><button class="shut" id="camShot" aria-label="Tirar foto"></button><button class="btn small" id="camRedo" type="button" hidden>Refazer anterior</button><button class="btn small primary" id="camToD" type="button" hidden>Fazer o depois</button></div>
     <p class="note" id="camMsg" style="color:#ccc;text-align:center">Alinhe os dois exocantos na linha de cima, o pronasal no vértice e o lábio inferior no ponto de baixo.</p>
   </div>
 </div>
@@ -1037,7 +1039,7 @@ function previews(src, w, h) {
 }
 
 // ---------- câmera com pirâmide (Prisma) e fantasma do antes ----------
-let camStream = null, camFacing = 'environment', camTarget = 'D', camMode = 'free', ghostFlip = false;
+let camStream = null, camFacing = 'environment', camTarget = 'D', camMode = 'free', ghostFlip = false, camPose = 'Frente';
 const cv2 = $('camOv'), vid = $('camVid');
 let Pj = null, curA = 0, lastDone = -1, camSelA = -1, screen = 'home';
 const pendingDone = new Set();
@@ -1236,7 +1238,6 @@ function camDraw() {
   const r = cv2.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
   if (cv2.width !== Math.round(r.width * dpr)) { cv2.width = r.width * dpr; cv2.height = r.height * dpr; }
   const g = cv2.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, r.width, r.height);
-  if (camMode === 'A') { const pz = poseOf(curYaw()); [...$('camPoses').children].forEach(c => c.classList.toggle('now', c.dataset.p === pz)); }
   if (!$('pyrOn').checked) return;
   const T = target ? target.pts.map(p => toScreen(p, r, target.w, target.h)) : null;
   if (T) drawPyr(g, T, 'rgba(255,255,255,.85)', true, target.hid);
@@ -1304,10 +1305,12 @@ function camUI() {
   $('camSeg').hidden = !free; $('camLbl').hidden = free; $('camClose').textContent = free ? 'Fechar' : 'Concluir';
   $('camPoses').hidden = camMode !== 'A'; $('camStrip').hidden = free;
   $('camRedo').hidden = camMode !== 'D' || lastDone < 0;
+  $('camToD').hidden = camMode !== 'A' || !camA().length;
+  if (!free) $('camClose').textContent = camMode === 'A' ? 'Salvar e sair' : 'Concluir';
   if (camMode === 'A') {
-    const L = camA(), have = new Set(L.map(s => s.pose));
+    const L = camA(), cnt = {}; L.forEach(s => { cnt[s.pose] = (cnt[s.pose] || 0) + 1; });
     $('camLbl').textContent = Pj.rec.name + ' · antes · ' + L.length;
-    [...$('camPoses').children].forEach(c => c.classList.toggle('on', have.has(c.dataset.p)));
+    [...$('camPoses').children].forEach(c => { const n = cnt[c.dataset.p] || 0; c.innerHTML = c.dataset.p + (n ? '<b>' + n + '</b>' : ''); c.classList.toggle('sel', c.dataset.p === camPose); c.classList.toggle('has', n > 0); c.setAttribute('aria-pressed', c.dataset.p === camPose); });
     camStripBuild(L);
     const pk = L[camSelA];
     $('camPeek').hidden = !pk;
@@ -1318,7 +1321,7 @@ function camUI() {
       $('peekGal').textContent = d ? 'Trocar depois (galeria)' : 'Depois da galeria';
       $('peekCam').textContent = d ? 'Refazer depois na câmera' : 'Fotografar depois';
     }
-    $('camMsg').textContent = pk ? 'Escolha o depois deste antes: da galeria ou fotografando agora. O × apaga o antes.' : 'Fotografe as poses em sequência. Cada clique já fica salvo no projeto. Toque numa miniatura para ver e parear.';
+    $('camMsg').textContent = pk ? 'Escolha o depois deste antes: da galeria ou fotografando agora. O × apaga o antes.' : 'Escolha o ângulo lá em cima e tire quantas fotos quiser dele. Cada foto já fica salva. Para fazer o depois agora, toque em Fazer o depois; para fazer outro dia, Salvar e sair.';
   } else if (camMode === 'D') {
     $('camPeek').hidden = true;
     const L = camA(), a = L[curA];
@@ -1358,6 +1361,8 @@ $('pyrOn').onchange = camDraw;
 $('ghostOn').onchange = camGhost; $('ghostA').oninput = camGhost;
 $('ghostFlip').onclick = () => { ghostFlip = !ghostFlip; camGhost(); };
 $('camRedo').onclick = () => { if (lastDone < 0) return; curA = lastDone; lastDone = -1; camUI(); };
+[...$('camPoses').children].forEach(b => b.onclick = () => { camPose = b.dataset.p; camSelA = -1; camUI(); });
+$('camToD').onclick = () => { const L = camA(); if (!L.length) return; shotChain.then(() => { camMode = 'D'; camSelA = -1; lastDone = -1; pendingDone.clear(); curA = Math.max(0, L.findIndex(a => !depOf(a))); camUI(); }); };
 window.addEventListener('resize', camDraw);
 
 let shotChain = Promise.resolve();
@@ -1382,7 +1387,7 @@ $('camShot').onclick = () => {
   const mode = camMode; let a = null;
   if (mode === 'D') { a = camA()[curA]; if (!a) return; pendingDone.add(a.id); lastDone = curA; advance(); camUI(); }
   shotChain = shotChain.then(async () => {
-    const rec = await shotFromCanvas(c, { kind: mode, pyr, yaw, pose: mode === 'D' ? a.pose : poseOf(yaw) });
+    const rec = await shotFromCanvas(c, { kind: mode, pyr, yaw, pose: mode === 'D' ? a.pose : camPose, poseManual: mode === 'A' || !!a.poseManual });
     if (mode === 'D') { rec.of = a.id; const old = depOf(a); if (old) await removeShot(old); }
     Pj.shots.push(rec); await DB.put('shots', rec); pendingDone.delete(rec.of);
     if (curComp) { curComp[mode].push(rec.id); if (mode === 'A' && !curComp.selA) curComp.selA = rec.id; if (mode === 'D' && a && curComp.selA === a.id) curComp.selD = rec.id; }
@@ -1459,7 +1464,7 @@ async function runDet() {
     try {
       const im = await loadImg(r.prev), p = await detectOn(im);
       r.pyr = p ? { pts: [...p], w: r.w, h: r.h, hid: p.hid } : null; r.yaw = p ? p.yaw : null;
-      if (r.kind === 'A' || !r.pose || r.pose === '—') r.pose = poseOf(r.yaw);
+      if (!r.poseManual && (r.kind === 'A' || !r.pose || r.pose === '—')) r.pose = poseOf(r.yaw);
       if (Pj && Pj.shots.includes(r)) DB.put('shots', r).catch(() => {});
       if (picking) { render(); pkLabels(); }
     } catch (e) { r.pyr = null; }
@@ -1480,7 +1485,7 @@ async function renderHome() {
   let ps = []; try { ps = (await DB.all('projects')).sort((a, b) => (b.u || 0) - (a.u || 0)); } catch (e) { setStatus('Armazenamento indisponível', false); }
   const box = $('projList'); box.innerHTML = '';
   if (!ps.length) { box.innerHTML = '<p class="note">Nenhum paciente ainda. Toque em Novo paciente para começar.</p>'; return; }
-  const q = slug($('pSearch').value || '').replace(/-/g, ' ').trim();
+  const raw = ($('pSearch').value || '').trim(), q = raw ? slug(raw).replace(/-/g, ' ').trim() : ''; // slug('') devolve 'paciente': sem esta checagem a lista ficava vazia
   if (q) ps = ps.filter(p => slug(p.name).replace(/-/g, ' ').includes(q));
   if (!ps.length) { box.innerHTML = '<p class="note">Nenhum paciente com esse nome.</p>'; return; }
   ps.forEach(p => {
@@ -1731,7 +1736,7 @@ $('newProj').onclick = () => { $('newForm').hidden = false; $('newProj').hidden 
 $('newCancel').onclick = () => { $('newForm').hidden = true; $('newProj').hidden = false; };
 async function newProjRec(name) {
   const rec = { id: newId('p'), name, t: Date.now(), u: Date.now(), nA: 0, nP: 0 };
-  try { await DB.put('projects', rec); } catch (e) { setStatus('Não consegui criar o projeto', false); return false; }
+  try { await DB.put('projects', rec); if (!await DB.get('projects', rec.id)) throw new Error('não gravou'); } catch (e) { setStatus('Não consegui salvar o projeto neste aparelho', false); return false; }
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   $('newForm').hidden = true; $('newProj').hidden = false;
   Pj = { rec, shots: [] }; return true;
@@ -1939,6 +1944,18 @@ $('back').onclick = () => {
   else if (screen === 'proj') { stopBg(); Pj = null; show('home'); renderHome(); }
 };
 show('home'); renderHome();
+// ---------- onde os projetos ficam guardados ----------
+// No iPhone, o Safari e o ícone da tela de início guardam os projetos em lugares SEPARADOS,
+// e o Safari pode apagar os dados de sites sem uso depois de alguns dias. Por isso o aviso.
+(async () => {
+  const app = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  let pers = false;
+  try { if (navigator.storage && navigator.storage.persist) pers = await navigator.storage.persisted() || await navigator.storage.persist(); } catch (e) {}
+  let n = 0; try { n = (await DB.all('projects')).length; } catch (e) {}
+  const el = $('storeNote');
+  if (!app) { el.style.color = 'var(--warn)'; el.textContent = 'Você abriu pelo navegador. Os projetos ficam guardados separados do ícone da tela de início e podem ser apagados pelo Safari. Use sempre o ícone do Prisma.'; }
+  else el.textContent = n + (n === 1 ? ' paciente guardado' : ' pacientes guardados') + ' neste aparelho' + (pers ? ' · armazenamento protegido' : ' · faça backup dos importantes');
+})();
 })();
 </script>
 
