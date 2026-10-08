@@ -225,6 +225,14 @@ input.wide{width:100%}
 @media(max-width:899px){.stage{position:relative;top:auto}#workflow{position:relative}#top h1{font-size:13px}#statusChip{max-width:45%;font-size:11px}.exGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 #importPool{position:absolute;z-index:6;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;width:94px;height:94px;padding:10px;font-size:14px;background:var(--panel);border:1px solid var(--accent)}
 #plusA,#plusD{display:none!important}.sessionCard{border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0}.sessionThumbs{display:flex;overflow:auto;gap:4px;margin:10px 0}.sessionThumbs img{height:80px;width:60px;object-fit:cover}.sessionCard .flex{margin-top:8px}
+/* Keep the comparison visible while the angle row scrolls behind the header. */
+html,body{overflow-x:clip}
+.stage{position:sticky;top:var(--comparison-top,58px);align-self:start;z-index:5;background:var(--bg)}
+@media(max-width:899px){
+  .stage{padding-top:0;padding-bottom:6px}
+  .view{width:min(100%,calc(52svh * 4 / 5));margin-inline:auto}
+  .view.full{width:min(100%,calc(52svh * 9 / 16))}
+}
 </style>
 </head>
 <body>
@@ -246,7 +254,7 @@ input.wide{width:100%}
   <p class="note" id="storeNote" style="text-align:center;margin-top:14px"></p>
   <div class="tools"><button class="btn small" id="freeMode" type="button">Montagem avulsa</button><button class="btn small" id="restore" type="button">Restaurar backup</button></div>
   <p class="note">As fotos ficam guardadas só neste aparelho, dentro do app. Ao fechar cada paciente, toque em Backup e guarde o arquivo no Drive ou em Arquivos.</p>
-  <p class="note" style="opacity:.6">Versão 26</p>
+  <p class="note" style="opacity:.6">Versão 27</p>
 </section>
 
 <section id="proj" class="scr" hidden>
@@ -433,6 +441,15 @@ const COL = { A: 0.27 * W, D: 0.73 * W };
 const HEAD_TOP = 0.30 * H, HEAD_W = 0.40 * W, EYE_Y = 0.43 * H, FACE_D = 0.165 * W;
 const MAX_SRC = 2200, RES = 1024, CHUNKS = 11, MODEL_SIZE = 44342436;
 const $ = id => document.getElementById(id);
+function updateComparisonTop() {
+  const headerHeight = $('top').getBoundingClientRect().height;
+  const anglesHeight = $('workflow').hidden ? 0 : $('workflow').getBoundingClientRect().height;
+  document.documentElement.style.setProperty('--comparison-top', `${headerHeight - anglesHeight}px`);
+}
+const comparisonLayout = new ResizeObserver(updateComparisonTop);
+comparisonLayout.observe($('top')); comparisonLayout.observe($('workflow'));
+window.addEventListener('resize', updateComparisonTop);
+updateComparisonTop();
 const cv = $('cv'), ctx = cv.getContext('2d');
 
 const items = { A: [], D: [] };
