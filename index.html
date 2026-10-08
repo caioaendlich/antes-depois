@@ -210,6 +210,14 @@ input.wide{width:100%}
 .sstrip.mini{gap:4px;padding:3px calc(50% - 15px)}
 .sstrip.mini .st2{flex:0 0 30px;height:40px;border-radius:5px}
 #outBtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+
+#top{position:sticky;top:0;background:var(--bg);z-index:15;min-height:58px}
+#back{background:var(--panel);border:1px solid var(--accent);border-radius:10px;padding:10px 14px;min-height:44px;color:var(--fg);font-weight:600;max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#workflow{grid-column:1/-1;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:10px}
+#workflow .flex{flex-wrap:wrap}#workflow label{display:grid;gap:5px;flex:1;min-width:135px}#workflow select,#workflow input,#exFilter{font:inherit;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px;min-height:44px;width:100%}
+#poolInfo{margin:0}#saveAngle{width:100%}.explorer{position:fixed;inset:0;z-index:80;background:var(--bg);overflow:auto;padding:max(16px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom))}
+.exContent{max-width:900px;margin:auto}.exHead,.exActions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.exHead h2{flex:1;margin:0;font-size:20px}.exActions{padding:10px 0}.exActions.sticky{position:sticky;top:-16px;background:var(--bg);z-index:2}.exGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:10px;margin-top:10px}.exCard{display:flex;position:relative;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;padding:8px;gap:6px;background:var(--panel)}.exCard:has(input:checked){border:2px solid var(--accent);padding:7px}.exCard input{width:24px;height:24px;accent-color:var(--accent)}.exCard img{width:100%;height:135px;object-fit:contain}.exCard b,.exCard small{display:block;overflow-wrap:anywhere}.exCard small{color:var(--muted);margin-top:4px}.danger{color:#ffb6ab!important}#exCount{flex:1;min-width:120px}
+@media(max-width:899px){.stage{position:relative;top:auto}#workflow{position:relative}#top h1{font-size:13px}#statusChip{max-width:45%;font-size:11px}.exGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body>
@@ -227,16 +235,17 @@ input.wide{width:100%}
     <div class="flex"><button class="btn primary" id="newGo" type="button">Criar paciente</button><button class="btn" id="newCancel" type="button">Cancelar</button></div>
   </div>
   <input type="search" class="wide psearch" id="pSearch" placeholder="🔍  Buscar paciente" autocomplete="off" aria-label="Buscar paciente">
-  <div class="plist" id="projList"></div>
+  <div class="tools"><button class="btn small" id="managePatients">Selecionar pacientes</button></div><div class="plist" id="projList"></div>
   <p class="note" id="storeNote" style="text-align:center;margin-top:14px"></p>
   <div class="tools"><button class="btn small" id="freeMode" type="button">Montagem avulsa</button><button class="btn small" id="restore" type="button">Restaurar backup</button></div>
   <p class="note">As fotos ficam guardadas só neste aparelho, dentro do app. Ao fechar cada paciente, toque em Backup e guarde o arquivo no Drive ou em Arquivos.</p>
-  <p class="note" style="opacity:.6">Versão 22</p>
+  <p class="note" style="opacity:.6">Versão 23 · prévia local</p>
 </section>
 
 <section id="proj" class="scr" hidden>
   <input type="text" class="pname" id="pName" aria-label="Nome do paciente" maxlength="60" autocomplete="off">
-  <button class="btn primary big" id="pNew" type="button">+ Nova comparação</button>
+  <button class="btn primary big" id="pNew" type="button">+ Novo projeto por data</button>
+  <div class="tools"><button class="btn small" id="manageProjects">Selecionar projetos</button><button class="btn small" id="managePhotos">Explorar fotos</button></div>
   <div class="clist" id="pComps"></div>
   <div class="pmore">
     <span class="lbl">Paciente</span>
@@ -259,6 +268,12 @@ input.wide{width:100%}
 </section>
 
 <div id="app" hidden>
+  <div id="workflow" hidden>
+    <div class="flex"><label>Ângulo da montagem<select id="angleSelect"><option>Frente</option><option>45° esquerda</option><option>45° direita</option><option>Perfil esquerdo</option><option>Perfil direito</option><option>Outro</option></select></label><label>Data do projeto<input type="date" id="projectDate"></label></div>
+    <div class="flex"><button class="btn primary" id="importPool">+ Importar antes e depois juntos</button><button class="btn" id="poolManage">Organizar fotos</button><button class="btn" id="savedAngles">Ângulos salvos</button></div>
+    <p class="note" id="poolInfo" aria-live="polite"></p>
+    <button class="btn primary" id="saveAngle" disabled>Salvar ângulo</button>
+  </div>
 
   <div class="stage">
     <div class="view" id="view">
@@ -283,7 +298,7 @@ input.wide{width:100%}
       <div class="scrubs"><div class="scrub" id="scrA"></div><div class="scrub" id="scrD"></div></div>
       <div class="sclabels"><span id="pkLl"></span><span id="pkRl"></span></div>
       <button class="btn primary big" id="pkGo" type="button">Remover fundo</button>
-      <p class="note">Toque no + de cada lado para escolher as fotos no álbum. Passe o dedo nas miniaturas para trocar a foto daquele lado; arraste e pince na foto para encaixar.</p>
+      <p class="note">Importe antes e depois juntos pelo botão acima. Escolha uma foto de cada faixa para o ângulo atual; arraste e pince na prévia para encaixar. Os botões + também permitem adicionar fotos separadamente.</p>
       <div class="tools"><button class="btn small" id="pkDel" type="button">Apagar esta comparação</button></div>
     </div>
     <div class="pair">
@@ -355,6 +370,7 @@ input.wide{width:100%}
 <input type="file" id="fileCam" accept="image/*" multiple hidden>
 <input type="file" id="fileProj" accept="image/*" multiple hidden>
 <input type="file" id="filePair" accept="image/*" multiple hidden>
+<input type="file" id="filePool" accept="image/*" multiple hidden>
 <input type="file" id="fileAlbum" accept="image/*" multiple hidden>
 <input type="file" id="fileZip" accept=".zip,application/zip" hidden>
 <div id="cam" hidden>
@@ -385,6 +401,12 @@ input.wide{width:100%}
 <div id="out" hidden><img id="outImg" alt="Imagem"><p class="note" id="outNote" style="color:#ddd;text-align:center"></p><div id="outBtns"></div></div>
 
 
+<section id="explorer" class="explorer" role="dialog" aria-modal="true" aria-labelledby="exTitle" hidden>
+<div class="exContent"><div class="exHead"><h2 id="exTitle"></h2><button class="btn" id="exClose">‹ Voltar</button></div>
+<p class="note" id="exDescription"></p><select id="exFilter" aria-label="Filtrar fotos por data ou grupo"></select>
+<div class="exActions sticky"><span id="exCount" aria-live="polite"></span><button class="btn small" id="exAll">Selecionar todos</button><button class="btn small" id="exClear">Limpar seleção</button><button class="btn small" id="exDownload">Baixar selecionados</button><button class="btn small danger" id="exDelete">Excluir selecionados</button></div>
+<div class="exActions" id="exClassify"><span>Marcar seleção como:</span><button class="btn" id="exBefore">Antes</button><button class="btn" id="exAfter">Depois</button><button class="btn" id="exUnknown">Para classificar</button></div><div class="exGrid" id="exGrid"></div></div></section>
+<script src="photo-dates.js"></script>
 <script>
 (() => {
 const W = 1080, H = 1920;
@@ -517,7 +539,7 @@ async function pump() {
       const left = queue.length;
       setStatus('Recortando · faltam ' + (left + 1), true);
       it.status = 'processando'; markThumb(it);
-      try { await cutout(it); it.status = 'pronto'; if (it.shot && it.raw && it.shot.mask !== it.raw) { it.shot.mask = it.raw; it.shot.mc = 1; DB.put('shots', it.shot).catch(() => {}); } }
+      try { await cutout(it); it.status = 'pronto'; if (it.shot && Pj && Pj.shots.includes(it.shot) && it.raw && it.shot.mask !== it.raw) { it.shot.mask = it.raw; it.shot.mc = 1; DB.put('shots', it.shot).catch(() => {}); } }
       catch (e) { it.status = 'erro'; console.error(e); }
       markThumb(it); render();
       await new Promise(r => setTimeout(r, 0));
@@ -944,9 +966,10 @@ cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', e
 cv.addEventListener('wheel', e => { e.preventDefault(); const t = tf[active]; t.s = Math.min(3, Math.max(0.3, t.s * (e.deltaY < 0 ? 1.03 : 0.97))); syncSliders(); render(); }, { passive: false });
 
 // ---------- salvar ----------
+let savingAngle = false;
 function updateSave() {
   const ok = ['A', 'D'].every(s => items[s][sel[s]] && items[s][sel[s]].cut);
-  $('save').disabled = !ok; $('saveFile').disabled = !ok;
+  $('save').disabled = !ok; $('saveFile').disabled = !ok; $('saveAngle').disabled = !ok || savingAngle;
 }
 let downloads = null;
 if (false && window.claude && window.claude.use) window.claude.use('downloads').then(d => { downloads = d; }).catch(() => {});
@@ -1020,7 +1043,19 @@ const DB = (() => {
   return {
     put: (st, v) => tx(st, 'readwrite', s => s.put(v)), get: (st, k) => tx(st, 'readonly', s => s.get(k)),
     del: (st, k) => tx(st, 'readwrite', s => s.delete(k)), all: st => tx(st, 'readonly', s => s.getAll()),
-    byP: pid => tx('shots', 'readonly', s => s.index('pid').getAll(pid))
+    byP: pid => tx('shots', 'readonly', s => s.index('pid').getAll(pid)),
+    commitProject: (rec, shots, removed = []) => open().then(d => new Promise((res, rej) => {
+      const t = d.transaction(['projects','shots'], 'readwrite');
+      t.objectStore('projects').put(rec); shots.forEach(s => t.objectStore('shots').put(s)); removed.forEach(id => t.objectStore('shots').delete(id));
+      t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+    })),
+    removePatient: pid => open().then(d => new Promise((res, rej) => {
+      const t = d.transaction(['projects','shots'], 'readwrite');
+      t.objectStore('projects').delete(pid);
+      const q = t.objectStore('shots').index('pid').openCursor(IDBKeyRange.only(pid));
+      q.onsuccess = () => { const c = q.result; if (c) { c.delete(); c.continue(); } };
+      t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+    }))
   };
 })();
 const newId = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -1049,7 +1084,7 @@ let curComp = null;
 const shotById = id => Pj ? Pj.shots.find(s => s.id === id) : null;
 const compList = (c, k) => c ? c[k].map(shotById).filter(Boolean) : [];
 const camA = () => curComp ? compList(curComp, 'A') : antesList();
-function saveComp() { if (Pj) { Pj.rec.u = Date.now(); return DB.put('projects', Pj.rec).catch(() => {}); } }
+function saveComp() { if (Pj) { Pj.rec.u = Date.now(); Pj.rec.dirty = (Pj.rec.dirty || 0) + 1; return DB.put('projects', Pj.rec); } return Promise.resolve(); }
 const depOf = a => Pj && a ? Pj.shots.find(s => s.kind === 'D' && s.of === a.id) : null;
 
 function camSetTarget(t) { camTarget = t; $('cTA').setAttribute('aria-pressed', t === 'A'); $('cTD').setAttribute('aria-pressed', t === 'D'); camUI(); }
@@ -1370,7 +1405,7 @@ async function shotFromCanvas(c, extra) {
   const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.92));
   if (!blob) throw new Error('falha ao gerar a foto');
   const pv = previews(c, c.width, c.height);
-  const rec = Object.assign({ id: newId('s'), pid: Pj.rec.id, blob, w: c.width, h: c.height, prev: pv.prev, thumb: pv.thumb, t: Date.now() }, extra);
+  const rec = Object.assign({ id: newId('s'), pid: Pj.rec.id, blob, w: c.width, h: c.height, prev: pv.prev, thumb: pv.thumb, t: Date.now(), capturedAt: Date.now(), captureDay: localDay(Date.now()), captureSource: 'camera' }, extra);
   freeCanvas(pv.canvas); freeCanvas(c); return rec;
 }
 $('camShot').onclick = () => {
@@ -1410,11 +1445,26 @@ $('fileCam').onchange = async e => {
 };
 
 // ---------- projetos ----------
-async function removeShot(s) {
-  if (s.kind === 'A') { const d = depOf(s); if (d) { d.of = null; await DB.put('shots', d); } }
-  const i = Pj.shots.indexOf(s); if (i >= 0) Pj.shots.splice(i, 1); await DB.del('shots', s.id);
-  (Pj.rec.comps || []).forEach(c => { c.A = c.A.filter(x => x !== s.id); c.D = c.D.filter(x => x !== s.id); if (c.selA === s.id) c.selA = c.A[0] || null; if (c.selD === s.id) c.selD = c.D[0] || null; });
+function detachShot(s) {
+  if (!s) return;
+  Pj.shots.forEach(d => { if (d.of === s.id) d.of = null; });
+  Pj.shots = Pj.shots.filter(x => x.id !== s.id);
+  (Pj.rec.comps || []).forEach(c => {
+    for (const k of ['A','D','U']) c[k] = (c[k] || []).filter(id => id !== s.id);
+    if (c.selA === s.id) { c.selA = null; c.tf = null; }
+    if (c.selD === s.id) { c.selD = null; c.tf = null; }
+    Object.values(c.drafts || {}).forEach(d => {
+      if (d.selA === s.id) { d.selA = null; d.tf = null; }
+      if (d.selD === s.id) { d.selD = null; d.tf = null; }
+    });
+  });
 }
+async function commitProject(removed = []) {
+  const L = antesList(); Pj.rec.nA = L.length; Pj.rec.nP = L.filter(depOf).length;
+  Pj.rec.cover = L[0]?.thumb || null; Pj.rec.u = Date.now(); Pj.rec.dirty = (Pj.rec.dirty || 0) + 1;
+  await DB.commitProject(Pj.rec, Pj.shots, removed);
+}
+async function removeShot(s) { if (s) { detachShot(s); await commitProject([s.id]); } }
 async function importToComp(fs, side) {
   if (!curComp) return [];
   const ad = await importToProject(fs, side, null);
@@ -1441,8 +1491,10 @@ async function importToProject(files, kind, startA) {
     const w = img.naturalWidth, h = img.naturalHeight, pv = previews(img, w, h); URL.revokeObjectURL(url);
     const p = null; // pontos do rosto ficam para depois (em segundo plano): as fotos aparecem na hora
     freeCanvas(pv.canvas);
-    const blob = new Blob([await f.arrayBuffer()], { type: f.type || 'image/jpeg' });
-    const rec = { id: newId('s'), pid: Pj.rec.id, kind, blob, w, h, prev: pv.prev, thumb: pv.thumb, t: Date.now() + n, yaw: null };
+    const bytes = await f.arrayBuffer();
+    const capture = PhotoDates.readExif(bytes) || {};
+    const blob = new Blob([bytes], { type: f.type || 'image/jpeg' });
+    const rec = { id: newId('s'), pid: Pj.rec.id, kind, blob, w, h, ...capture, originalName: f.name, prev: pv.prev, thumb: pv.thumb, t: Date.now() + n, yaw: null };
     if (kind === 'A') rec.pose = poseOf(rec.yaw);
     else if (pool) { rec.pose = poseOf(rec.yaw); rec.of = null; }
     else { rec.pose = a.pose; rec.of = a.id; const old = depOf(a); if (old) { old.of = null; await DB.put('shots', old); } }
@@ -1479,6 +1531,7 @@ function show(s) {
   $('back').textContent = s === 'proj' ? '‹ Pacientes' : s === 'pair' && Pj ? '‹ ' + Pj.rec.name : s === 'edit' && (linked || picking) && Pj ? '‹ ' + Pj.rec.name : '‹ Início';
   window.scrollTo(0, 0);
   if (s === 'edit') requestAnimationFrame(render);
+  angleUI();
   $('statusChip').style.visibility = s === 'edit' && /^(Recortando|Preparando recorte|Pronto)/.test($('status').textContent) ? 'hidden' : '';
 }
 async function renderHome() {
@@ -1504,7 +1557,7 @@ async function openProject(id) {
   const rec = await DB.get('projects', id); if (!rec) return;
   Pj = { rec, shots: await DB.byP(id) };
   if (!rec.comps) migrateComps();
-  const live = rec.comps.filter(c => c.A.length || c.D.length);
+  const live = rec.comps.filter(c => c.A.length || c.D.length || (c.U || []).length || (c.angles || []).length);
   if (!live.length) { newComp(); return; }
   show('proj'); renderProj();
 }
@@ -1517,7 +1570,7 @@ function migrateComps() {
   Pj.rec.comps = comps; saveComp();
 }
 function newComp() {
-  const c = { id: newId('c'), t: Date.now(), A: [], D: [], selA: null, selD: null, tf: null };
+  const c = { id: newId('c'), t: Date.now(), A: [], D: [], selA: null, selD: null, tf: null, U: [], angles: [], angle: 'Frente', date: localDay(Date.now()) };
   Pj.rec.comps.push(c); saveComp(); openPick(c);
 }
 const fmtFull = t => { const d = new Date(t); return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear() + ' · ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()); };
@@ -1525,15 +1578,15 @@ function renderProj() {
   if (!Pj) return;
   $('pName').value = Pj.rec.name;
   const box = $('pComps'); box.innerHTML = '';
-  const comps = (Pj.rec.comps || []).filter(c => c.A.length || c.D.length).sort((a, b) => b.t - a.t);
+  const comps = (Pj.rec.comps || []).filter(c => c.A.length || c.D.length || (c.U || []).length || (c.angles || []).length).sort((a, b) => b.t - a.t);
   if (!comps.length) box.innerHTML = '<p class="note">Nenhuma comparação ainda.</p>';
   comps.forEach(c => {
     const a = shotById(c.selA) || compList(c, 'A')[0], d = shotById(c.selD) || compList(c, 'D')[0];
     const b = document.createElement('button'); b.type = 'button'; b.className = 'ccard';
     const th = c.out ? '<span class="cth2 one"><img alt="" src="' + c.out + '"></span>' : '<span class="cth2">' + (a ? '<img alt="" src="' + a.thumb + '">' : '<span></span>') + (d ? '<img alt="" src="' + d.thumb + '">' : '<span></span>') + '</span>';
     b.innerHTML = th + '<span><b></b><small></small></span><i>›</i>';
-    b.querySelector('b').textContent = fmtFull(c.t);
-    b.querySelector('small').textContent = c.A.length + ' antes · ' + c.D.length + ' depois' + (c.out ? ' · montada' : '');
+    b.querySelector('b').textContent = 'Projeto ' + dateLabel(c);
+    b.querySelector('small').textContent = c.A.length + ' antes · ' + c.D.length + ' depois' + ((c.U || []).length ? ' · ' + c.U.length + ' para classificar' : '') + ' · ' + (c.angles || []).length + ' ângulos salvos';
     b.onclick = () => openPick(c);
     box.appendChild(b);
   });
@@ -1616,6 +1669,7 @@ function openEditor(focus, dsel) {
   buildStrip('A'); buildStrip('D'); markSel('A'); markSel('D'); scrollToSel('A', false); scrollToSel('D', false); setActive('A'); render(); updateSave(); pump();
 }
 function openFree() {
+  curComp = null;
   if (linked) { savePair(); clearItems(); linked = false; }
   $('app').classList.remove('proj');
   if (freeStash) { items.A = freeStash.A; items.D = freeStash.D; Object.assign(sel, freeStash.sel); tf.A = freeStash.tf.A; tf.D = freeStash.tf.D; ['A', 'D'].forEach(s => items[s].forEach(it => { if (!it.raw) queue.push({ side: s, it }); })); freeStash = null; }
@@ -1683,7 +1737,7 @@ async function buildBackup() {
   for (const s of order) {
     let name = fileName(s); while (entries.some(e => e.name === name)) name = name.replace(/(_\d+)?\.jpg$/, m => '_' + (parseInt((m.match(/\d+/) || ['1'])[0]) + 1) + '.jpg');
     entries.push({ name, data: new Uint8Array(await s.blob.arrayBuffer()) });
-    meta.shots.push({ id: s.id, kind: s.kind, of: s.of || null, w: s.w, h: s.h, pyr: s.pyr || null, pose: s.pose, yaw: s.yaw, t: s.t, adj: s.adj || null, edge: s.edge, file: name });
+    meta.shots.push({ id: s.id, kind: s.kind, of: s.of || null, w: s.w, h: s.h, pyr: s.pyr || null, pose: s.pose, yaw: s.yaw, t: s.t, capturedAt: s.capturedAt, captureDay: s.captureDay, captureSource: s.captureSource, mime: s.blob.type, originalName: s.originalName, adj: s.adj || null, edge: s.edge, file: name });
   }
   entries.unshift({ name: 'projeto.json', data: enc.encode(JSON.stringify(meta)) });
   const d = new Date(), zname = 'prisma_' + slug(Pj.rec.name) + '_' + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) + '-' + pad2(d.getHours()) + pad2(d.getMinutes()) + '.zip';
@@ -1721,12 +1775,12 @@ $('fileZip').onchange = async e => {
     Pj = { rec, shots: [] };
     meta.shots.forEach(s => { map[s.id] = clash ? newId('s') : s.id; });
     for (const s of meta.shots) {
-      const blob = new Blob([files[s.file]], { type: 'image/jpeg' }), url = URL.createObjectURL(blob), img = await loadImg(url);
+      const blob = new Blob([files[s.file]], { type: s.mime || 'image/jpeg' }), url = URL.createObjectURL(blob), img = await loadImg(url);
       const pv = previews(img, s.w, s.h); freeCanvas(pv.canvas); URL.revokeObjectURL(url);
       const r = { ...s, id: map[s.id], of: s.of ? map[s.of] : undefined, pid, blob, prev: pv.prev, thumb: pv.thumb };
       if (!r.pyr) delete r.pyr; delete r.file; Pj.shots.push(r); await DB.put('shots', r);
     }
-    if (meta.project.comps) { const m = id => map[id] || null; rec.comps = meta.project.comps.map(c => ({ ...c, id: clash ? newId('c') : c.id, A: c.A.map(m).filter(Boolean), D: c.D.map(m).filter(Boolean), selA: m(c.selA), selD: m(c.selD) })); }
+    if (meta.project.comps) { const m = id => map[id] || null; rec.comps = meta.project.comps.map(c => ({ ...c, id: clash ? newId('c') : c.id, A: c.A.map(m).filter(Boolean), D: c.D.map(m).filter(Boolean), U: (c.U || []).map(m).filter(Boolean), angles: (c.angles || []).map(a => ({...a, selA:m(a.selA), selD:m(a.selD)})), drafts: Object.fromEntries(Object.entries(c.drafts || {}).map(([k,a]) => [k,{...a,selA:m(a.selA),selD:m(a.selD)}])), selA: m(c.selA), selD: m(c.selD) })); }
     await touchProj(true); setStatus('Backup restaurado', false); openProject(pid);
   } catch (err) { Pj = null; setStatus(err.message || 'Não consegui restaurar', false); }
 };
@@ -1886,11 +1940,11 @@ function pkLabels() {
   const ok = !!(pickA[pickL] && pickD[pickR]);
   $('pkGo').disabled = !ok; $('pkGo').textContent = ok ? 'Remover fundo' : !pickA.length ? 'Escolha o antes no +' : 'Escolha o depois no +';
 }
-function pkSave() { if (!curComp) return; curComp.selA = pickA[pickL] ? pickA[pickL].id : null; curComp.selD = pickD[pickR] ? pickD[pickR].id : null; saveComp(); }
+function pkSave() { if (!curComp) return; curComp.tf = { A: {...tf.A}, D: {...tf.D}, front: curComp.tf?.front }; curComp.selA = pickA[pickL] ? pickA[pickL].id : null; curComp.selD = pickD[pickR] ? pickD[pickR].id : null; saveComp(); }
 function openPick(c) {
   if (!Pj || !c) return;
   if (linked) { savePair(); clearItems(); linked = false; }
-  curComp = c;
+  curComp = c; c.angle ||= 'Frente'; c.U ||= []; c.angles ||= [];
   pickA = compList(c, 'A'); pickD = compList(c, 'D');
   pickL = Math.max(0, pickA.findIndex(s => s.id === c.selA)); pickR = Math.max(0, pickD.findIndex(s => s.id === c.selD));
   const t0 = c.tf; tf.A = t0 ? { ...t0.A } : T0(); tf.D = t0 ? { ...t0.D } : T0();
@@ -1917,10 +1971,10 @@ $('pkGo').onclick = async () => {
   await DB.put('shots', a); await DB.put('shots', d); await touchProj(); await saveComp();
   closePick(); openEditor(a, d);
 };
-$('pkDel').onclick = () => arm($('pkDel'), async () => {
-  if (!curComp) return; Pj.rec.comps = Pj.rec.comps.filter(c => c !== curComp); curComp = null; await saveComp();
-  closePick(); $('app').classList.remove('proj'); show('proj'); renderProj();
-});
+$('pkDel').onclick = () => {
+  if (!curComp) return;
+  openExplorer('projects').then(() => { explorer.selected.add(curComp.id); renderExplorer(); });
+};
 $('pickAgain').onclick = () => { savePair(); openPick(curComp); };
 $('pNew').onclick = () => { if (Pj) newComp(); };
 $('pShare').onclick = async () => {
@@ -1928,7 +1982,11 @@ $('pShare').onclick = async () => {
   const order = allOrdered(), files = order.map(s => new File([s.blob], fileName(s), { type: 'image/jpeg' }));
   if (!await shareFiles(files)) files.forEach(f => download(f, f.name));
 };
-$('pDel').onclick = () => arm($('pDel'), async () => { for (const s of Pj.shots) await DB.del('shots', s.id); await DB.del('projects', Pj.rec.id); stopBg(); Pj = null; show('home'); renderHome(); });
+$('pDel').onclick = async () => {
+  if (!Pj || !confirm('Excluir o paciente ' + Pj.rec.name + ' e seus projetos e fotos? Esta ação não pode ser desfeita.')) return;
+  try { await DB.removePatient(Pj.rec.id); stopBg(); Pj = null; curComp = null; show('home'); renderHome(); }
+  catch (e) { setStatus('Não foi possível excluir o paciente', false); }
+};
 $('freeMode').onclick = openFree;
 $('pSearch').addEventListener('input', renderHome);
 $('back').onclick = () => {
@@ -1936,13 +1994,236 @@ $('back').onclick = () => {
     if (picking || linked) {
       if (linked) { savePair(); clearItems(); linked = false; }
       closePick(); $('app').classList.remove('proj'); curComp = null;
-      if (Pj) { Pj.rec.comps = (Pj.rec.comps || []).filter(c => c.A.length || c.D.length); saveComp(); }
+      if (Pj) { Pj.rec.comps = (Pj.rec.comps || []).filter(c => c.A.length || c.D.length || (c.U || []).length || (c.angles || []).length); saveComp(); }
       if (Pj && !Pj.rec.comps.length) { Pj = null; show('home'); renderHome(); } else { show('proj'); renderProj(); }
     }
     else { show('home'); renderHome(); }
   } else if (screen === 'pair') { show('proj'); renderProj(); }
   else if (screen === 'proj') { stopBg(); Pj = null; show('home'); renderHome(); }
 };
+// ---------- projeto por data, ângulos e seleção em lote ----------
+const ANGLES = ['Frente', '45° esquerda', '45° direita', 'Perfil esquerdo', 'Perfil direito', 'Outro'];
+let explorer = null, explorerBusy = false;
+const projectPhotos = c => [...new Set([...(c.A || []), ...(c.D || []), ...(c.U || [])])].map(shotById).filter(Boolean);
+const cloneValue = x => x ? JSON.parse(JSON.stringify(x)) : null;
+function angleUI() {
+  $('workflow').hidden = !curComp || screen !== 'edit';
+  if (!curComp) return;
+  $('angleSelect').value = curComp.angle || 'Frente';
+  $('projectDate').value = curComp.date || localDay(curComp.t);
+  const n = (curComp.angles || []).length, u = (curComp.U || []).length;
+  $('poolInfo').textContent = `${curComp.A.length} antes · ${curComp.D.length} depois` + (u ? ` · ${u} para classificar` : '') + ` · ${n} ângulo${n === 1 ? '' : 's'} salvo${n === 1 ? '' : 's'}`;
+  $('saveAngle').hidden = picking;
+  $('saveAngle').disabled = $('save').disabled;
+}
+function localDay(t) { const d = new Date(t); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+function dateLabel(c) { return (c.date || localDay(c.t)).split('-').reverse().join('/'); }
+function rememberDraft() {
+  if (!curComp) return;
+  if (linked) savePair(); else if (picking) { pkSave(); curComp.tf = { A: {...tf.A}, D: {...tf.D} }; }
+  curComp.drafts ||= {};
+  curComp.drafts[curComp.angle || 'Frente'] = { selA: curComp.selA, selD: curComp.selD, tf: cloneValue(curComp.tf) };
+}
+$('angleSelect').onchange = async e => {
+  if (!curComp) return;
+  rememberDraft();
+  curComp.angle = e.target.value;
+  const draft = (curComp.drafts || {})[curComp.angle];
+  // Clear the editor before loading the next angle so savePair cannot overwrite it.
+  if (linked) { clearItems(); linked = false; }
+  curComp.selA = draft ? draft.selA : null; curComp.selD = draft ? draft.selD : null; curComp.tf = draft ? cloneValue(draft.tf) : null;
+  await saveComp(); openPick(curComp);
+};
+$('projectDate').onchange = async e => { if (curComp && e.target.value) { curComp.date = e.target.value; await saveComp(); } };
+$('importPool').onclick = () => $('filePool').click();
+$('filePool').onchange = async e => {
+  const files = [...e.target.files]; e.target.value = ''; if (!files.length || !curComp) return;
+  const c = curComp;
+  $('importPool').disabled = true; $('app').inert = $('top').inert = true;
+  try {
+    rememberDraft();
+    const added = await importToProject(files, 'A', null);
+    const assignments = PhotoDates.split(added);
+    c.U ||= [];
+    for (const a of assignments) {
+      const s = shotById(a.id); s.kind = a.side; s.of = null; c[a.side].push(a.id); await DB.put('shots', s);
+    }
+    await touchProj(); await saveComp(); openPick(c);
+    const missing = assignments.filter(x => x.side === 'U').length;
+    setStatus(`${added.length} de ${files.length} fotos importadas` + (missing ? ` · ${missing} para classificar` : ' · separadas pela data de captura'), false);
+    await openExplorer('photos', c);
+  } catch (err) { setStatus('Não foi possível concluir a importação: ' + err.message, false); }
+  finally { $('importPool').disabled = false; $('app').inert = $('top').inert = !!explorer; }
+};
+$('poolManage').onclick = () => { rememberDraft(); if (linked) openPick(curComp); openExplorer('photos', curComp); };
+$('savedAngles').onclick = () => { rememberDraft(); openExplorer('angles', curComp); };
+$('saveAngle').onclick = async () => {
+  if (!curComp || !linked || $('save').disabled || savingAngle) return;
+  const c = curComp, angle = c.angle || 'Frente';
+  const previous = (c.angles || []).find(a => a.name === angle);
+  if (previous && !confirm(`Já existe uma montagem de ${angle} neste projeto. Substituir a montagem salva?`)) return;
+  savingAngle = true; $('saveAngle').disabled = true; $('app').inert = $('top').inert = true;
+  const prior = cloneValue(c.angles || []), oldOut = c.out;
+  try {
+    savePair(); const output = makeFile();
+    const data = await new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = () => reject(r.error); r.readAsDataURL(output.blob); });
+    const saved = { id: previous ? previous.id : newId('angle'), name: angle, t: Date.now(), selA: c.selA, selD: c.selD, tf: cloneValue(c.tf), out: data };
+    c.angles = [...(c.angles || []).filter(a => a.name !== angle), saved];
+    rememberDraft(); c.out = data;
+    await saveComp();
+    setStatus(`${angle} salvo · escolha o próximo ângulo acima`, false); angleUI();
+  } catch (err) { c.angles = prior; c.out = oldOut; setStatus('Não foi possível salvar o ângulo. Verifique o espaço no aparelho.', false); }
+  finally { savingAngle = false; $('app').inert = $('top').inert = false; $('saveAngle').disabled = $('save').disabled; }
+};
+
+function exButton(text, action, parent, cls = '') {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + cls; b.textContent = text;
+  b.onclick = action; parent.appendChild(b); return b;
+}
+async function openExplorer(kind, comp) {
+  explorer = { kind, comp, selected: new Set(), rows: [], filter: '' };
+  $('explorer').hidden = false; $('home').inert = $('proj').inert = $('app').inert = $('top').inert = true; await renderExplorer(); $('exClose').focus();
+}
+function closeExplorer() {
+  if (explorerBusy) return;
+  $('explorer').hidden = true; $('home').inert = $('proj').inert = $('app').inert = $('top').inert = false; explorer = null;
+  if (curComp && Pj && !(Pj.rec.comps || []).includes(curComp)) { closePick(); clearItems(); linked = false; curComp = null; show('proj'); }
+  if (screen === 'home') renderHome(); else if (screen === 'proj') renderProj(); else if (picking && curComp) openPick(curComp);
+  angleUI();
+}
+$('exClose').onclick = closeExplorer;
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && explorer) closeExplorer(); });
+$('exFilter').onchange = e => { if (explorer) { explorer.filter = e.target.value; renderExplorer(); } };
+async function renderExplorer() {
+  const ex = explorer; if (!ex) return;
+  let rows = [];
+  if (ex.kind === 'patients') rows = (await DB.all('projects')).map(p => ({id:p.id, title:p.name, note:dateLabel(p), image:p.cover, value:p}));
+  if (ex.kind === 'projects') rows = (Pj.rec.comps || []).map(c => ({id:c.id, title:'Projeto ' + dateLabel(c), note:`${projectPhotos(c).length} fotos · ${(c.angles || []).length} ângulos`, image:c.out, value:c}));
+  if (ex.kind === 'photos') rows = (ex.comp ? projectPhotos(ex.comp) : Pj.shots).map(s => ({id:s.id, title:({A:'Antes',D:'Depois',U:'Para classificar'})[ex.comp ? ['A','D','U'].find(k => (ex.comp[k] || []).includes(s.id)) : s.kind] || 'Para classificar', note:s.captureDay ? s.captureDay.split('-').reverse().join('/') + ' · captura' : 'Data de captura indisponível', image:s.thumb, value:s}));
+  if (ex.kind === 'angles') rows = (ex.comp.angles || []).map(a => ({id:a.id, title:a.name, note:dateLabel(ex.comp), image:a.out, value:a}));
+  if (explorer !== ex) return;
+  ex.rows = rows;
+  ex.selected = new Set([...ex.selected].filter(id => rows.some(r => r.id === id)));
+  $('exTitle').textContent = ({patients:'Pacientes',projects:'Projetos por data',photos:'Fotos importadas',angles:'Ângulos salvos'})[ex.kind];
+  $('exDescription').textContent = ex.kind === 'photos' ? 'Selecione várias fotos para baixar, excluir ou separar entre antes e depois. Confira a separação sugerida pela data de captura.' : 'Marque os itens que deseja baixar ou excluir.';
+  if (ex.notice) $('exDescription').textContent = ex.notice;
+  $('exClassify').hidden = ex.kind !== 'photos' || !ex.comp;
+  const filter = $('exFilter'); filter.hidden = ex.kind !== 'photos';
+  if (ex.kind === 'photos') {
+    filter.replaceChildren(new Option('Todas as datas e grupos', ''));
+    ['Antes','Depois','Para classificar'].forEach(k => filter.add(new Option(k, 'group:' + k)));
+    [...new Set(rows.map(r => r.value.captureDay).filter(Boolean))].sort().forEach(d => filter.add(new Option(d.split('-').reverse().join('/'), d)));
+    filter.add(new Option('Sem data de captura', 'unknown')); filter.value = ex.filter;
+    if (filter.selectedIndex < 0) { ex.filter = ''; filter.value = ''; }
+  }
+  const visible = rows.filter(r => !ex.filter || (ex.filter.startsWith('group:') ? r.title === ex.filter.slice(6) : ex.filter === 'unknown' ? !r.value.captureDay : r.value.captureDay === ex.filter));
+  ex.visible = visible;
+  const grid = $('exGrid'); grid.replaceChildren();
+  visible.forEach(r => {
+    const label = document.createElement('label'); label.className = 'exCard';
+    const check = document.createElement('input'); check.type = 'checkbox'; check.checked = ex.selected.has(r.id); check.setAttribute('aria-label', 'Selecionar ' + r.title + ' ' + r.note);
+    check.onchange = () => { if (check.checked) ex.selected.add(r.id); else ex.selected.delete(r.id); exCounts(); };
+    label.appendChild(check);
+    if (r.image) { const im = document.createElement('img'); im.src = r.image; im.alt = ''; im.loading = 'lazy'; label.appendChild(im); }
+    const text = document.createElement('span'), title = document.createElement('b'), note = document.createElement('small'); title.textContent = r.title; note.textContent = r.note; text.append(title, note); label.appendChild(text); grid.appendChild(label);
+  });
+  if (!visible.length) { const p = document.createElement('p'); p.textContent = 'Nenhum item aqui.'; grid.appendChild(p); }
+  exCounts();
+}
+function exCounts() {
+  if (!explorer) return;
+  $('exCount').textContent = `${explorer.selected.size} selecionado${explorer.selected.size === 1 ? '' : 's'}`;
+  ['exDownload','exDelete','exBefore','exAfter','exUnknown'].forEach(id => $(id).disabled = explorerBusy || !explorer.selected.size);
+  $('exAll').disabled = explorerBusy; $('exClear').disabled = explorerBusy; $('exClose').disabled = explorerBusy; $('exFilter').disabled = explorerBusy;
+  $('exGrid').inert = explorerBusy;
+}
+$('exAll').onclick = () => { explorer.visible.forEach(r => explorer.selected.add(r.id)); renderExplorer(); };
+$('exClear').onclick = () => { explorer.selected.clear(); renderExplorer(); };
+async function exAction(action) {
+  if (!explorer || explorerBusy) return;
+  explorerBusy = true; exCounts();
+  const prior = Pj ? {rec:cloneValue(Pj.rec),shots:Pj.shots.map(s => ({...s}))} : null;
+  const currentId = curComp?.id, compId = explorer.comp?.id;
+  try { await action(explorer); }
+  catch (err) {
+    if (prior) { Pj = prior; curComp = Pj.rec.comps?.find(c => c.id === currentId) || null; explorer.comp = Pj.rec.comps?.find(c => c.id === compId); }
+    setStatus('Não foi possível concluir: ' + err.message, false); explorer.notice = 'Não foi possível concluir. ' + err.message; }
+  finally { explorerBusy = false; if (explorer) { await renderExplorer(); } }
+}
+async function classify(side) {
+  await exAction(async ex => {
+    const c = ex.comp; if (!c) return;
+    for (const id of ex.selected) {
+      for (const k of ['A','D','U']) c[k] = (c[k] || []).filter(x => x !== id);
+      c[side].push(id); const s = shotById(id); s.kind = side; s.of = null;
+    }
+    if (!c.A.includes(c.selA)) { c.selA = null; c.tf = null; }
+    if (!c.D.includes(c.selD)) { c.selD = null; c.tf = null; }
+    Object.values(c.drafts || {}).forEach(d => {
+      if (!c.A.includes(d.selA)) { d.selA = null; d.tf = null; }
+      if (!c.D.includes(d.selD)) { d.selD = null; d.tf = null; }
+    });
+    await commitProject(); ex.selected.clear();
+  });
+}
+$('exBefore').onclick = () => classify('A'); $('exAfter').onclick = () => classify('D'); $('exUnknown').onclick = () => classify('U');
+async function projectEntries(rec, shots, prefix) {
+  const entries = [], data = { app:'prisma', v:1, project:rec, shots:[] };
+  for (const s of shots) {
+    const file = `originais/${s.id}.${(s.blob.type.split('/')[1] || 'jpg').replace('jpeg','jpg')}`;
+    entries.push({name:prefix + file,data:new Uint8Array(await s.blob.arrayBuffer())});
+    const {blob,prev,thumb,mask,mc,...meta} = s; data.shots.push({...meta,file,mime:blob.type});
+  }
+  for (const c of rec.comps || []) for (const a of c.angles || []) {
+    const blob = await (await fetch(a.out)).blob();
+    entries.push({name:prefix + `${c.date || localDay(c.t)}_${c.id}/${slug(a.name)}.jpg`,data:new Uint8Array(await blob.arrayBuffer())});
+  }
+  entries.unshift({name:prefix + 'projeto.json',data:new TextEncoder().encode(JSON.stringify(data))}); return entries;
+}
+$('exDownload').onclick = () => exAction(async ex => {
+  const rows = ex.rows.filter(r => ex.selected.has(r.id)), entries = [];
+  for (const r of rows) {
+    if (ex.kind === 'photos') entries.push({name:`${slug(r.title)}_${r.value.captureDay || 'sem-data'}_${r.id}.${(r.value.blob.type.split('/')[1] || 'jpg').replace('jpeg','jpg')}`,data:new Uint8Array(await r.value.blob.arrayBuffer())});
+    if (ex.kind === 'angles') entries.push({name:`${ex.comp.date || localDay(ex.comp.t)}_${slug(r.title)}_${r.id}.jpg`,data:new Uint8Array(await (await (await fetch(r.value.out)).blob()).arrayBuffer())});
+    if (ex.kind === 'projects') {
+      const rec = {...Pj.rec, comps:[r.value]};
+      const nested = await projectEntries(rec, projectPhotos(r.value), '');
+      entries.push({name:`${slug(Pj.rec.name)}_${r.value.date || localDay(r.value.t)}_${r.id}.zip`,data:new Uint8Array(await zip(nested).arrayBuffer())});
+    }
+    if (ex.kind === 'patients') {
+      const nested = await projectEntries(r.value, await DB.byP(r.id), '');
+      entries.push({name:`${slug(r.title)}_${r.id}.zip`,data:new Uint8Array(await zip(nested).arrayBuffer())});
+    }
+  }
+  if (entries.length) {
+    const file = new File([zip(entries)], 'prisma-selecao.zip', {type:'application/zip'});
+    ex.notice = 'Download preparado. O arquivo ZIP reúne os itens selecionados.';
+    download(file, file.name);
+  }
+});
+$('exDelete').onclick = () => {
+  const ex = explorer; if (!ex || !ex.selected.size) return;
+  const scope = {patients:'paciente(s), incluindo seus projetos e fotos',projects:'projeto(s), incluindo suas montagens. Fotos usadas apenas nesses projetos também serão excluídas',photos:'foto(s) original(is). As montagens já salvas serão mantidas como imagens',angles:'montagem(ns) salva(s). As fotos originais serão mantidas'}[ex.kind];
+  if (!confirm(`Excluir ${ex.selected.size} ${scope}? Esta ação não pode ser desfeita.`)) return;
+  return exAction(async ex => {
+    if (ex.kind === 'patients') for (const id of ex.selected) await DB.removePatient(id);
+    if (ex.kind === 'projects') {
+      const removed = Pj.rec.comps.filter(c => ex.selected.has(c.id));
+      const candidates = new Set(removed.flatMap(c => projectPhotos(c).map(s => s.id)));
+      Pj.rec.comps = Pj.rec.comps.filter(c => !ex.selected.has(c.id));
+      const retained = new Set(Pj.rec.comps.flatMap(c => projectPhotos(c).map(s => s.id)));
+      const removedIds = [...candidates].filter(id => !retained.has(id));
+      removedIds.forEach(id => detachShot(shotById(id))); await commitProject(removedIds);
+    }
+    if (ex.kind === 'photos') { const ids = [...ex.selected]; ids.forEach(id => detachShot(shotById(id))); await commitProject(ids); }
+    if (ex.kind === 'angles') { ex.comp.angles = ex.comp.angles.filter(a => !ex.selected.has(a.id)); ex.comp.out = ex.comp.angles.at(-1)?.out || null; await saveComp(); }
+    ex.selected.clear();
+  });
+};
+$('managePatients').onclick = () => openExplorer('patients');
+$('manageProjects').onclick = () => openExplorer('projects');
+$('managePhotos').onclick = () => openExplorer('photos');
+
 show('home'); renderHome();
 // ---------- onde os projetos ficam guardados ----------
 // No iPhone, o Safari e o ícone da tela de início guardam os projetos em lugares SEPARADOS,
