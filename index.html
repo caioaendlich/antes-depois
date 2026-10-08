@@ -223,6 +223,8 @@ input.wide{width:100%}
 #poolInfo{margin:0}#saveAngle{width:100%}.explorer{position:fixed;inset:0;z-index:80;background:var(--bg);overflow:auto;padding:max(16px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom))}
 .exContent{max-width:900px;margin:auto}.exHead,.exActions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.exHead h2{flex:1;margin:0;font-size:20px}.exActions{padding:10px 0}.exActions.sticky{position:sticky;top:-16px;background:var(--bg);z-index:2}.exGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:10px;margin-top:10px}.exCard{display:flex;position:relative;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;padding:8px;gap:6px;background:var(--panel)}.exCard:has(input:checked){border:2px solid var(--accent);padding:7px}.exCard input{width:24px;height:24px;accent-color:var(--accent)}.exCard img{width:100%;height:135px;object-fit:contain}.exCard b,.exCard small{display:block;overflow-wrap:anywhere}.exCard small{color:var(--muted);margin-top:4px}.danger{color:#ffb6ab!important}#exCount{flex:1;min-width:120px}
 @media(max-width:899px){.stage{position:relative;top:auto}#workflow{position:relative}#top h1{font-size:13px}#statusChip{max-width:45%;font-size:11px}.exGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+#importPool{position:absolute;z-index:6;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;width:94px;height:94px;padding:10px;font-size:14px;background:var(--panel);border:1px solid var(--accent)}
+#plusA,#plusD{display:none!important}.sessionCard{border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0}.sessionThumbs{display:flex;overflow:auto;gap:4px;margin:10px 0}.sessionThumbs img{height:80px;width:60px;object-fit:cover}.sessionCard .flex{margin-top:8px}
 </style>
 </head>
 <body>
@@ -244,7 +246,7 @@ input.wide{width:100%}
   <p class="note" id="storeNote" style="text-align:center;margin-top:14px"></p>
   <div class="tools"><button class="btn small" id="freeMode" type="button">Montagem avulsa</button><button class="btn small" id="restore" type="button">Restaurar backup</button></div>
   <p class="note">As fotos ficam guardadas só neste aparelho, dentro do app. Ao fechar cada paciente, toque em Backup e guarde o arquivo no Drive ou em Arquivos.</p>
-  <p class="note" style="opacity:.6">Versão 24</p>
+  <p class="note" style="opacity:.6">Versão 25</p>
 </section>
 
 <section id="proj" class="scr" hidden>
@@ -288,6 +290,7 @@ input.wide{width:100%}
       <button type="button" data-angle="Perfil direito" aria-label="90 graus à direita" aria-pressed="false">90°<small>DIR.</small></button>
     </div>
     <div class="view" id="view">
+      <button class="btn" id="importPool" type="button" hidden>Importar fotos</button>
       <canvas id="cv" width="1080" height="1920" aria-label="Prévia da imagem (mostrando o miolo 4:5; salva em 9:16)"></canvas>
       <button class="vbtn" id="vtog" type="button">Ver 9:16 inteiro</button>
       <div class="side-hint" id="hint">Arraste para mover · pinça para zoom e giro</div>
@@ -312,7 +315,7 @@ input.wide{width:100%}
     </div>
     <div id="projectActions" hidden>
       <button class="btn primary big" id="saveAngle" disabled>Salvar ângulo</button>
-      <button class="btn big" id="importPool">+ Importar antes e depois juntos</button>
+
       <div class="flex"><button class="btn" id="poolManage">Organizar fotos</button><button class="btn" id="savedAngles">Ângulos salvos</button></div>
       <p class="note" id="poolInfo" aria-live="polite"></p>
       <p class="note">As fotos importadas ficam no álbum deste projeto e podem ser usadas em qualquer ângulo.</p>
@@ -421,7 +424,7 @@ input.wide{width:100%}
 <div class="exContent"><div class="exHead"><h2 id="exTitle"></h2><button class="btn" id="exClose">‹ Voltar</button></div>
 <p class="note" id="exDescription"></p><select id="exFilter" aria-label="Filtrar fotos por data ou grupo"></select>
 <div class="exActions sticky"><span id="exCount" aria-live="polite"></span><button class="btn small" id="exAll">Selecionar todos</button><button class="btn small" id="exClear">Limpar seleção</button><button class="btn small" id="exDownload">Baixar selecionados</button><button class="btn small danger" id="exDelete">Deletar selecionados</button></div>
-<div class="exActions" id="exClassify"><span>Marcar seleção como:</span><button class="btn" id="exBefore">Antes</button><button class="btn" id="exAfter">Depois</button><button class="btn" id="exUnknown">Para classificar</button></div><div class="exGrid" id="exGrid"></div></div></section>
+<div class="exActions" id="exClassify"><span>Marcar seleção como:</span><button class="btn" id="exBefore">Antes</button><button class="btn" id="exAfter">Depois</button><button class="btn" id="exUnknown">Para classificar</button></div><div id="exSessions"></div><div class="exGrid" id="exGrid"></div></div></section>
 <script src="photo-dates.js"></script>
 <script>
 (() => {
@@ -1931,8 +1934,7 @@ function scBuild(el, list, side) {
   el.innerHTML = '';
   if (!list.length) { const n = document.createElement('div'); n.className = 'scnone'; n.textContent = 'sem fotos'; el.appendChild(n); }
   list.forEach((s, i) => { const d = document.createElement('div'); d.className = 'sc' + (i === (side === 'A' ? pickL : pickR) ? ' on' : ''); d.innerHTML = '<img alt="" src="' + s.thumb + '">'; el.appendChild(d); });
-  const add = document.createElement('button'); add.type = 'button'; add.className = 'scadd'; add.textContent = '+'; add.setAttribute('aria-label', 'Mais fotos deste lado');
-  add.onclick = () => pkAlbum(side); el.appendChild(add);
+
 }
 function scMark() { [['scrA', pickL], ['scrD', pickR]].forEach(([id, i]) => [...$(id).querySelectorAll('.sc')].forEach((e, j) => e.classList.toggle('on', j === i))); }
 // passar o dedo: a miniatura que está sob o dedo vira a foto daquele lado
@@ -2018,6 +2020,7 @@ let explorer = null, explorerBusy = false;
 const projectPhotos = c => [...new Set([...(c.A || []), ...(c.D || []), ...(c.U || [])])].map(shotById).filter(Boolean);
 const cloneValue = x => x ? JSON.parse(JSON.stringify(x)) : null;
 function angleUI() {
+  $('importPool').hidden = !curComp || screen !== 'edit';
   $('workflow').hidden = !curComp || screen !== 'edit';
   $('projectActions').hidden = !curComp || screen !== 'edit';
   if (!curComp) return;
@@ -2137,7 +2140,12 @@ $('filePool').onchange = async e => {
     await touchProj(); await saveComp(); openPick(c);
     const missing = assignments.filter(x => x.side === 'U').length;
     setStatus(`${added.length} de ${files.length} fotos importadas` + (missing ? ` · ${missing} para classificar` : ' · separadas pela data de captura'), false);
-    await openExplorer('photos', c);
+    if (missing) {
+      await openExplorer('photos', c);
+      explorer.sessionMode = true;
+      explorer.notice = PhotoDates.sessions(added).unknown.length ? 'Não foi possível agrupar algumas fotos pela data. Direcione os blocos e classifique as fotos sem data.' : 'Direcione cada sessão para Antes ou Depois. Você também pode separar fotos de um bloco.';
+      await renderExplorer();
+    }
   } catch (err) { setStatus('Não foi possível concluir a importação: ' + err.message, false); }
   finally { $('importPool').disabled = false; $('app').inert = $('top').inert = !!explorer; }
 };
@@ -2216,14 +2224,47 @@ async function renderExplorer() {
     bindCard(label, () => {}, () => { if (!explorerBusy) itemMenu(ex.kind, ex.comp, r.id, r.title); }); grid.appendChild(label);
   });
   if (!visible.length) { const p = document.createElement('p'); p.textContent = 'Nenhum item aqui.'; grid.appendChild(p); }
+  renderSessions(ex);
   exCounts();
+}
+function renderSessions(ex) {
+  const box = $('exSessions'); box.replaceChildren(); $('exGrid').hidden = false;
+  $('exClose').textContent = ex.sessionMode ? 'Continuar montagem' : '‹ Voltar';
+  if (ex.kind !== 'photos' || !ex.comp) return;
+  const toggle = document.createElement('button'); toggle.className = 'btn';
+  toggle.textContent = ex.sessionMode ? 'Selecionar fotos individualmente' : 'Direcionar por sessão';
+  toggle.onclick = () => { ex.sessionMode = !ex.sessionMode; renderExplorer(); }; box.append(toggle);
+  $('exGrid').hidden = !!ex.sessionMode;
+  if (!ex.sessionMode) return;
+  const {groups, unknown} = PhotoDates.sessions(projectPhotos(ex.comp));
+  if (unknown.length) groups.push(unknown);
+  groups.forEach((group,i) => {
+    const card = document.createElement('div'); card.className = 'sessionCard';
+    const title = document.createElement('b');
+    const format = t => new Date(t).toLocaleString('pt-BR');
+    title.textContent = Number.isFinite(group[0].capturedAt) ? `Sessão ${i+1} · ${format(group[0].capturedAt)} a ${format(group[group.length-1].capturedAt)}` : 'Fotos sem data de captura';
+    const sides = new Set(group.map(s => ex.comp.A.includes(s.id) ? 'Antes' : ex.comp.D.includes(s.id) ? 'Depois' : 'Para classificar'));
+    const note = document.createElement('p'); note.textContent = `${group.length} fotos · ${[...sides].join(' / ')}`;
+    const thumbs = document.createElement('div'); thumbs.className = 'sessionThumbs';
+    group.forEach(s => { const im = document.createElement('img'); im.src = s.thumb; im.alt = ''; im.loading = 'lazy'; thumbs.append(im); });
+    const actions = document.createElement('div'); actions.className = 'flex';
+    ['Antes','Depois','Separar fotos'].forEach((label,n) => {
+      const b = document.createElement('button'); b.className = 'btn'; b.textContent = label; b.disabled = explorerBusy;
+      b.onclick = () => {
+        ex.selected = new Set(group.map(s => s.id));
+        if (n < 2) classify(n === 0 ? 'A' : 'D');
+        else { ex.sessionMode = false; ex.filter = ''; renderExplorer(); }
+      }; actions.append(b);
+    });
+    card.append(title,note,thumbs,actions); box.append(card);
+  });
 }
 function exCounts() {
   if (!explorer) return;
   $('exCount').textContent = `${explorer.selected.size} selecionado${explorer.selected.size === 1 ? '' : 's'}`;
   ['exDownload','exDelete','exBefore','exAfter','exUnknown'].forEach(id => $(id).disabled = explorerBusy || !explorer.selected.size);
   $('exAll').disabled = explorerBusy; $('exClear').disabled = explorerBusy; $('exClose').disabled = explorerBusy; $('exFilter').disabled = explorerBusy;
-  $('exGrid').inert = explorerBusy;
+  $('exGrid').inert = explorerBusy; $('exSessions').inert = explorerBusy;
 }
 $('exAll').onclick = () => { explorer.visible.forEach(r => explorer.selected.add(r.id)); renderExplorer(); };
 $('exClear').onclick = () => { explorer.selected.clear(); renderExplorer(); };

@@ -40,11 +40,21 @@
     } catch (_) { /* Unrecognized or stripped metadata: ask the user to classify. */ }
     return null;
   }
-  function split(shots) {
-    const days = [...new Set(shots.map(s => s.captureDay).filter(Boolean))].sort();
-    // Exactly two capture days are unambiguous. Never assign missing dates.
-    return shots.map(s => ({ id: s.id, side: days.length === 2 && s.captureDay ? (s.captureDay === days[0] ? 'A' : 'D') : 'U' }));
+  function sessions(shots) {
+    const dated = shots.filter(s => Number.isFinite(s.capturedAt)).slice().sort((a,b) => a.capturedAt - b.capturedAt);
+    const groups = [];
+    for (const shot of dated) {
+      const last = groups[groups.length - 1];
+      if (!last || shot.capturedAt - last[last.length - 1].capturedAt > 30 * 60 * 1000) groups.push([shot]);
+      else last.push(shot);
+    }
+    return {groups, unknown: shots.filter(s => !Number.isFinite(s.capturedAt))};
   }
-  const api = { readExif, parseDate, split };
+  function split(shots) {
+    const {groups, unknown} = sessions(shots), sides = new Map();
+    if (groups.length === 2 && !unknown.length) groups.forEach((group,i) => group.forEach(s => sides.set(s.id, i ? 'D' : 'A')));
+    return shots.map(s => ({id:s.id, side:sides.get(s.id) || 'U'}));
+  }
+  const api = { readExif, parseDate, sessions, split };
   if (typeof module !== 'undefined') module.exports = api; else root.PhotoDates = api;
 })(typeof window !== 'undefined' ? window : globalThis);

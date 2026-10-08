@@ -19,12 +19,16 @@ test('EXIF capture dates: both byte orders, leap day and invalid input', () => {
   assert.equal(dates.readExif(new Uint8Array([0,1,2]).buffer),null);
   assert.equal(dates.parseDate('2026:01:01 25:00:00'),null);
 });
-test('two days split chronologically; missing dates never use lastModified', () => {
-  const result = dates.split([{id:'d',captureDay:'2026-10-08'},{id:'a',captureDay:'2026-09-01'},{id:'u',lastModified:1}]);
-  assert.deepEqual(result,[{id:'d',side:'D'},{id:'a',side:'A'},{id:'u',side:'U'}]);
+test('consecutive gaps: exactly 30 minutes stays together; larger gap splits on same day', () => {
+  const shots = [61,30,0,90].map((m,i)=>({id:String(i),capturedAt:m*60000}));
+  assert.deepEqual(dates.sessions(shots).groups.map(g=>g.map(s=>s.capturedAt/60000)),[[0,30],[61,90]]);
+  assert.deepEqual(dates.split(shots).map(s=>s.side),['D','A','A','D']);
 });
-test('one or three sessions require explicit classification', () => {
-  for (const days of [['2026-10-08','2026-10-08'],['2026-01-01','2026-02-01','2026-03-01']]) assert.ok(dates.split(days.map((d,id)=>({id,captureDay:d}))).every(s=>s.side==='U'));
+test('one block, three blocks and missing timestamps require classification', () => {
+  for (const minutes of [[0,20,40],[0,31,62]]) assert.ok(dates.split(minutes.map((m,id)=>({id,capturedAt:m*60000}))).every(s=>s.side==='U'));
+  const shots = [{id:'a',capturedAt:0},{id:'d',capturedAt:3600000},{id:'u',lastModified:42,captureDay:'2026-01-01'}];
+  assert.ok(dates.split(shots).every(s=>s.side==='U'));
+  assert.deepEqual(dates.sessions(shots).unknown.map(s=>s.id),['u']);
 });
 function context(extra = {}) {
   const elements = {};
@@ -125,4 +129,20 @@ test('cancelling the native gallery sheet does not start downloads or retry', as
   vm.runInContext(source.slice(source.indexOf('async function deliverImages('),source.indexOf('async function projectEntries(')),ctx);
   ctx.files=[new File(['image'],'photo.jpg',{type:'image/jpeg'})];
   await vm.runInContext('deliverImages(files)',ctx); assert.equal(fallback,0);
+});
+test('import routes two sessions to editor and three sessions to manual routing', async () => {
+  for (const count of [2,3]) {
+    const added = Array.from({length:count},(_,i)=>({id:String(i),capturedAt:i*3600000}));
+    let opens=0, picks=0;
+    const {ctx,elements}=context({curComp:{A:[],D:[],U:[]},PhotoDates:dates,explorer:null,
+      rememberDraft:()=>{},importToProject:async()=>added,shotById:id=>added.find(s=>s.id===id),
+      DB:{put:async()=>{}},touchProj:async()=>{},saveComp:async()=>{},openPick:()=>picks++,setStatus:()=>{},renderExplorer:async()=>{},
+      openExplorer:async()=>{opens++;ctx.explorer={};}});
+    vm.runInContext(source.slice(source.indexOf("$('importPool').onclick ="),source.indexOf("$('poolManage').onclick =")),ctx);
+    await elements.filePool.onchange({target:{files:added,value:'files'}});
+    assert.equal(picks,1); assert.equal(opens,count===2?0:1);
+    if(count===2) { assert.deepEqual(plain(ctx.curComp.A),['0']); assert.deepEqual(plain(ctx.curComp.D),['1']); }
+    else assert.equal(ctx.explorer.sessionMode,true);
+    assert.equal(elements.importPool.disabled,false);
+  }
 });
