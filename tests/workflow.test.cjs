@@ -91,3 +91,38 @@ test('failed deletion restores the local view instead of reporting success',asyn
   assert.equal(writes.length,0); assert.deepEqual(plain(ctx.Pj.rec.comps.map(c=>c.id)),['remove','keep']);
   assert.deepEqual(plain(ctx.Pj.shots.map(s=>s.id)),['a','shared','u']); assert.match(ctx.explorer.notice,/storage failure/);
 });
+test('long press opens actions without navigating; a scroll cancels the press', () => {
+  const handlers = {}, timers = new Map(); let seq = 0, opens = 0, menus = 0;
+  const {ctx} = context({setTimeout:fn=>{timers.set(++seq,fn);return seq;},clearTimeout:id=>timers.delete(id)});
+  vm.runInContext(source.slice(source.indexOf('function bindCard('), source.indexOf('function menuButton(')),ctx);
+  ctx.el = {addEventListener:(name,fn)=>handlers[name]=fn}; ctx.open=()=>opens++; ctx.menu=()=>menus++;
+  vm.runInContext('bindCard(el,open,menu)',ctx);
+  handlers.pointerdown({button:0,clientX:10,clientY:10}); const pending = [...timers.entries()][0]; timers.delete(pending[0]); pending[1]();
+  handlers.pointerup(); handlers.click({preventDefault(){},stopPropagation(){}});
+  assert.equal(menus,1); assert.equal(opens,0);
+  handlers.pointerdown({button:0,clientX:10,clientY:10}); handlers.pointermove({clientX:10,clientY:40});
+  assert.equal(timers.size,0);
+  handlers.pointerdown({button:0,clientX:10,clientY:10}); handlers.pointerup(); handlers.click({});
+  assert.equal(opens,1);
+});
+test('selected angles share image files immediately, with no ZIP or async preparation before share', async () => {
+  let shared;
+  const c = {date:'2026-10-08'}, angles = ['Frente','Perfil direito','45 esquerda'].map((name,i)=>({id:String(i),name,out:'data:image/jpeg;base64,/9j/2Q=='}));
+  const {ctx,elements} = context({atob,slug:s=>s.toLowerCase().replaceAll(' ','-'),Pj:{rec:{name:'Teste'}},localDay:()=>'',
+    navigator:{canShare:({files})=>files.every(f=>f.type==='image/jpeg'),share:({files})=>{shared=files;return Promise.resolve();}},
+    setStatus:()=>{},explorerBusy:false,explorer:{kind:'angles',comp:c,selected:new Set(['0','2']),rows:angles.map(value=>({id:value.id,value}))},
+    exAction:()=>{throw Error('Image export must not use the backup path');}});
+  vm.runInContext(source.slice(source.indexOf('function angleFile('),source.indexOf('async function projectEntries(')),ctx);
+  vm.runInContext(source.slice(source.indexOf("$('exDownload').onclick ="),source.indexOf("$('exDelete').onclick =")),ctx);
+  const result = elements.exDownload.onclick();
+  assert.equal(shared.length,2); assert.ok(shared.every(f=>f.name.endsWith('.jpg')));
+  assert.match(shared[0].name,/frente/); assert.match(shared[1].name,/45-esquerda/);
+  assert.deepEqual([...new Uint8Array(await shared[0].arrayBuffer())],[255,216,255,217]); await result;
+});
+test('cancelling the native gallery sheet does not start downloads or retry', async () => {
+  let fallback = 0;
+  const {ctx} = context({navigator:{canShare:()=>true,share:async()=>{const e=Error('cancelled');e.name='AbortError';throw e;}},overlay:()=>fallback++,setStatus:()=>{}});
+  vm.runInContext(source.slice(source.indexOf('async function deliverImages('),source.indexOf('async function projectEntries(')),ctx);
+  ctx.files=[new File(['image'],'photo.jpg',{type:'image/jpeg'})];
+  await vm.runInContext('deliverImages(files)',ctx); assert.equal(fallback,0);
+});

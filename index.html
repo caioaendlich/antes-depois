@@ -84,7 +84,7 @@ input[type=text]{font:inherit;font-size:14px;background:var(--panel);color:var(-
 .save-row{display:flex;gap:10px;flex-wrap:wrap}
 .save-row .btn.primary{flex:1;min-width:180px;font-size:15px;padding:12px}
 .note{font-size:12.5px;color:var(--muted);line-height:1.45;margin:0}
-#out{position:fixed;inset:0;background:rgba(0,0,0,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;z-index:10}
+#out{position:fixed;inset:0;background:rgba(0,0,0,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;z-index:100;overflow:auto}
 [hidden]{display:none!important}
 #cam{position:fixed;inset:0;background:#000;z-index:20;touch-action:none}
 #cam video,#cam canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -213,8 +213,13 @@ input.wide{width:100%}
 
 #top{position:sticky;top:0;background:var(--bg);z-index:15;min-height:58px}
 #back{background:var(--panel);border:1px solid var(--accent);border-radius:10px;padding:10px 14px;min-height:44px;color:var(--fg);font-weight:600;max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#workflow{grid-column:1/-1;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:10px}
-#workflow .flex{flex-wrap:wrap}#workflow label{display:grid;gap:5px;flex:1;min-width:135px}#workflow select,#workflow input,#exFilter{font:inherit;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px;min-height:44px;width:100%}
+#workflow{display:flex;justify-content:center;gap:6px;padding:0 0 10px}
+#workflow button{width:48px;min-height:44px;padding:5px 2px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--muted);font:600 12px var(--ui)}
+#workflow button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+#workflow small{display:block;font-size:9px;line-height:12px}
+#projectActions{display:grid;gap:8px;margin:10px 0}#app.picking .controls>#projectActions{display:grid!important}#projectActions .flex{flex-wrap:wrap}
+.folderHead{display:flex;gap:10px;align-items:center;justify-content:space-between}.folderHead h2{font-size:18px}.angleGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}.angleTile{min-width:0;position:relative}.angleTile>.angleOpen{display:flex;flex-direction:column;width:100%;padding:8px;gap:8px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--fg);font:inherit;overflow:hidden}.angleOpen img{width:100%;aspect-ratio:4/5;object-fit:contain;background:#111}.angleAdd{min-height:180px;justify-content:center;align-items:center}.angleAdd span{font-size:42px;font-weight:300}.cardRow{display:flex;align-items:stretch;gap:6px}.cardRow>.pcard,.cardRow>.ccard{flex:1;min-width:0}.cardMenu{flex:none;align-self:center;min-width:40px;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--fg);font:600 21px var(--ui)}.angleTile>.cardMenu{position:absolute;right:10px;top:10px;z-index:1}.pcard,.ccard,.angleOpen{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;touch-action:pan-y}
+#exFilter{font:inherit;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px;min-height:44px;width:100%}
 #poolInfo{margin:0}#saveAngle{width:100%}.explorer{position:fixed;inset:0;z-index:80;background:var(--bg);overflow:auto;padding:max(16px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom))}
 .exContent{max-width:900px;margin:auto}.exHead,.exActions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.exHead h2{flex:1;margin:0;font-size:20px}.exActions{padding:10px 0}.exActions.sticky{position:sticky;top:-16px;background:var(--bg);z-index:2}.exGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:10px;margin-top:10px}.exCard{display:flex;position:relative;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;padding:8px;gap:6px;background:var(--panel)}.exCard:has(input:checked){border:2px solid var(--accent);padding:7px}.exCard input{width:24px;height:24px;accent-color:var(--accent)}.exCard img{width:100%;height:135px;object-fit:contain}.exCard b,.exCard small{display:block;overflow-wrap:anywhere}.exCard small{color:var(--muted);margin-top:4px}.danger{color:#ffb6ab!important}#exCount{flex:1;min-width:120px}
 @media(max-width:899px){.stage{position:relative;top:auto}#workflow{position:relative}#top h1{font-size:13px}#statusChip{max-width:45%;font-size:11px}.exGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -239,7 +244,7 @@ input.wide{width:100%}
   <p class="note" id="storeNote" style="text-align:center;margin-top:14px"></p>
   <div class="tools"><button class="btn small" id="freeMode" type="button">Montagem avulsa</button><button class="btn small" id="restore" type="button">Restaurar backup</button></div>
   <p class="note">As fotos ficam guardadas só neste aparelho, dentro do app. Ao fechar cada paciente, toque em Backup e guarde o arquivo no Drive ou em Arquivos.</p>
-  <p class="note" style="opacity:.6">Versão 23 · prévia local</p>
+  <p class="note" style="opacity:.6">Versão 24</p>
 </section>
 
 <section id="proj" class="scr" hidden>
@@ -252,9 +257,15 @@ input.wide{width:100%}
     <div class="tools">
       <button class="btn small" id="pBackup" type="button">Backup</button>
       <button class="btn small" id="pShare" type="button">Fotos originais</button>
-      <button class="btn small" id="pDel" type="button">Apagar paciente</button>
+      <button class="btn small" id="pDel" type="button">Deletar paciente</button>
     </div>
   </div>
+</section>
+
+<section id="projectFolder" class="scr" hidden>
+  <div class="folderHead"><h2 id="folderTitle"></h2><button class="btn small" id="folderSelect">Selecionar</button></div>
+  <div class="angleGrid" id="folderAngles"></div>
+  <div class="tools" id="folderAlbum"><button class="btn small" id="folderPhotos">Álbum do projeto</button><span class="note" id="folderPoolCount"></span></div>
 </section>
 
 <section id="pairScr" class="scr" hidden>
@@ -268,14 +279,14 @@ input.wide{width:100%}
 </section>
 
 <div id="app" hidden>
-  <div id="workflow" hidden>
-    <div class="flex"><label>Ângulo da montagem<select id="angleSelect"><option>Frente</option><option>45° esquerda</option><option>45° direita</option><option>Perfil esquerdo</option><option>Perfil direito</option><option>Outro</option></select></label><label>Data do projeto<input type="date" id="projectDate"></label></div>
-    <div class="flex"><button class="btn primary" id="importPool">+ Importar antes e depois juntos</button><button class="btn" id="poolManage">Organizar fotos</button><button class="btn" id="savedAngles">Ângulos salvos</button></div>
-    <p class="note" id="poolInfo" aria-live="polite"></p>
-    <button class="btn primary" id="saveAngle" disabled>Salvar ângulo</button>
-  </div>
-
   <div class="stage">
+    <div id="workflow" role="group" aria-label="Ângulo da montagem" hidden>
+      <button type="button" data-angle="Perfil esquerdo" aria-label="90 graus à esquerda" aria-pressed="false">90°<small>ESQ.</small></button>
+      <button type="button" data-angle="45° esquerda" aria-label="45 graus à esquerda" aria-pressed="false">45°<small>ESQ.</small></button>
+      <button type="button" data-angle="Frente" aria-label="Frontal" aria-pressed="true">Frontal</button>
+      <button type="button" data-angle="45° direita" aria-label="45 graus à direita" aria-pressed="false">45°<small>DIR.</small></button>
+      <button type="button" data-angle="Perfil direito" aria-label="90 graus à direita" aria-pressed="false">90°<small>DIR.</small></button>
+    </div>
     <div class="view" id="view">
       <canvas id="cv" width="1080" height="1920" aria-label="Prévia da imagem (mostrando o miolo 4:5; salva em 9:16)"></canvas>
       <button class="vbtn" id="vtog" type="button">Ver 9:16 inteiro</button>
@@ -298,8 +309,13 @@ input.wide{width:100%}
       <div class="scrubs"><div class="scrub" id="scrA"></div><div class="scrub" id="scrD"></div></div>
       <div class="sclabels"><span id="pkLl"></span><span id="pkRl"></span></div>
       <button class="btn primary big" id="pkGo" type="button">Remover fundo</button>
-      <p class="note">Importe antes e depois juntos pelo botão acima. Escolha uma foto de cada faixa para o ângulo atual; arraste e pince na prévia para encaixar. Os botões + também permitem adicionar fotos separadamente.</p>
-      <div class="tools"><button class="btn small" id="pkDel" type="button">Apagar esta comparação</button></div>
+    </div>
+    <div id="projectActions" hidden>
+      <button class="btn primary big" id="saveAngle" disabled>Salvar ângulo</button>
+      <button class="btn big" id="importPool">+ Importar antes e depois juntos</button>
+      <div class="flex"><button class="btn" id="poolManage">Organizar fotos</button><button class="btn" id="savedAngles">Ângulos salvos</button></div>
+      <p class="note" id="poolInfo" aria-live="polite"></p>
+      <p class="note">As fotos importadas ficam no álbum deste projeto e podem ser usadas em qualquer ângulo.</p>
     </div>
     <div class="pair">
     <div class="row">
@@ -404,7 +420,7 @@ input.wide{width:100%}
 <section id="explorer" class="explorer" role="dialog" aria-modal="true" aria-labelledby="exTitle" hidden>
 <div class="exContent"><div class="exHead"><h2 id="exTitle"></h2><button class="btn" id="exClose">‹ Voltar</button></div>
 <p class="note" id="exDescription"></p><select id="exFilter" aria-label="Filtrar fotos por data ou grupo"></select>
-<div class="exActions sticky"><span id="exCount" aria-live="polite"></span><button class="btn small" id="exAll">Selecionar todos</button><button class="btn small" id="exClear">Limpar seleção</button><button class="btn small" id="exDownload">Baixar selecionados</button><button class="btn small danger" id="exDelete">Excluir selecionados</button></div>
+<div class="exActions sticky"><span id="exCount" aria-live="polite"></span><button class="btn small" id="exAll">Selecionar todos</button><button class="btn small" id="exClear">Limpar seleção</button><button class="btn small" id="exDownload">Baixar selecionados</button><button class="btn small danger" id="exDelete">Deletar selecionados</button></div>
 <div class="exActions" id="exClassify"><span>Marcar seleção como:</span><button class="btn" id="exBefore">Antes</button><button class="btn" id="exAfter">Depois</button><button class="btn" id="exUnknown">Para classificar</button></div><div class="exGrid" id="exGrid"></div></div></section>
 <script src="photo-dates.js"></script>
 <script>
@@ -1527,8 +1543,9 @@ async function runDet() {
 function show(s) {
   screen = s;
   $('home').hidden = s !== 'home'; $('proj').hidden = s !== 'proj'; $('app').hidden = s !== 'edit'; $('pairScr').hidden = s !== 'pair';
+  $('projectFolder').hidden = s !== 'folder';
   $('back').hidden = s === 'home';
-  $('back').textContent = s === 'proj' ? '‹ Pacientes' : s === 'pair' && Pj ? '‹ ' + Pj.rec.name : s === 'edit' && (linked || picking) && Pj ? '‹ ' + Pj.rec.name : '‹ Início';
+  $('back').textContent = s === 'proj' ? '‹ Pacientes' : s === 'folder' && Pj ? '‹ ' + Pj.rec.name : s === 'edit' && curComp ? '‹ Projeto ' + dateLabel(curComp) : s === 'pair' && Pj ? '‹ ' + Pj.rec.name : '‹ Início';
   window.scrollTo(0, 0);
   if (s === 'edit') requestAnimationFrame(render);
   angleUI();
@@ -1549,16 +1566,16 @@ async function renderHome() {
     const bk = document.createElement('small'); bk.style.display = 'block';
     if (p.dirty) { bk.textContent = 'sem backup desde a última alteração'; bk.style.color = 'var(--warn)'; } else if (p.bkAt) bk.textContent = 'backup em dia · ' + fmtDT(p.bkAt);
     if (bk.textContent) b.querySelector('small').after(bk);
-    b.onclick = () => openProject(p.id);
-    box.appendChild(b);
+    const menu = () => itemMenu('patients', null, p.id, p.name);
+    bindCard(b, () => openProject(p.id), menu);
+    box.appendChild(cardRow(b, menu));
   });
 }
 async function openProject(id) {
   const rec = await DB.get('projects', id); if (!rec) return;
   Pj = { rec, shots: await DB.byP(id) };
+  curComp = null;
   if (!rec.comps) migrateComps();
-  const live = rec.comps.filter(c => c.A.length || c.D.length || (c.U || []).length || (c.angles || []).length);
-  if (!live.length) { newComp(); return; }
   show('proj'); renderProj();
 }
 // projetos antigos: cada par vira uma comparação; o que sobrou fica numa só
@@ -1569,17 +1586,17 @@ function migrateComps() {
   if (restA.length || restD.length) comps.push({ id: newId('c'), t: Pj.rec.t, A: restA, D: restD, selA: restA[0] || null, selD: restD[0] || null, tf: null });
   Pj.rec.comps = comps; saveComp();
 }
-function newComp() {
+async function newComp() {
   const c = { id: newId('c'), t: Date.now(), A: [], D: [], selA: null, selD: null, tf: null, U: [], angles: [], angle: 'Frente', date: localDay(Date.now()) };
-  Pj.rec.comps.push(c); saveComp(); openPick(c);
+  Pj.rec.comps.push(c); await saveComp(); openFolder(c);
 }
 const fmtFull = t => { const d = new Date(t); return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear() + ' · ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()); };
 function renderProj() {
   if (!Pj) return;
   $('pName').value = Pj.rec.name;
   const box = $('pComps'); box.innerHTML = '';
-  const comps = (Pj.rec.comps || []).filter(c => c.A.length || c.D.length || (c.U || []).length || (c.angles || []).length).sort((a, b) => b.t - a.t);
-  if (!comps.length) box.innerHTML = '<p class="note">Nenhuma comparação ainda.</p>';
+  const comps = (Pj.rec.comps || []).slice().sort((a, b) => b.t - a.t);
+  if (!comps.length) box.innerHTML = '<p class="note">Nenhum projeto ainda.</p>';
   comps.forEach(c => {
     const a = shotById(c.selA) || compList(c, 'A')[0], d = shotById(c.selD) || compList(c, 'D')[0];
     const b = document.createElement('button'); b.type = 'button'; b.className = 'ccard';
@@ -1587,8 +1604,9 @@ function renderProj() {
     b.innerHTML = th + '<span><b></b><small></small></span><i>›</i>';
     b.querySelector('b').textContent = 'Projeto ' + dateLabel(c);
     b.querySelector('small').textContent = c.A.length + ' antes · ' + c.D.length + ' depois' + ((c.U || []).length ? ' · ' + c.U.length + ' para classificar' : '') + ' · ' + (c.angles || []).length + ' ângulos salvos';
-    b.onclick = () => openPick(c);
-    box.appendChild(b);
+    const menu = () => itemMenu('projects', null, c.id, 'Projeto ' + dateLabel(c));
+    bindCard(b, () => openFolder(c), menu);
+    box.appendChild(cardRow(b, menu));
   });
   $('pShare').disabled = $('pBackup').disabled = !Pj.shots.length;
   $('pBackup').textContent = Pj.rec.dirty ? 'Backup (pendente)' : 'Backup';
@@ -1938,7 +1956,7 @@ function pkLabels() {
   const lab = (L, i) => L[i] ? (i + 1) + ' de ' + L.length + (L[i].pose && L[i].pose !== '—' ? ' · ' + L[i].pose : '') : '';
   $('pkLl').textContent = lab(pickA, pickL); $('pkRl').textContent = lab(pickD, pickR);
   const ok = !!(pickA[pickL] && pickD[pickR]);
-  $('pkGo').disabled = !ok; $('pkGo').textContent = ok ? 'Remover fundo' : !pickA.length ? 'Escolha o antes no +' : 'Escolha o depois no +';
+  $('pkGo').disabled = !ok; $('pkGo').textContent = 'Remover fundo';
 }
 function pkSave() { if (!curComp) return; curComp.tf = { A: {...tf.A}, D: {...tf.D}, front: curComp.tf?.front }; curComp.selA = pickA[pickL] ? pickA[pickL].id : null; curComp.selD = pickD[pickR] ? pickD[pickR].id : null; saveComp(); }
 function openPick(c) {
@@ -1971,10 +1989,6 @@ $('pkGo').onclick = async () => {
   await DB.put('shots', a); await DB.put('shots', d); await touchProj(); await saveComp();
   closePick(); openEditor(a, d);
 };
-$('pkDel').onclick = () => {
-  if (!curComp) return;
-  openExplorer('projects').then(() => { explorer.selected.add(curComp.id); renderExplorer(); });
-};
 $('pickAgain').onclick = () => { savePair(); openPick(curComp); };
 $('pNew').onclick = () => { if (Pj) newComp(); };
 $('pShare').onclick = async () => {
@@ -1992,25 +2006,22 @@ $('pSearch').addEventListener('input', renderHome);
 $('back').onclick = () => {
   if (screen === 'edit') {
     if (picking || linked) {
-      if (linked) { savePair(); clearItems(); linked = false; }
-      closePick(); $('app').classList.remove('proj'); curComp = null;
-      if (Pj) { Pj.rec.comps = (Pj.rec.comps || []).filter(c => c.A.length || c.D.length || (c.U || []).length || (c.angles || []).length); saveComp(); }
-      if (Pj && !Pj.rec.comps.length) { Pj = null; show('home'); renderHome(); } else { show('proj'); renderProj(); }
+      openFolder(curComp);
     }
     else { show('home'); renderHome(); }
-  } else if (screen === 'pair') { show('proj'); renderProj(); }
-  else if (screen === 'proj') { stopBg(); Pj = null; show('home'); renderHome(); }
+  } else if (screen === 'folder' || screen === 'pair') { curComp = null; show('proj'); renderProj(); }
+  else if (screen === 'proj') { stopBg(); Pj = null; curComp = null; show('home'); renderHome(); }
 };
 // ---------- projeto por data, ângulos e seleção em lote ----------
-const ANGLES = ['Frente', '45° esquerda', '45° direita', 'Perfil esquerdo', 'Perfil direito', 'Outro'];
+const ANGLES = ['Perfil esquerdo', '45° esquerda', 'Frente', '45° direita', 'Perfil direito'];
 let explorer = null, explorerBusy = false;
 const projectPhotos = c => [...new Set([...(c.A || []), ...(c.D || []), ...(c.U || [])])].map(shotById).filter(Boolean);
 const cloneValue = x => x ? JSON.parse(JSON.stringify(x)) : null;
 function angleUI() {
   $('workflow').hidden = !curComp || screen !== 'edit';
+  $('projectActions').hidden = !curComp || screen !== 'edit';
   if (!curComp) return;
-  $('angleSelect').value = curComp.angle || 'Frente';
-  $('projectDate').value = curComp.date || localDay(curComp.t);
+  $('workflow').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.angle === (curComp.angle || 'Frente')));
   const n = (curComp.angles || []).length, u = (curComp.U || []).length;
   $('poolInfo').textContent = `${curComp.A.length} antes · ${curComp.D.length} depois` + (u ? ` · ${u} para classificar` : '') + ` · ${n} ângulo${n === 1 ? '' : 's'} salvo${n === 1 ? '' : 's'}`;
   $('saveAngle').hidden = picking;
@@ -2018,23 +2029,98 @@ function angleUI() {
 }
 function localDay(t) { const d = new Date(t); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
 function dateLabel(c) { return (c.date || localDay(c.t)).split('-').reverse().join('/'); }
+function openFolder(c) {
+  if (!c || !Pj) return;
+  if (screen === 'edit') { rememberDraft(); saveComp(); }
+  if (linked) { clearItems(); linked = false; }
+  closePick(); $('app').classList.remove('proj'); curComp = c;
+  show('folder'); renderFolder();
+}
+function renderFolder() {
+  if (!curComp) return;
+  const c = curComp, angles = c.angles || [], box = $('folderAngles');
+  $('folderTitle').textContent = 'Projeto ' + dateLabel(c);
+  $('folderSelect').hidden = !angles.length;
+  $('folderAlbum').hidden = !projectPhotos(c).length;
+  $('folderPoolCount').textContent = projectPhotos(c).length + ' fotos compartilhadas';
+  box.replaceChildren();
+  angles.forEach(a => {
+    const tile = document.createElement('div'); tile.className = 'angleTile';
+    const b = document.createElement('button'); b.className = 'angleOpen'; b.type = 'button';
+    const im = document.createElement('img'); im.src = a.out; im.alt = ''; im.loading = 'lazy';
+    const name = document.createElement('span'); name.textContent = a.name; b.append(im, name);
+    const menu = () => itemMenu('angles', c, a.id, a.name);
+    bindCard(b, () => editSavedAngle(c, a), menu);
+    tile.append(b, menuButton(menu, a.name)); box.append(tile);
+  });
+  const add = document.createElement('button'); add.type = 'button'; add.className = 'angleOpen angleAdd'; add.setAttribute('aria-label', 'Criar novo ângulo');
+  add.innerHTML = '<span aria-hidden="true">+</span>';
+  add.onclick = () => {
+    c.angle = ['Frente', ...ANGLES].find(name => !angles.some(a => a.name === name)) || 'Frente';
+    const draft = c.drafts?.[c.angle];
+    c.selA = draft?.selA || null; c.selD = draft?.selD || null; c.tf = cloneValue(draft?.tf);
+    openPick(c);
+  };
+  const tile = document.createElement('div'); tile.className = 'angleTile'; tile.append(add); box.append(tile);
+}
+function editSavedAngle(c, a) {
+  const before = shotById(a.selA), after = shotById(a.selD);
+  if (!before || !after) {
+    overlay(a.out, 'A montagem está salva. Uma das fotos originais foi excluída deste projeto.', [
+      ['Salvar na galeria', () => deliverImages([angleFile(c, a)])], ['Fechar', closeOut]]);
+    return;
+  }
+  curComp = c; c.angle = a.name; c.selA = a.selA; c.selD = a.selD; c.tf = cloneValue(a.tf);
+  closePick(); openEditor(before, after);
+}
+$('folderSelect').onclick = () => openExplorer('angles', curComp);
+$('folderPhotos').onclick = () => openExplorer('photos', curComp);
+function bindCard(el, open, menu) {
+  let timer = null, start = null, held = false;
+  const clear = () => { clearTimeout(timer); timer = null; };
+  el.addEventListener('pointerdown', e => {
+    clear(); held = false; if (e.button !== 0) return;
+    start = {x:e.clientX, y:e.clientY};
+    timer = setTimeout(() => { held = true; timer = null; menu(); }, 550);
+  });
+  el.addEventListener('pointermove', e => { if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) clear(); });
+  ['pointerup','pointercancel','pointerleave'].forEach(type => el.addEventListener(type, clear));
+  el.addEventListener('contextmenu', e => { e.preventDefault(); clear(); if (!held) { held = true; menu(); } });
+  el.addEventListener('click', e => { clear(); if (held) { e.preventDefault(); e.stopPropagation(); held = false; return; } open(); });
+}
+function menuButton(menu, title) {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'cardMenu'; b.textContent = '⋯'; b.setAttribute('aria-label', 'Opções de ' + title); b.onclick = menu; return b;
+}
+function cardRow(card, menu) {
+  const row = document.createElement('div'); row.className = 'cardRow'; row.append(card, menuButton(menu, card.querySelector('b')?.textContent || 'item')); return row;
+}
+function itemMenu(kind, comp, id, title) {
+  overlay(null, title, [
+    ['Deletar', async () => {
+      closeOut(); await openExplorer(kind, comp); explorer.selected.add(id); exCounts();
+      await $('exDelete').onclick(); closeExplorer();
+    }, 'danger'],
+    ['Selecionar vários', async () => { closeOut(); await openExplorer(kind, comp); explorer.selected.add(id); renderExplorer(); }],
+    ['Cancelar', closeOut]
+  ]);
+}
 function rememberDraft() {
   if (!curComp) return;
   if (linked) savePair(); else if (picking) { pkSave(); curComp.tf = { A: {...tf.A}, D: {...tf.D} }; }
   curComp.drafts ||= {};
   curComp.drafts[curComp.angle || 'Frente'] = { selA: curComp.selA, selD: curComp.selD, tf: cloneValue(curComp.tf) };
 }
-$('angleSelect').onchange = async e => {
+async function selectAngle(name) {
   if (!curComp) return;
   rememberDraft();
-  curComp.angle = e.target.value;
-  const draft = (curComp.drafts || {})[curComp.angle];
+  curComp.angle = name;
+  const draft = (curComp.drafts || {})[name] || (curComp.angles || []).find(a => a.name === name);
   // Clear the editor before loading the next angle so savePair cannot overwrite it.
   if (linked) { clearItems(); linked = false; }
   curComp.selA = draft ? draft.selA : null; curComp.selD = draft ? draft.selD : null; curComp.tf = draft ? cloneValue(draft.tf) : null;
   await saveComp(); openPick(curComp);
-};
-$('projectDate').onchange = async e => { if (curComp && e.target.value) { curComp.date = e.target.value; await saveComp(); } };
+}
+$('workflow').querySelectorAll('button').forEach(b => { b.onclick = () => selectAngle(b.dataset.angle); });
 $('importPool').onclick = () => $('filePool').click();
 $('filePool').onchange = async e => {
   const files = [...e.target.files]; e.target.value = ''; if (!files.length || !curComp) return;
@@ -2056,7 +2142,7 @@ $('filePool').onchange = async e => {
   finally { $('importPool').disabled = false; $('app').inert = $('top').inert = !!explorer; }
 };
 $('poolManage').onclick = () => { rememberDraft(); if (linked) openPick(curComp); openExplorer('photos', curComp); };
-$('savedAngles').onclick = () => { rememberDraft(); openExplorer('angles', curComp); };
+$('savedAngles').onclick = () => openFolder(curComp);
 $('saveAngle').onclick = async () => {
   if (!curComp || !linked || $('save').disabled || savingAngle) return;
   const c = curComp, angle = c.angle || 'Frente';
@@ -2082,13 +2168,13 @@ function exButton(text, action, parent, cls = '') {
 }
 async function openExplorer(kind, comp) {
   explorer = { kind, comp, selected: new Set(), rows: [], filter: '' };
-  $('explorer').hidden = false; $('home').inert = $('proj').inert = $('app').inert = $('top').inert = true; await renderExplorer(); $('exClose').focus();
+  $('explorer').hidden = false; $('home').inert = $('proj').inert = $('projectFolder').inert = $('app').inert = $('top').inert = true; await renderExplorer(); $('exClose').focus();
 }
 function closeExplorer() {
   if (explorerBusy) return;
-  $('explorer').hidden = true; $('home').inert = $('proj').inert = $('app').inert = $('top').inert = false; explorer = null;
+  $('explorer').hidden = true; $('home').inert = $('proj').inert = $('projectFolder').inert = $('app').inert = $('top').inert = false; explorer = null;
   if (curComp && Pj && !(Pj.rec.comps || []).includes(curComp)) { closePick(); clearItems(); linked = false; curComp = null; show('proj'); }
-  if (screen === 'home') renderHome(); else if (screen === 'proj') renderProj(); else if (picking && curComp) openPick(curComp);
+  if (screen === 'home') renderHome(); else if (screen === 'proj') renderProj(); else if (screen === 'folder') renderFolder(); else if (picking && curComp) openPick(curComp);
   angleUI();
 }
 $('exClose').onclick = closeExplorer;
@@ -2105,7 +2191,8 @@ async function renderExplorer() {
   ex.rows = rows;
   ex.selected = new Set([...ex.selected].filter(id => rows.some(r => r.id === id)));
   $('exTitle').textContent = ({patients:'Pacientes',projects:'Projetos por data',photos:'Fotos importadas',angles:'Ângulos salvos'})[ex.kind];
-  $('exDescription').textContent = ex.kind === 'photos' ? 'Selecione várias fotos para baixar, excluir ou separar entre antes e depois. Confira a separação sugerida pela data de captura.' : 'Marque os itens que deseja baixar ou excluir.';
+  $('exDownload').textContent = ['photos','angles'].includes(ex.kind) ? 'Salvar na galeria' : 'Baixar backups';
+  $('exDescription').textContent = ex.kind === 'photos' ? 'Selecione fotos para salvar na galeria, deletar ou separar entre antes e depois.' : ex.kind === 'angles' ? 'Selecione as montagens. No iPhone, toque em Salvar na galeria e depois em Salvar imagens.' : 'Marque os itens para baixar backups ou deletar.';
   if (ex.notice) $('exDescription').textContent = ex.notice;
   $('exClassify').hidden = ex.kind !== 'photos' || !ex.comp;
   const filter = $('exFilter'); filter.hidden = ex.kind !== 'photos';
@@ -2125,7 +2212,8 @@ async function renderExplorer() {
     check.onchange = () => { if (check.checked) ex.selected.add(r.id); else ex.selected.delete(r.id); exCounts(); };
     label.appendChild(check);
     if (r.image) { const im = document.createElement('img'); im.src = r.image; im.alt = ''; im.loading = 'lazy'; label.appendChild(im); }
-    const text = document.createElement('span'), title = document.createElement('b'), note = document.createElement('small'); title.textContent = r.title; note.textContent = r.note; text.append(title, note); label.appendChild(text); grid.appendChild(label);
+    const text = document.createElement('span'), title = document.createElement('b'), note = document.createElement('small'); title.textContent = r.title; note.textContent = r.note; text.append(title, note); label.appendChild(text);
+    bindCard(label, () => {}, () => { if (!explorerBusy) itemMenu(ex.kind, ex.comp, r.id, r.title); }); grid.appendChild(label);
   });
   if (!visible.length) { const p = document.createElement('p'); p.textContent = 'Nenhum item aqui.'; grid.appendChild(p); }
   exCounts();
@@ -2167,6 +2255,33 @@ async function classify(side) {
   });
 }
 $('exBefore').onclick = () => classify('A'); $('exAfter').onclick = () => classify('D'); $('exUnknown').onclick = () => classify('U');
+function angleFile(c, a) {
+  const [header, base64] = a.out.split(','), mime = header.match(/^data:([^;]+)/)?.[1] || 'image/jpeg';
+  const bytes = Uint8Array.from(atob(base64), ch => ch.charCodeAt(0));
+  return new File([bytes], `${slug(Pj.rec.name)}_${c.date || localDay(c.t)}_${slug(a.name)}.jpg`, {type:mime});
+}
+async function deliverImages(files) {
+  if (!files.length) return;
+  try {
+    if (navigator.canShare?.({files}) && navigator.share) {
+      await navigator.share({files}); setStatus('Compartilhamento concluído', false); return;
+    }
+  } catch (err) {
+    if (err.name === 'AbortError') return;
+    if (err.name === 'NotAllowedError') {
+      overlay(null, 'Toque abaixo para abrir as opções do aparelho e escolha Salvar imagens.', [
+        ['Salvar ' + files.length + ' imagens', () => deliverImages(files)], ['Cancelar', closeOut]]);
+      return;
+    }
+  }
+  // Browsers without image sharing expose individual image downloads, never a ZIP.
+  const urls = files.map(f => URL.createObjectURL(f));
+  overlay(null, 'Este navegador oferece download de imagens. Escolha os arquivos abaixo; no iPhone, também é possível abrir a imagem e salvar em Fotos.', [['Fechar', closeOut]]);
+  files.forEach((file, i) => {
+    const link = document.createElement('a'); link.className = 'btn'; link.href = urls[i]; link.download = file.name; link.textContent = 'Baixar ' + file.name; $('outBtns').appendChild(link);
+  });
+  const close = $('outBtns').querySelector('button'); close.onclick = () => { urls.forEach(URL.revokeObjectURL); closeOut(); };
+}
 async function projectEntries(rec, shots, prefix) {
   const entries = [], data = { app:'prisma', v:1, project:rec, shots:[] };
   for (const s of shots) {
@@ -2180,11 +2295,16 @@ async function projectEntries(rec, shots, prefix) {
   }
   entries.unshift({name:prefix + 'projeto.json',data:new TextEncoder().encode(JSON.stringify(data))}); return entries;
 }
-$('exDownload').onclick = () => exAction(async ex => {
+$('exDownload').onclick = () => {
+  const ex = explorer; if (!ex || explorerBusy) return;
+  if (ex.kind === 'angles' || ex.kind === 'photos') {
+    const rows = ex.rows.filter(r => ex.selected.has(r.id));
+    const files = rows.map(r => ex.kind === 'angles' ? angleFile(ex.comp, r.value) : new File([r.value.blob], r.value.originalName || `${r.id}.${r.value.blob.type.split('/')[1] || 'jpg'}`, {type:r.value.blob.type}));
+    return deliverImages(files);
+  }
+  return exAction(async ex => {
   const rows = ex.rows.filter(r => ex.selected.has(r.id)), entries = [];
   for (const r of rows) {
-    if (ex.kind === 'photos') entries.push({name:`${slug(r.title)}_${r.value.captureDay || 'sem-data'}_${r.id}.${(r.value.blob.type.split('/')[1] || 'jpg').replace('jpeg','jpg')}`,data:new Uint8Array(await r.value.blob.arrayBuffer())});
-    if (ex.kind === 'angles') entries.push({name:`${ex.comp.date || localDay(ex.comp.t)}_${slug(r.title)}_${r.id}.jpg`,data:new Uint8Array(await (await (await fetch(r.value.out)).blob()).arrayBuffer())});
     if (ex.kind === 'projects') {
       const rec = {...Pj.rec, comps:[r.value]};
       const nested = await projectEntries(rec, projectPhotos(r.value), '');
@@ -2200,11 +2320,13 @@ $('exDownload').onclick = () => exAction(async ex => {
     ex.notice = 'Download preparado. O arquivo ZIP reúne os itens selecionados.';
     download(file, file.name);
   }
-});
+  });
+};
 $('exDelete').onclick = () => {
   const ex = explorer; if (!ex || !ex.selected.size) return;
   const scope = {patients:'paciente(s), incluindo seus projetos e fotos',projects:'projeto(s), incluindo suas montagens. Fotos usadas apenas nesses projetos também serão excluídas',photos:'foto(s) original(is). As montagens já salvas serão mantidas como imagens',angles:'montagem(ns) salva(s). As fotos originais serão mantidas'}[ex.kind];
-  if (!confirm(`Excluir ${ex.selected.size} ${scope}? Esta ação não pode ser desfeita.`)) return;
+  const names = (ex.rows || []).filter(r => ex.selected.has(r.id)).map(r => r.title).slice(0, 3).join(', ');
+  if (!confirm(`Deletar ${ex.selected.size} ${scope}?${names ? '\n' + names : ''}\nEsta ação não pode ser desfeita.`)) return;
   return exAction(async ex => {
     if (ex.kind === 'patients') for (const id of ex.selected) await DB.removePatient(id);
     if (ex.kind === 'projects') {
@@ -2216,7 +2338,10 @@ $('exDelete').onclick = () => {
       removedIds.forEach(id => detachShot(shotById(id))); await commitProject(removedIds);
     }
     if (ex.kind === 'photos') { const ids = [...ex.selected]; ids.forEach(id => detachShot(shotById(id))); await commitProject(ids); }
-    if (ex.kind === 'angles') { ex.comp.angles = ex.comp.angles.filter(a => !ex.selected.has(a.id)); ex.comp.out = ex.comp.angles.at(-1)?.out || null; await saveComp(); }
+    if (ex.kind === 'angles') {
+      ex.comp.angles.filter(a => ex.selected.has(a.id)).forEach(a => { if (ex.comp.drafts) delete ex.comp.drafts[a.name]; });
+      ex.comp.angles = ex.comp.angles.filter(a => !ex.selected.has(a.id)); ex.comp.out = ex.comp.angles.at(-1)?.out || null; await saveComp();
+    }
     ex.selected.clear();
   });
 };
