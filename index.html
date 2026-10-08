@@ -246,7 +246,7 @@ input.wide{width:100%}
   <p class="note" id="storeNote" style="text-align:center;margin-top:14px"></p>
   <div class="tools"><button class="btn small" id="freeMode" type="button">Montagem avulsa</button><button class="btn small" id="restore" type="button">Restaurar backup</button></div>
   <p class="note">As fotos ficam guardadas só neste aparelho, dentro do app. Ao fechar cada paciente, toque em Backup e guarde o arquivo no Drive ou em Arquivos.</p>
-  <p class="note" style="opacity:.6">Versão 25</p>
+  <p class="note" style="opacity:.6">Versão 26</p>
 </section>
 
 <section id="proj" class="scr" hidden>
@@ -316,7 +316,7 @@ input.wide{width:100%}
     <div id="projectActions" hidden>
       <button class="btn primary big" id="saveAngle" disabled>Salvar ângulo</button>
 
-      <div class="flex"><button class="btn" id="poolManage">Organizar fotos</button><button class="btn" id="savedAngles">Ângulos salvos</button></div>
+      <div class="flex"><button class="btn" id="poolManage">Organizar fotos</button><button class="btn" id="savedAngles">Ângulos salvos</button><button class="btn" id="importMore" type="button" hidden>Importar mais fotos</button></div>
       <p class="note" id="poolInfo" aria-live="polite"></p>
       <p class="note">As fotos importadas ficam no álbum deste projeto e podem ser usadas em qualquer ângulo.</p>
     </div>
@@ -2020,7 +2020,9 @@ let explorer = null, explorerBusy = false;
 const projectPhotos = c => [...new Set([...(c.A || []), ...(c.D || []), ...(c.U || [])])].map(shotById).filter(Boolean);
 const cloneValue = x => x ? JSON.parse(JSON.stringify(x)) : null;
 function angleUI() {
-  $('importPool').hidden = !curComp || screen !== 'edit';
+  const hasPhotos = !!curComp && projectPhotos(curComp).length > 0;
+  $('importPool').hidden = !curComp || screen !== 'edit' || hasPhotos;
+  $('importMore').hidden = !curComp || screen !== 'edit' || !hasPhotos;
   $('workflow').hidden = !curComp || screen !== 'edit';
   $('projectActions').hidden = !curComp || screen !== 'edit';
   if (!curComp) return;
@@ -2124,11 +2126,11 @@ async function selectAngle(name) {
   await saveComp(); openPick(curComp);
 }
 $('workflow').querySelectorAll('button').forEach(b => { b.onclick = () => selectAngle(b.dataset.angle); });
-$('importPool').onclick = () => $('filePool').click();
+$('importPool').onclick = $('importMore').onclick = () => $('filePool').click();
 $('filePool').onchange = async e => {
   const files = [...e.target.files]; e.target.value = ''; if (!files.length || !curComp) return;
   const c = curComp;
-  $('importPool').disabled = true; $('app').inert = $('top').inert = true;
+  $('importPool').disabled = $('importMore').disabled = true; $('app').inert = $('top').inert = true;
   try {
     rememberDraft();
     const added = await importToProject(files, 'A', null);
@@ -2147,7 +2149,7 @@ $('filePool').onchange = async e => {
       await renderExplorer();
     }
   } catch (err) { setStatus('Não foi possível concluir a importação: ' + err.message, false); }
-  finally { $('importPool').disabled = false; $('app').inert = $('top').inert = !!explorer; }
+  finally { $('importPool').disabled = $('importMore').disabled = false; $('app').inert = $('top').inert = !!explorer; }
 };
 $('poolManage').onclick = () => { rememberDraft(); if (linked) openPick(curComp); openExplorer('photos', curComp); };
 $('savedAngles').onclick = () => openFolder(curComp);
