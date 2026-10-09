@@ -89,7 +89,7 @@ const del=(s,k)=>tx(s,'readwrite',x=>x.delete(k));
 const byPid=pid=>tx('termos','readonly',x=>x.index('pid').getAll(pid));
 async function cfg(k,d){const r=await get('cfg',k);return r?r.v:d;}
 const setCfg=(k,v)=>put('cfg',{k,v});
-async function catalogo(){return await cfg('catalogo',null)||JSON.parse(JSON.stringify(window.CATALOGO_PADRAO));}
+async function catalogo(){const D=window.CATALOGO_PADRAO;const c=await cfg('catalogo',null);if(!c)return JSON.parse(JSON.stringify(D));if((c.versao||0)<D.versao){const ids=new Set(c.procedimentos.map(x=>x.id));D.procedimentos.forEach(x=>{if(!ids.has(x.id))c.procedimentos.push(JSON.parse(JSON.stringify(x)));});c.versao=D.versao;await setCfg('catalogo',c);}return c;}
 // ---------- formatting ----------
 const cpfMask=v=>{v=v.replace(/\D/g,'').slice(0,11);return v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');};
 const dataBR=iso=>{if(!iso)return'';const[y,m,d]=iso.split('-');return `${d}/${m}/${y}`;};

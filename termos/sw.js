@@ -1,4 +1,4 @@
-const C='lqt-v2';const F=['./','index.html','catalogo.js','shade.jpg','grain.png','jspdf.umd.min.js','logo.png','manifest.webmanifest','icon-180.png','icon-192.png','icon-512.png'];
+const C='lqt-v3';const F=['./','index.html','catalogo.js','shade.jpg','grain.png','jspdf.umd.min.js','logo.png','manifest.webmanifest','icon-180.png','icon-192.png','icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(F.map(u=>new Request(u,{cache:'reload'})))).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x.startsWith('lqt-')&&x!==C&&x!==C+'-f').map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
 self.addEventListener('fetch',e=>{const r=e.request;if(r.method!=='GET')return;const u=new URL(r.url);

@@ -1,6 +1,6 @@
 // Modelos iniciais para revisão da clínica. Cada texto pode ser trocado em Ajustes > Procedimentos.
 window.CATALOGO_PADRAO = {
-  versao: 2,
+  versao: 3,
   geral: [
     'Fui atendido(a) em consulta, tive meu caso avaliado e recebi explicações claras sobre o(s) procedimento(s) marcado(s) neste termo, suas alternativas, os resultados esperados e os riscos.',
     'Tive oportunidade de fazer perguntas e todas foram respondidas. Entendi que a medicina não é uma ciência exata e que o resultado depende também da resposta do meu organismo e dos cuidados que eu seguir, não havendo garantia de resultado específico.',
@@ -70,7 +70,12 @@ window.CATALOGO_PADRAO = {
       oque: 'Aplicação de enzima que dissolve o ácido hialurônico, usada para corrigir excesso, irregularidade ou complicação.',
       esperar: 'Redução do volume em horas a dias. Pode ser necessária mais de uma aplicação.',
       riscos: 'Dor; inchaço; vermelhidão; reação alérgica, inclusive grave (rara); perda de volume maior que a desejada.',
-      cuidados: 'Comunicar imediatamente qualquer coceira intensa, inchaço fora da área ou falta de ar.' }
+      cuidados: 'Comunicar imediatamente qualquer coceira intensa, inchaço fora da área ou falta de ar.' },
+    { id: 'imagem_modelo', cat: 'Autorizações', nome: 'Autorização de uso de imagem · paciente modelo (Body HD)',
+      oque: 'Autorizo o Dr. Caio Endlich a me fotografar e filmar antes, durante e depois do(s) procedimento(s) deste termo, incluindo o corpo nas áreas tratadas, e a usar essas imagens e vídeos com as finalidades descritas abaixo. Participo como paciente modelo, de forma voluntária, e declaro que não recebo pagamento pelo uso da minha imagem.',
+      esperar: 'As imagens poderão ser: (1) enviadas à Rennova, fornecedora dos produtos, apenas para avaliação técnica do caso e liberação dos produtos, sem autorização para a Rennova publicá-las, o que dependerá de autorização específica minha; (2) publicadas nas redes sociais e materiais do Dr. Caio Endlich e da clínica Le Quartier, em formato de antes e depois, vídeo do procedimento e depoimento; (3) usadas em aulas, cursos e mentorias para médicos. O conteúdo seguirá as normas do Conselho Federal de Medicina, sem promessa de resultado.',
+      riscos: 'Imagens publicadas na internet podem ser copiadas, salvas e compartilhadas por terceiros, e a retirada completa delas nem sempre é possível, mesmo após a revogação desta autorização.',
+      cuidados: 'Posso revogar esta autorização a qualquer momento, por escrito, para usos futuros; publicações já feitas serão retiradas dos perfis do Dr. Caio Endlich e da clínica em até 30 dias. Minhas imagens são dados de saúde e serão tratadas conforme a Lei Geral de Proteção de Dados (Lei 13.709/2018), apenas para as finalidades acima. Posso pedir para não mostrar meu rosto ou para borrar tatuagens e sinais que me identifiquem.' }
   ],
   profissionais: ['Dra. Karla Lessa', 'Dr. Paulo Lessa', 'Dr. Caio Endlich']
 };
