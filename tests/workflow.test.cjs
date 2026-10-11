@@ -5,6 +5,24 @@ const vm = require('node:vm');
 const source = fs.readFileSync(require('node:path').join(__dirname, '../index.html'),'utf8');
 const dates = require('../photo-dates.js');
 const plain = value => JSON.parse(JSON.stringify(value));
+test('camera keeps the pose at shutter time and allows repeated afters for one reference', async()=>{
+  for(const mode of ['A','D']) {
+    const before={id:'a',pose:'45° D',poseManual:true};
+    const old={id:'old',kind:'D',of:'a'};
+    const saved=[];
+    const {ctx,elements}=context({vid:{videoWidth:100,videoHeight:100},mkCanvas:()=>({getContext:()=>({drawImage(){}})}),
+      requestAnimationFrame:fn=>fn(),live:null,curYaw:()=>null,camMode:mode,camPose:'45° D',curA:0,lastDone:-1,
+      camA:()=>[before],pendingDone:new Set(),camUI:()=>{},shotChain:Promise.resolve(),
+      shotFromCanvas:async(c,extra)=>({id:'new',...extra}),depOf:()=>old,DB:{put:async(k,v)=>saved.push({...v})},
+      Pj:{shots:[before,old]},curComp:{A:['a'],D:['old'],selA:'a'},touchProj:async()=>{}});
+    elements.camFlash={style:{}};elements.cam={hidden:true};
+    vm.runInContext(source.slice(source.indexOf("$('camShot').onclick ="),source.indexOf('let galFor =')),ctx);
+    elements.camShot.onclick();ctx.camPose='Perfil E';await ctx.shotChain;
+    assert.equal(ctx.Pj.shots.at(-1).pose,'45° D');
+    assert.equal(ctx.curA,0);
+    if(mode==='D') { assert.equal(old.of,null);assert.equal(ctx.Pj.shots.length,3);assert.equal(ctx.Pj.shots.at(-1).of,'a'); }
+  }
+});
 function exif(date, little = true) {
   const b = Buffer.alloc(70); b.write(little ? 'II' : 'MM');
   const w16 = (n,p) => little ? b.writeUInt16LE(n,p) : b.writeUInt16BE(n,p);
@@ -58,13 +76,14 @@ test('project export contains original bytes, capture dates, angle images and a 
   assert.deepEqual([...files[manifest.shots[0].file]],[7,8,9]); assert.deepEqual([...files['2026-10-08_c/frente.jpg']],[1,2,3]);
 });
 test('saving angles keeps separate outputs, requires replacement confirmation and rolls back failed writes', async () => {
-  const curComp = {id:'c',angle:'Frente',angles:[],selA:'a',selD:'d',tf:{A:{s:1},D:{s:1}}};
+  const curComp = {id:'c',angle:'Frente',angles:[],selA:'a',selD:'d',tf:{A:{s:1},D:{s:1}},edit:{opts:{fade:.6},A:{id:'a',plus:'paint'},backgroundRemoved:true}};
   class Reader { readAsDataURL() { this.result='data:image/jpeg;base64,AQID'; queueMicrotask(()=>this.onload()); } }
   const {ctx,elements} = context({curComp,linked:true,savingAngle:false,cloneValue:plain,confirm:()=>false,FileReader:Reader,
     savePair:()=>{},makeFile:()=>({blob:new Blob(['output'])}),newId:()=>Math.random()+'',rememberDraft:()=>{},
     saveComp:async()=>{},setStatus:()=>{},angleUI:()=>{}});
   vm.runInContext(source.slice(source.indexOf("$('saveAngle').onclick ="),source.indexOf('function exButton(')),ctx);
   await elements.saveAngle.onclick(); assert.equal(curComp.angles.length,1);
+  assert.deepEqual(curComp.angles[0].edit,curComp.edit);
   curComp.angle='45° esquerda'; await elements.saveAngle.onclick(); assert.equal(curComp.angles.length,2);
   const saved = plain(curComp.angles); await elements.saveAngle.onclick(); assert.deepEqual(plain(curComp.angles),saved);
   curComp.angle='Perfil direito'; ctx.saveComp=async()=>{throw new Error('quota');};
@@ -131,18 +150,74 @@ test('cancelling the native gallery sheet does not start downloads or retry', as
   await vm.runInContext('deliverImages(files)',ctx); assert.equal(fallback,0);
 });
 test('import routes two sessions to editor and three sessions to manual routing', async () => {
-  for (const count of [2,3]) {
+  for (const [count,existing] of [[2,false],[3,false],[2,true]]) {
     const added = Array.from({length:count},(_,i)=>({id:String(i),capturedAt:i*3600000}));
     let opens=0, picks=0;
-    const {ctx,elements}=context({curComp:{A:[],D:[],U:[]},PhotoDates:dates,explorer:null,
-      rememberDraft:()=>{},importToProject:async()=>added,shotById:id=>added.find(s=>s.id===id),
+    const {ctx,elements}=context({requestAnimationFrame:fn=>fn(),setTimeout:fn=>fn(),curComp:{A:[],D:[],U:[]},PhotoDates:dates,explorer:null,
+      rememberDraft:()=>{},projectPhotos:()=>existing?[{id:'old'}]:[],importToProject:async()=>added,shotById:id=>added.find(s=>s.id===id),
       DB:{put:async()=>{}},touchProj:async()=>{},saveComp:async()=>{},openPick:()=>picks++,setStatus:()=>{},renderExplorer:async()=>{},
       openExplorer:async()=>{opens++;ctx.explorer={};}});
+    let importing=false;
+    elements.importProgress={showModal:()=>{importing=true;},close:()=>{importing=false;}};
     vm.runInContext(source.slice(source.indexOf("$('importPool').onclick ="),source.indexOf("$('poolManage').onclick =")),ctx);
     await elements.filePool.onchange({target:{files:added,value:'files'}});
-    assert.equal(picks,1); assert.equal(opens,count===2?0:1);
-    if(count===2) { assert.deepEqual(plain(ctx.curComp.A),['0']); assert.deepEqual(plain(ctx.curComp.D),['1']); }
+    assert.equal(picks,1); assert.equal(opens,count===2&&!existing?0:1);
+    if(count===2&&!existing) { assert.deepEqual(plain(ctx.curComp.A),['0']); assert.deepEqual(plain(ctx.curComp.D),['1']); }
     else assert.equal(ctx.explorer.sessionMode,true);
     assert.equal(elements.importPool.disabled,false);
+    assert.equal(importing,false);
   }
+});
+test('original background mode preserves the stored automatic mask',()=>{
+  const mask=new Uint8Array([42]);
+  const {ctx}=context({MAX_SRC:2200,RES:2,uid:0,Image:class{},queue:[],curComp:{edit:{backgroundRemoved:false,A:{id:'a',edge:9,plus:'paint'}}},analyse:()=>({}),screen:'edit'});
+  ctx.shot={id:'a',w:300,h:400,prev:'test',mask,mc:1};
+  vm.runInContext(source.slice(source.indexOf('function itemFromShot('),source.indexOf('function queueIt(')),ctx);
+  const it=vm.runInContext("itemFromShot(shot,'A',true)",ctx);
+  assert.equal(ctx.shot.mask[0],42);assert.deepEqual([...it.raw],[255,255,255,255]);assert.equal(it.edge,9);assert.equal(it.savedPaint.plus,'paint');
+});
+test('paint restores before being discarded from pending state',async()=>{
+  const draw=[];
+  const {ctx}=context({loadImg:async src=>({src})});
+  vm.runInContext(source.slice(source.indexOf('async function restorePaint('),source.indexOf("let active =")),ctx);
+  ctx.it={savedPaint:{plus:'plus.png',minus:'minus.png'},plus:{width:10,height:20,getContext:()=>({drawImage:im=>draw.push(im.src)})},minus:{width:10,height:20,getContext:()=>({drawImage:im=>draw.push(im.src)})}};
+  await vm.runInContext('restorePaint(it)',ctx);assert.deepEqual(draw,['plus.png','minus.png']);assert.equal(ctx.it.edited,true);assert.equal(ctx.it.savedPaint,null);
+});
+test('camera close button waits for pending photos and returns to selection',async()=>{
+  let complete,returned=0;
+  const shotChain=new Promise(r=>complete=r);
+  const {ctx,elements}=context({camMode:'A',camStream:null,trk:null,Pj:{},curComp:{},shotChain,setTimeout:()=>{},pump:()=>{},openPick:()=>returned++});
+  vm.runInContext(source.slice(source.indexOf('function camClose(quiet)'),source.indexOf("$('camA').onclick")),ctx);
+  vm.runInContext(source.match(/\$\('camClose'\)\.onclick = [^\n]+/)[0],ctx);
+  elements.camClose.onclick({type:'click'});assert.equal(returned,0);complete();await shotChain;await Promise.resolve();assert.equal(returned,1);assert.equal(elements.cam.hidden,true);
+});
+test('finishing settings restore from saved edit and reset absent legacy values',()=>{
+  const {ctx,elements}=context();
+  vm.runInContext(source.slice(source.indexOf('const DEFAULT_OPTS'),source.indexOf('function snapshotEdit()')),ctx);
+  vm.runInContext("restoreFinish({opts:{fade:.6,handTxt:'Saved',title:false}})",ctx);
+  assert.equal(elements.fade.value,60);assert.equal(elements.handTxt.value,'Saved');assert.equal(elements.titleOn.checked,false);
+  vm.runInContext('restoreFinish(null)',ctx);assert.equal(elements.fade.value,80);assert.equal(elements.titleOn.checked,true);
+});
+test('nested selection backup is recognized, missing photos rejected before restore',async()=>{
+  const {ctx}=context();
+  vm.runInContext(source.slice(source.indexOf('const CRC ='),source.indexOf('const unbacked =')),ctx);
+  vm.runInContext(source.slice(source.indexOf('function backupPackages('),source.indexOf('async function restorePackage(')),ctx);
+  ctx.meta={app:'prisma',project:{id:'p'},shots:[]};
+  const inner=vm.runInContext("zip([{name:'projeto.json',data:new TextEncoder().encode(JSON.stringify(meta))}])",ctx);
+  ctx.inner=new Uint8Array(await inner.arrayBuffer());
+  const outer=vm.runInContext("zip([{name:'patient.zip',data:inner}])",ctx);ctx.buffer=await outer.arrayBuffer();
+  assert.equal(vm.runInContext('backupPackages(buffer).length',ctx),1);
+  ctx.meta.shots=[{file:'missing.jpg'}];
+  const bad=vm.runInContext("zip([{name:'projeto.json',data:new TextEncoder().encode(JSON.stringify(meta))}])",ctx);ctx.buffer=await bad.arrayBuffer();
+  assert.throws(()=>vm.runInContext('backupPackages(buffer)',ctx),/falta uma foto/);
+});
+test('restore commits complete patient once and remaps saved paint references',async()=>{
+  const writes=[];let id=0;
+  const {ctx}=context({URL:{createObjectURL:()=> 'blob:test',revokeObjectURL:()=>{}},loadImg:async()=>({}),previews:()=>({prev:'p',thumb:'t',canvas:{}}),freeCanvas:()=>{},newId:()=>String(++id),
+    DB:{get:async()=>({id:'old'}),commitProject:async(...args)=>writes.push(args)}});
+  vm.runInContext(source.slice(source.indexOf('async function restorePackage('),source.indexOf("$('fileZip').onchange")),ctx);
+  ctx.entry={files:{'a.jpg':new Uint8Array([1])},meta:{project:{id:'old',name:'Test',comps:[{id:'c',A:['a'],D:[],selA:'a',angles:[{selA:'a',edit:{A:{id:'a',plus:'paint'}}}]}]},shots:[{id:'a',kind:'A',file:'a.jpg',w:1,h:1}]}};
+  await vm.runInContext('restorePackage(entry)',ctx);assert.equal(writes.length,1);
+  const [rec,shots]=writes[0];assert.equal(rec.comps[0].angles[0].edit.A.id,shots[0].id);assert.equal(rec.comps[0].angles[0].edit.A.plus,'paint');assert.match(rec.name,/restaurado/);
+  ctx.loadImg=async()=>{throw Error('bad image');};await assert.rejects(vm.runInContext('restorePackage(entry)',ctx),/bad image/);assert.equal(writes.length,1);
 });
