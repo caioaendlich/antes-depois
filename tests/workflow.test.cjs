@@ -5,6 +5,39 @@ const vm = require('node:vm');
 const source = fs.readFileSync(require('node:path').join(__dirname, '../index.html'),'utf8');
 const dates = require('../photo-dates.js');
 const plain = value => JSON.parse(JSON.stringify(value));
+test('angle selection ignores old automatic drafts and preserves deliberate selections',async()=>{
+  for(const manual of [false,true]) {
+    const comp={angle:'Frente',drafts:{'45° direita':{selA:'wrong',manual}},angles:[]};
+    const {ctx}=context({curComp:comp,rememberDraft(){},linked:false,cloneValue:v=>v,saveComp:async()=>{},openPick(){}});
+    const start=source.indexOf('async function selectAngle(');
+    vm.runInContext(source.slice(start,source.indexOf("$('workflow').querySelectorAll",start)),ctx);
+    await ctx.selectAngle('45° direita');
+    assert.equal(comp.selA,manual?'wrong':null);
+  }
+  const {ctx}=context();
+  vm.runInContext(source.slice(source.indexOf('function pickIndexForAngle('),source.indexOf('function openPick(')),ctx);
+  const list=[{id:'f',pose:'Frente'},{id:'r',pose:'Perfil D'}];
+  assert.equal(ctx.pickIndexForAngle(list,null,'Perfil D'),1);
+  assert.equal(ctx.pickIndexForAngle(list,null,'45° D'),-1);
+  assert.equal(ctx.pickIndexForAngle(list,'f','Perfil D'),0);
+});
+test('ghost pyramid is recalculated from the reference photo, then reused',async()=>{
+  const shot={id:'a',pid:'p',prev:'reference.jpg',w:600,h:800,pyr:{pts:['stale']}};
+  let detections=0;
+  const {ctx}=context({camMode:'D',camA:()=>[shot],curA:0,loadImg:async src=>src,
+    detectOn:async image=>{assert.equal(image,'reference.jpg');detections++;return [{x:.4,y:.3}];},DB:{put:async()=>{}},camDraw(){}});
+  vm.runInContext(source.slice(source.indexOf('let tgtTok ='),source.indexOf('function toScreen(')),ctx);
+  await ctx.camTargetPyr();await ctx.camTargetPyr();
+  assert.equal(detections,1);assert.equal(shot.pyrVersion,2);
+  assert.equal(shot.pyr.pts[0].x,.4);
+});
+test('worker reset rejects pending recuts and permits a fresh load',()=>{
+  let terminated=0,rejected=0;
+  const {ctx}=context({worker:{terminate:()=>terminated++},session:true,sessionP:Promise.resolve(),wwait:new Map([[1,{rej:()=>rejected++}]])});
+  vm.runInContext(source.slice(source.indexOf('function resetModel('),source.indexOf('function loadModel(')),ctx);
+  ctx.resetModel(new Error('stopped'));
+  assert.equal(terminated,1);assert.equal(rejected,1);assert.equal(ctx.wwait.size,0);assert.equal(ctx.sessionP,null);
+});
 test('camera keeps the pose at shutter time and allows repeated afters for one reference', async()=>{
   for(const mode of ['A','D']) {
     const before={id:'a',pose:'45° D',poseManual:true};

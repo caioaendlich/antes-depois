@@ -96,6 +96,7 @@ input[type=text]{font:inherit;font-size:14px;background:var(--panel);color:var(-
 .shut{justify-self:center;width:74px;height:74px;border-radius:50%;border:4px solid #fff;background:#fff3;cursor:pointer}
 .shut:active{background:#fff8}
 .camrow{display:flex;gap:8px;align-items:center;justify-content:space-between}
+#camAfterStrip img{object-fit:cover;flex-shrink:0}
 #camFlash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s}
 #out img{max-height:78vh;max-width:100%;border-radius:8px}
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
@@ -182,8 +183,8 @@ input.wide{width:100%}
 .half .hcam{pointer-events:auto;position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font:inherit;font-size:12px;font-weight:600;color:#eee;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:5px 12px;cursor:pointer}
 #pickBox{display:grid;gap:12px}
 .scrubs{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.scrub{display:flex;gap:4px;height:62px;padding:3px;background:var(--panel);border-radius:8px;touch-action:pan-x;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;align-items:stretch}
-.scrub .sc{flex:0 0 44px;min-width:44px;border:0;padding:0;border-radius:3px;overflow:hidden;opacity:.45;position:relative}
+.scrub{display:flex;gap:1px;height:46px;padding:3px;background:var(--panel);border-radius:8px;touch-action:none;overflow:hidden;align-items:stretch}
+.scrub .sc{flex:1 1 0;min-width:0;border:0;padding:0;border-radius:3px;overflow:hidden;opacity:.45;position:relative}
 .scrub .sc img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
 .scrub .sc.on{opacity:1;box-shadow:inset 0 0 0 2px var(--accent)}
 .scrub .scadd{flex:0 0 26px;border:1px dashed #3a3c40;border-radius:3px;color:var(--muted);font-size:18px;display:flex;align-items:center;justify-content:center;background:transparent;font-family:inherit;cursor:pointer;padding:0}
@@ -254,7 +255,7 @@ html,body{overflow-x:clip}
   <p class="note" id="storeNote" style="text-align:center;margin-top:14px"></p>
   <div class="tools"><button class="btn small" id="freeMode" type="button">Montagem avulsa</button><button class="btn small" id="restore" type="button">Restaurar backup</button></div>
   <p class="note">As fotos ficam guardadas só neste aparelho, dentro do app. Ao fechar cada paciente, toque em Backup e guarde o arquivo no Drive ou em Arquivos.</p>
-  <p class="note" style="opacity:.6">Versão 29</p>
+  <p class="note" style="opacity:.6">Versão 30</p>
 </section>
 
 <section id="proj" class="scr" hidden>
@@ -320,8 +321,8 @@ html,body{overflow-x:clip}
       <div class="scrubs"><div class="scrub" id="scrA"></div><div class="scrub" id="scrD"></div></div>
       <div class="sclabels"><span id="pkLl"></span><span id="pkRl"></span></div>
       <button class="btn primary big" id="pkGo" type="button">Remover fundo e editar</button>
-      <button class="btn big" id="pkOriginal" type="button">Editar com fundo original</button>
-      <p class="note" id="pickHelp" aria-live="polite"></p>
+      <button class="btn big" id="pkOriginal" type="button" hidden>Editar com fundo original</button>
+      <p class="note" id="pickHelp" aria-live="polite" hidden></p>
     </div>
     <div id="projectActions" hidden>
       <button class="btn primary big" id="saveAngle" disabled>Salvar ângulo</button>
@@ -416,21 +417,20 @@ html,body{overflow-x:clip}
   <div id="camPeek" hidden><img id="peekImg" alt=""><div class="peekBar"><span id="peekLbl"></span><div class="peekBtns"><button class="btn small primary" id="peekGal" type="button">Depois da galeria</button><button class="btn small" id="peekCam" type="button">Fotografar depois</button><button class="btn small" id="peekBack" type="button">Voltar à câmera</button></div></div></div>
   <div id="camFlash"></div>
   <div class="camtop">
-    <button class="btn small" id="camClose">Fechar</button>
     <div class="seg" id="camSeg" role="group" aria-label="Guardar em"><button id="cTA" aria-pressed="false">Antes</button><button id="cTD" aria-pressed="true">Depois</button></div>
     <span class="camlbl" id="camLbl" hidden></span>
-    <button class="btn small" id="camFlip">Virar</button>
     <div class="poses" id="camPoses" role="group" aria-label="Ângulo da foto" hidden><button type="button" data-p="Perfil E">Perfil E</button><button type="button" data-p="45° E">45° E</button><button type="button" data-p="Frente">Frente</button><button type="button" data-p="45° D">45° D</button><button type="button" data-p="Perfil D">Perfil D</button></div>
   </div>
   <div class="cambot">
-    <div class="camrow"><span class="chip" id="camFit" style="color:#eee">Procurando o rosto…</span><label class="check" style="color:#eee"><input type="checkbox" id="pyrOn" checked> Pirâmide</label></div>
+    <div class="camrow"><span class="chip" id="camFit" hidden></span><label class="check" style="color:#eee"><input type="checkbox" id="pyrOn" checked> Pirâmide</label></div>
     <div class="camrow">
       <label class="check" style="color:#eee"><input type="checkbox" id="ghostOn" checked> Fantasma do antes</label>
       <input type="range" id="ghostA" min="10" max="70" value="40" style="max-width:34%">
-      <button class="btn small" id="ghostFlip" type="button">Espelhar</button>
+      <button class="btn small" id="ghostFlip" type="button" hidden>Espelhar</button>
     </div>
     <div class="cstrip" id="camStrip" hidden></div>
-    <div class="shotrow"><button class="btn small" id="camGal" type="button">Galeria</button><button class="shut" id="camShot" aria-label="Tirar foto"></button><button class="btn small" id="camRedo" type="button" hidden>Refazer anterior</button><button class="btn small primary" id="camToD" type="button" hidden>Fazer o depois</button></div>
+    <div id="camAfters" hidden><span class="note" id="camAfterCount" style="color:#eee"></span><div class="cstrip" id="camAfterStrip"></div></div>
+    <div class="shotrow"><div style="display:grid;gap:6px"><button class="btn small" id="camGal" type="button">Galeria</button><button class="btn small" id="camFlip">Virar</button></div><button class="shut" id="camShot" aria-label="Tirar foto"></button><div style="display:grid;gap:6px"><button class="btn small primary" id="camClose">Concluir</button><button class="btn small" id="camRedo" type="button" hidden>Refazer anterior</button><button class="btn small primary" id="camToD" type="button" hidden>Fazer o depois</button></div></div>
     <p class="note" id="camMsg" style="color:#ccc;text-align:center">Alinhe os dois exocantos na linha de cima, o pronasal no vértice e o lábio inferior no ponto de baixo.</p>
   </div>
 </div>
@@ -519,6 +519,11 @@ function spin() {
 
 // ---------- modelo ----------
 let worker = null, wseq = 0; const wwait = new Map();
+function resetModel(error) {
+  if (worker) worker.terminate(); worker = null; session = false; sessionP = null;
+  for (const pending of wwait.values()) pending.rej(error);
+  wwait.clear();
+}
 function loadModel() {
   if (sessionP) return sessionP;
   sessionP = new Promise((res, rej) => {
@@ -533,7 +538,7 @@ function loadModel() {
         else if (d.type === 'err') rej(new Error(d.msg));
       }
     };
-    worker.onerror = () => { rej(new Error('O recorte parou. Recarregue o app.')); };
+    worker.onerror = () => { const error = new Error('O processamento do recorte foi interrompido. Toque em Tentar recorte novamente.'); resetModel(error); rej(error); };
     setStatus('Preparando recorte…', true);
     worker.postMessage({ type: 'load', res: RES, size: MODEL_SIZE, chunks: CHUNKS });
   });
@@ -541,6 +546,7 @@ function loadModel() {
   return sessionP;
 }
 function runModel(inp) {
+  if (!worker) return Promise.reject(new Error('O recorte precisa ser reiniciado. Toque em Tentar recorte novamente.'));
   return new Promise((res, rej) => { const id = ++wseq; wwait.set(id, { res, rej }); worker.postMessage({ type: 'run', id, inp }, [inp.buffer]); });
 }
 
@@ -607,17 +613,19 @@ async function pump() {
       setStatus('Recortando · faltam ' + (left + 1), true);
       it.status = 'processando'; markThumb(it);
       try { await cutout(it); it.status = 'pronto'; if (it.shot && Pj && Pj.shots.includes(it.shot) && it.raw && it.shot.mask !== it.raw) { it.shot.mask = it.raw; it.shot.mc = 1; DB.put('shots', it.shot).catch(() => {}); } }
-      catch (e) { it.status = 'erro'; console.error(e); }
+      catch (e) { it.status = 'erro'; it.cutError = e.message || String(e); console.error(e); }
       markThumb(it); render();
       await new Promise(r => setTimeout(r, 0));
     }
-    if (!queue.length) setStatus('Pronto', false); else if (!$('cam').hidden) setStatus('Recorte em pausa', false);
-  } catch (e) { for (const {it} of queue) it.status = 'erro'; setStatus(e.message || 'Erro no recorte', false); }
+    if (!queue.length) { const failed = ['A','D'].flatMap(s => items[s]).find(it => it.status === 'erro'); setStatus(failed ? 'Não recortou: ' + (failed.cutError || 'tente novamente') : 'Pronto', false); } else if (!$('cam').hidden) setStatus('Recorte em pausa', false);
+  } catch (e) { for (const {it} of queue) { it.status = 'erro'; it.cutError = e.message; } setStatus(e.message || 'Erro no recorte', false); }
   working = false; updateSave();
 }
 
 async function cutout(it) {
-  const src = it.src || await fileToCanvas(it.file);
+  // Own this canvas: changing selection can release the editor's live canvas.
+  const src = await fileToCanvas(it.file);
+  try {
   mg.clearRect(0, 0, RES, RES);
   mg.drawImage(src, 0, 0, RES, RES);
   const px = mg.getImageData(0, 0, RES, RES).data;
@@ -630,8 +638,9 @@ async function cutout(it) {
   it.raw = cleanMask(u8);
   if (it.edge == null) it.edge = 20;
   it.meta = analyse(it.raw, it.w, it.h);
-  if (isSelected(it)) { it.src = src; buildBase(it); await restorePaint(it); composeCut(it); }
-  else if (src !== it.src) { src.width = src.height = 0; }
+  if (isSelected(it)) { if (it.src !== src) freeCanvas(it.src); it.src = src; buildBase(it); await restorePaint(it); composeCut(it); }
+  it.cutError = null;
+  } finally { if (src !== it.src) freeCanvas(src); }
 }
 
 // limpeza da máscara: fica só o corpo principal (some a poeira solta no fundo) e furos pequenos dentro do rosto são preenchidos
@@ -652,7 +661,7 @@ function cleanMask(m) {
   };
   for (let i = 0; i < n; i++) if (!lab[i] && on(i)) areas.push(grow(i, on, ++nl).a);
   if (!nl) return m;
-  const big = Math.max(...areas), K = new Uint8Array(n);
+  const big = areas.reduce((max, area) => Math.max(max,area),0), K = new Uint8Array(n);
   for (let i = 0; i < n; i++) if (lab[i] && areas[lab[i]] >= big * 0.08) K[i] = 1;
   lab.fill(0); let id = 0;
   for (let i = 0; i < n; i++) if (!K[i] && !lab[i]) {
@@ -1178,7 +1187,7 @@ function camGhost() {
 // O tetraedro é medido com o rosto de frente. Quando um vértice some pela rotação, os outros três (vistos) posicionam o tetraedro
 // rígido e o vértice escondido é colocado onde ele estaria, mais apagado.
 const PYR_E = [[0, 1], [0, 2], [1, 2], [0, 3], [1, 3], [2, 3]];
-let fm = null, fmBusy = false, fmLoad = null, live = null, target = null, fmCb = null;
+let fm = null, fmBusy = false, fmLoad = null, live = null, target = null, fmCb = null, fmStill = false;
 function loadFM() {
   if (fmLoad) return fmLoad;
   fmLoad = new Promise((res, rej) => {
@@ -1225,13 +1234,13 @@ function pyrFromLm(lm, W, H) {
   const V = [P(33), P(263), P(tip), P(17)];
   const yaw = Math.atan2(n[0], -n[2]) * 180 / Math.PI;
   let hid = -1;
-  if (Math.abs(yaw) < 12) {
+  if (!fmStill && Math.abs(yaw) < 12) {
     // de frente: mede o tetraedro (média móvel, para não tremer)
     const scl = Math.hypot(...sub(V[0], V[1])) || 1, c = V.reduce((a, v) => [a[0] + v[0] / 4, a[1] + v[1] / 4, a[2] + v[2] / 4], [0, 0, 0]);
     const nv = V.map(v => sub(v, c).map(x => x / scl));
     if (!tmpl || !tmpl.T) tmpl = { T: nv }; else tmpl.T = tmpl.T.map((v, i) => v.map((x, j) => x * 0.8 + nv[i][j] * 0.2));
     tmplDirty = true;
-  } else if (tmpl && tmpl.T && Math.abs(yaw) > 22) {
+  } else if (!fmStill && tmpl && tmpl.T && Math.abs(yaw) > 22) {
     // o exocanto mais longe da câmera é o que some: os outros três posicionam o tetraedro rígido
     const far = V[0][2] > V[1][2] ? 0 : 1, vis = [0, 1, 2, 3].filter(i => i !== far);
     const T = simil(vis.map(i => tmpl.T[i]), vis.map(i => V[i])), pr = T(tmpl.T[far]);
@@ -1242,11 +1251,11 @@ function pyrFromLm(lm, W, H) {
   const out = V.map(v => ({ x: v[0] / W, y: v[1] / H, z: v[2] / W })); out.yaw = yaw; out.hid = hid;
   return out;
 }
-function fmDetect(image) { return new Promise(res => { fmCb = res; fm.send({ image }).catch(() => { fmCb = null; res(null); }); }); }
+function fmDetect(image, still = false) { fmStill = still; return new Promise(res => { fmCb = res; fm.send({ image }).catch(() => { fmCb = null; res(null); }); }); }
 async function detectOn(el) {
   await loadFM();
   while (fmBusy) await new Promise(r => setTimeout(r, 30));
-  fmBusy = true; try { return await fmDetect(el); } finally { fmBusy = false; }
+  fmBusy = true; try { return await fmDetect(el,true); } finally { fmBusy = false; }
 }
 function poseOf(yaw) {
   if (yaw == null || isNaN(yaw)) return '—';
@@ -1310,8 +1319,8 @@ async function camTargetPyr() {
   if (camMode === 'free') { const it = items.A[sel.A]; if (camTarget !== 'D' || !it) return; holder = it; img = it.prev; }
   else if (camMode === 'D') { const a = camA()[curA]; if (!a) return; holder = a; img = a.prev; }
   else return;
-  if (!holder.pyr) {
-    try { const el = typeof img === 'string' ? await loadImg(img) : img; const p = await detectOn(el); holder.pyr = p ? { pts: [...p], w: holder.w, h: holder.h, hid: p.hid } : null; if (holder.pid) DB.put('shots', holder).catch(() => {}); }
+  if (!holder.pyr || holder.pyrVersion !== 2) {
+    try { const el = typeof img === 'string' ? await loadImg(img) : img; const p = await detectOn(el); holder.pyr = p ? { pts: [...p], w: holder.w, h: holder.h, hid: p.hid } : null; holder.pyrVersion = p ? 2 : 0; if (holder.pid) DB.put('shots', holder).catch(() => {}); }
     catch (e) { holder.pyr = null; }
   }
   if (tok === tgtTok) { target = holder.pyr; camDraw(); }
@@ -1406,14 +1415,22 @@ function camStripBuild(L) {
 }
 function camUI() {
   const free = camMode === 'free';
-  $('camSeg').hidden = !free; $('camLbl').hidden = free; $('camClose').textContent = free ? 'Fechar' : 'Concluir';
+  $('camSeg').hidden = !free; $('camLbl').hidden = true; $('camClose').textContent = free ? 'Fechar' : 'Concluir';
   $('camPoses').hidden = free; $('camStrip').hidden = free;
   if (!free) [...$('camPoses').children].forEach(b => {
     b.classList.toggle('sel', b.dataset.p === camPose);
     b.setAttribute('aria-pressed', b.dataset.p === camPose);
     b.disabled = camMode === 'D' && !camA().some(s => s.pose === b.dataset.p);
   });
-  $('camRedo').hidden = camMode !== 'D' || lastDone < 0;
+  $('camRedo').hidden = true;
+  $('camAfters').hidden = camMode !== 'D';
+  if (camMode === 'D') {
+    const photos = (curComp ? compList(curComp,'D') : depList()).filter(s => s.pose === camPose);
+    $('camAfterCount').textContent = 'Depois · ' + photos.length + ' fotos neste ângulo';
+    $('camAfterStrip').innerHTML = '';
+    for (const s of photos) { const img = document.createElement('img'); img.className = 'cth'; img.src = s.thumb; img.alt = 'Depois · ' + camPose; $('camAfterStrip').appendChild(img); }
+    $('camAfterStrip').scrollLeft = $('camAfterStrip').scrollWidth;
+  }
   $('camToD').hidden = camMode !== 'A' || !camA().length;
   if (!free) $('camClose').textContent = camMode === 'A' ? 'Salvar e sair' : 'Concluir';
   if (camMode === 'A') {
@@ -1436,7 +1453,7 @@ function camUI() {
     const L = camA(), a = L[curA];
     $('camLbl').textContent = a ? 'Depois · ' + (a.pose && a.pose !== '—' ? a.pose + ' · ' : '') + (curA + 1) + ' de ' + L.length : 'Depois';
     camStripBuild(L);
-    $('camMsg').textContent = 'Escolha o ângulo acima e a foto de referência nas miniaturas. Tire quantas opções quiser; para mudar de ângulo, toque no próximo botão. Verde indica aproximação do alinhamento.';
+    $('camMsg').textContent = 'Miniaturas de cima: escolha o fantasma. Abaixo: fotos do depois já salvas.';
   } else {
     $('camPeek').hidden = true;
     $('camMsg').textContent = camTarget === 'D' ? 'Encaixe a pirâmide dourada (ao vivo) na branca (a do antes). Fica verde quando estiver alinhada.' : 'A pirâmide acompanha o rosto. Posicione e fotografe: ela fica guardada para o depois.';
@@ -1594,7 +1611,15 @@ async function runDet() {
       r.pyr = p ? { pts: [...p], w: r.w, h: r.h, hid: p.hid } : null; r.yaw = p ? p.yaw : null;
       if (!r.poseManual && (r.kind === 'A' || !r.pose || r.pose === '—')) r.pose = poseOf(r.yaw);
       if (Pj && Pj.shots.includes(r)) DB.put('shots', r).catch(() => {});
-      if (picking) { render(); pkLabels(); }
+      if (picking) {
+        if (curComp && !curComp.selectionTouched) {
+          const pose = ({'Perfil esquerdo':'Perfil E','45° esquerda':'45° E','Frente':'Frente','45° direita':'45° D','Perfil direito':'Perfil D'})[curComp.angle];
+          if (pickL < 0) pickL = pickIndexForAngle(pickA,null,pose);
+          if (pickR < 0) pickR = pickIndexForAngle(pickD,null,pose);
+          scMark();
+        }
+        render(); pkLabels();
+      }
     } catch (e) { r.pyr = null; }
     await new Promise(z => setTimeout(z, 0));
   }
@@ -2019,44 +2044,45 @@ function scBuild(el, list, side) {
   el.innerHTML = '';
   if (!list.length) { const n = document.createElement('div'); n.className = 'scnone'; n.textContent = 'sem fotos'; el.appendChild(n); }
   list.forEach((s, i) => { const d = document.createElement('button'); d.type = 'button'; d.className = 'sc' + (i === (side === 'A' ? pickL : pickR) ? ' on' : ''); d.setAttribute('aria-label', `${side === 'A' ? 'Antes' : 'Depois'}: foto ${i+1} de ${list.length}`); d.innerHTML = '<img alt="" src="' + s.thumb + '">'; d.onclick = () => pickPhoto(side,i); el.appendChild(d); });
-  requestAnimationFrame(() => { const selected = el.querySelector('.on'); if (selected) el.scrollLeft = Math.max(0,selected.offsetLeft - el.offsetLeft - el.clientWidth / 2 + 22); });
 
 }
 function scMark() { [['scrA', pickL], ['scrD', pickR]].forEach(([id, i]) => [...$(id).querySelectorAll('.sc')].forEach((e, j) => e.classList.toggle('on', j === i))); }
 function pickPhoto(side,i) {
+  if (curComp) curComp.selectionTouched = true;
   if (i === (side === 'A' ? pickL : pickR)) return;
   if (side === 'A') pickL = i; else pickR = i;
   tf[side] = T0(); scMark(); pkLabels(); render(); pkSave();
 }
-// Native horizontal scrolling keeps thumbnails touchable even in large albums.
+// Every photo fits in the strip; dragging selects directly without scrolling.
 ['scrA', 'scrD'].forEach(id => {
   const el = $(id), side = id === 'scrA' ? 'A' : 'D';
-  let timer, touched = false;
-  el.addEventListener('pointerdown', () => { touched = true; });
-  el.addEventListener('scroll', () => { clearTimeout(timer); timer = setTimeout(() => {
-    if (!picking || !touched) return; touched = false;
-    const box = el.getBoundingClientRect(), center = box.left + box.width / 2;
-    const photos = [...el.querySelectorAll('.sc')];
-    const i = photos.findIndex(photo => { const r = photo.getBoundingClientRect(); return center >= r.left && center <= r.right; });
-    if (i >= 0) pickPhoto(side,i);
-  },100); });
+  let pointer = null;
+  const choose = e => { const count = (side === 'A' ? pickA : pickD).length, r = el.getBoundingClientRect(); if (picking && count) pickPhoto(side, Math.max(0,Math.min(count-1,Math.floor((e.clientX-r.left)/r.width*count)))); };
+  el.addEventListener('pointerdown', e => { pointer=e.pointerId; el.setPointerCapture(pointer); choose(e); e.preventDefault(); });
+  el.addEventListener('pointermove', e => { if(pointer===e.pointerId) choose(e); });
+  el.addEventListener('pointerup', e => { if(pointer===e.pointerId) { choose(e); pointer=null; } });
+  el.addEventListener('pointercancel', () => { pointer=null; });
+  el.addEventListener('click', e => { if(e.detail) { e.preventDefault(); e.stopImmediatePropagation(); } },true);
 });
 function pkLabels() {
-  const lab = (L, i) => L[i] ? (i + 1) + ' de ' + L.length + (L[i].pose && L[i].pose !== '—' ? ' · ' + L[i].pose : '') : '';
+  const lab = (L, i) => L[i] ? (i + 1) + ' de ' + L.length + (L[i].pose && L[i].pose !== '—' ? ' · ' + L[i].pose : '') : L.length ? 'Escolha uma foto deste ângulo' : '';
   $('pkLl').textContent = lab(pickA, pickL); $('pkRl').textContent = lab(pickD, pickR);
   const ok = !!(pickA[pickL] && pickD[pickR]);
   $('pkGo').disabled = $('pkOriginal').disabled = !ok; $('pkGo').textContent = 'Remover fundo e editar';
   $('pickHelp').textContent = ok ? 'Deslize as miniaturas ou toque em uma foto. Depois escolha como editar.' : (curComp?.U?.length ? 'Há fotos para classificar. Toque em Organizar fotos e defina Antes e Depois.' : 'Importe fotos ou fotografe para preencher Antes e Depois.');
 }
 function pkSave() { if (!curComp) return; curComp.tf = { A: {...tf.A}, D: {...tf.D}, front: curComp.tf?.front }; curComp.selA = pickA[pickL] ? pickA[pickL].id : null; curComp.selD = pickD[pickR] ? pickD[pickR].id : null; saveComp(); }
+function pickIndexForAngle(list, id, pose) {
+  const saved = list.findIndex(s => s.id === id);
+  return saved >= 0 ? saved : list.findIndex(s => s.pose === pose);
+}
 function openPick(c) {
   if (!Pj || !c) return;
   if (linked) { savePair(); clearItems(); linked = false; }
   curComp = c; c.angle ||= 'Frente'; c.U ||= []; c.angles ||= [];
   pickA = compList(c, 'A'); pickD = compList(c, 'D');
   const pose = ({'Perfil esquerdo':'Perfil E','45° esquerda':'45° E','Frente':'Frente','45° direita':'45° D','Perfil direito':'Perfil D'})[c.angle];
-  const first = (list, id) => { const saved = list.findIndex(s => s.id === id); return saved >= 0 ? saved : Math.max(0, list.findIndex(s => s.pose === pose)); };
-  pickL = first(pickA,c.selA); pickR = first(pickD,c.selD);
+  pickL = pickIndexForAngle(pickA,c.selA,pose); pickR = pickIndexForAngle(pickD,c.selD,pose);
   const t0 = c.tf; tf.A = t0 ? { ...t0.A } : T0(); tf.D = t0 ? { ...t0.D } : T0();
   picking = true; setActive('A');
   $('app').classList.add('picking', 'proj'); $('pickBox').hidden = false; $('halves').hidden = false; show('edit');
@@ -2084,7 +2110,7 @@ async function startEditing(removeBackground) {
 }
 $('pkGo').onclick = () => startEditing(true);
 $('pkOriginal').onclick = () => startEditing(false);
-$('retryCut').onclick = () => { for (const side of ['A','D']) { const it = items[side][sel[side]]; if (it && !it.raw) { it.status = 'fila'; it._liveErr = 0; queueIt(it,side); } } pump(); };
+$('retryCut').onclick = () => { if (working) return; resetModel(new Error('Reiniciando recorte')); for (const side of ['A','D']) { const it = items[side][sel[side]]; if (it) { it.status = 'fila'; it._liveErr = 0; it.cutError = null; if (it.raw) ensureLive(it); else queueIt(it,side); } } pump(); };
 $('useOriginal').onclick = () => { if (!curComp) return; openPick(curComp); startEditing(false); };
 $('pickAgain').onclick = () => { savePair(); openPick(curComp); };
 $('pNew').onclick = () => { if (Pj) newComp(); };
@@ -2209,13 +2235,15 @@ function rememberDraft() {
   if (!curComp) return;
   if (linked) savePair(); else if (picking) { pkSave(); curComp.tf = { A: {...tf.A}, D: {...tf.D} }; }
   curComp.drafts ||= {};
-  curComp.drafts[curComp.angle || 'Frente'] = { selA: curComp.selA, selD: curComp.selD, tf: cloneValue(curComp.tf), edit:cloneValue(curComp.edit) };
+  curComp.drafts[curComp.angle || 'Frente'] = { selA: curComp.selA, selD: curComp.selD, tf: cloneValue(curComp.tf), edit:cloneValue(curComp.edit), manual: !!curComp.selectionTouched || linked };
 }
 async function selectAngle(name) {
   if (!curComp) return;
   rememberDraft();
   curComp.angle = name;
-  const draft = (curComp.drafts || {})[name] || (curComp.angles || []).find(a => a.name === name);
+  const candidate = (curComp.drafts || {})[name];
+  const draft = candidate && candidate.manual ? candidate : (curComp.angles || []).find(a => a.name === name);
+  curComp.selectionTouched = !!draft;
   // Clear the editor before loading the next angle so savePair cannot overwrite it.
   if (linked) { clearItems(); linked = false; }
   curComp.selA = draft ? draft.selA : null; curComp.selD = draft ? draft.selD : null; curComp.tf = draft ? cloneValue(draft.tf) : null;
