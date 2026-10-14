@@ -255,7 +255,7 @@ html,body{overflow-x:clip}
   <p class="note" id="storeNote" style="text-align:center;margin-top:14px"></p>
   <div class="tools"><button class="btn small" id="freeMode" type="button">Montagem avulsa</button><button class="btn small" id="restore" type="button">Restaurar backup</button></div>
   <p class="note">As fotos ficam guardadas só neste aparelho, dentro do app. Ao fechar cada paciente, toque em Backup e guarde o arquivo no Drive ou em Arquivos.</p>
-  <p class="note" style="opacity:.6">Versão 32</p>
+  <p class="note" style="opacity:.6">Versão 33</p>
 </section>
 
 <section id="proj" class="scr" hidden>
@@ -1607,10 +1607,10 @@ function detachShot(s) {
     });
   });
 }
-async function commitProject(removed = []) {
+async function commitProject(removed = [], changedShots = Pj.shots) {
   const L = antesList(); Pj.rec.nA = L.length; Pj.rec.nP = L.filter(depOf).length;
   Pj.rec.cover = L[0]?.thumb || null; Pj.rec.u = Date.now(); Pj.rec.dirty = (Pj.rec.dirty || 0) + 1;
-  await DB.commitProject(Pj.rec, Pj.shots, removed);
+  await DB.commitProject(Pj.rec, changedShots, removed);
 }
 async function removeShot(s) { if (s) { detachShot(s); await commitProject([s.id]); } }
 async function importToComp(fs, side) {
@@ -1667,6 +1667,8 @@ function detectLater(recs) { detQ.push(...recs); if (!detOn) runDet(); }
 async function runDet() {
   detOn = true;
   while (detQ.length) {
+    // Give routing/import UI priority over background facial estimation.
+    if (explorer || $('importProgress').open) { await new Promise(r => setTimeout(r,150)); continue; }
     const r = detQ.shift();
     if (r.pyr) continue;
     try {
@@ -1677,8 +1679,9 @@ async function runDet() {
       if (picking) {
         if (curComp && !curComp.selectionTouched) {
           const pose = ({'Perfil esquerdo':'Perfil E','45° esquerda':'45° E','Frente':'Frente','45° direita':'45° D','Perfil direito':'Perfil D'})[curComp.angle];
-          if (pickL < 0) pickL = pickIndexForAngle(pickA,null,pose);
-          if (pickR < 0) pickR = pickIndexForAngle(pickD,null,pose);
+          const a = pickA.findIndex(s=>s.pose===pose), d = pickD.findIndex(s=>s.pose===pose);
+          if (a >= 0 && pickA[pickL]?.pose !== pose) pickL = a;
+          if (d >= 0 && pickD[pickR]?.pose !== pose) pickR = d;
           scMark();
         }
         render(); pkLabels();
@@ -2133,11 +2136,15 @@ function pkLabels() {
   const ok = !!(pickA[pickL] && pickD[pickR]);
   $('pkGo').disabled = $('pkOriginal').disabled = !ok; $('pkGo').textContent = 'Remover fundo e editar';
   $('pickHelp').textContent = ok ? 'Deslize as miniaturas ou toque em uma foto. Depois escolha como editar.' : (curComp?.U?.length ? 'Há fotos para classificar. Toque em Organizar fotos e defina Antes e Depois.' : 'Importe fotos ou fotografe para preencher Antes e Depois.');
+  $('pickHelp').hidden = !curComp?.U?.length;
+  if(curComp?.U?.length) $('pickHelp').textContent = `${curComp.U.length} fotos ainda não estão em Antes ou Depois. Toque em Organizar fotos para usá-las; não precisa importar novamente.`;
 }
 function pkSave() { if (!curComp) return; curComp.tf = { A: {...tf.A}, D: {...tf.D}, front: curComp.tf?.front }; curComp.selA = pickA[pickL] ? pickA[pickL].id : null; curComp.selD = pickD[pickR] ? pickD[pickR].id : null; saveComp(); }
 function pickIndexForAngle(list, id, pose) {
   const saved = list.findIndex(s => s.id === id);
-  return saved >= 0 ? saved : list.findIndex(s => s.pose === pose);
+  if (saved >= 0) return saved;
+  const matching = list.findIndex(s => s.pose === pose);
+  return matching >= 0 ? matching : list.length ? 0 : -1;
 }
 function openPick(c) {
   if (!Pj || !c) return;
@@ -2347,10 +2354,11 @@ $('filePool').onchange = async e => {
     const missing = assignments.filter(x => x.side === 'U').length;
     setStatus(`${added.length} de ${files.length} fotos importadas` + (missing ? ` · ${missing} para classificar` : ' · separadas pela data de captura'), false);
     if (missing) {
-      await openExplorer('photos', c);
+      $('importProgress').close();
+      await openExplorer('photos', c, {sessionMode:true,onlyIds:added.map(s=>s.id)});
       explorer.sessionMode = true;
       explorer.onlyIds = added.map(s => s.id);
-      explorer.notice = PhotoDates.sessions(added).unknown.length ? 'Não foi possível agrupar algumas fotos pela data. Direcione os blocos e classifique as fotos sem data.' : 'Direcione cada sessão para Antes ou Depois. Você também pode separar fotos de um bloco.';
+      explorer.notice = 'Escolha Antes ou Depois para estes grupos. Depois toque em Continuar montagem. Você pode deixar fotos pendentes para organizar mais tarde.';
       await renderExplorer();
     }
   } catch (err) { setStatus('Não foi possível concluir a importação: ' + err.message, false); }
@@ -2381,20 +2389,12 @@ function exButton(text, action, parent, cls = '') {
   const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + cls; b.textContent = text;
   b.onclick = action; parent.appendChild(b); return b;
 }
-async function openExplorer(kind, comp) {
-  explorer = { kind, comp, selected: new Set(), rows: [], filter: '' };
+async function openExplorer(kind, comp, options = {}) {
+  explorer = { kind, comp, selected: new Set(), rows: [], filter: '', ...options };
   $('explorer').hidden = false; $('home').inert = $('proj').inert = $('projectFolder').inert = $('app').inert = $('top').inert = true; await renderExplorer(); $('exClose').focus();
 }
 function closeExplorer() {
   if (explorerBusy) return;
-  if (explorer?.sessionMode && explorer.comp) {
-    const c = explorer.comp, ids = explorer.onlyIds || (c.U || []);
-    const pending = (c.U || []).filter(id => ids.includes(id)).length;
-    if (pending || !c.A.length || !c.D.length) {
-      explorer.notice = pending ? `Faltam ${pending} foto(s) para direcionar. Escolha Antes ou Depois em cada bloco, ou toque em Voltar ao projeto para continuar depois.` : 'Defina pelo menos uma foto de Antes e uma de Depois para montar. Você pode voltar ao projeto e continuar depois.';
-      renderExplorer(); return;
-    }
-  }
   $('explorer').hidden = true; $('home').inert = $('proj').inert = $('projectFolder').inert = $('app').inert = $('top').inert = false; explorer = null;
   if (curComp && Pj && !(Pj.rec.comps || []).includes(curComp)) { closePick(); clearItems(); linked = false; curComp = null; show('proj'); }
   if (screen === 'home') renderHome(); else if (screen === 'proj') renderProj(); else if (screen === 'folder') renderFolder(); else if (picking && curComp) openPick(curComp);
@@ -2418,7 +2418,7 @@ async function renderExplorer() {
   $('exDescription').textContent = ex.kind === 'photos' ? 'Selecione fotos para salvar na galeria, deletar ou separar entre antes e depois.' : ex.kind === 'angles' ? 'Selecione as montagens. No iPhone, toque em Salvar na galeria e depois em Salvar imagens.' : 'Marque os itens para baixar backups ou deletar.';
   if (ex.notice) $('exDescription').textContent = ex.notice;
   $('exClassify').hidden = ex.kind !== 'photos' || !ex.comp;
-  const filter = $('exFilter'); filter.hidden = ex.kind !== 'photos';
+  const filter = $('exFilter'); filter.hidden = ex.kind !== 'photos' || !!ex.sessionMode;
   if (ex.kind === 'photos') {
     filter.replaceChildren(new Option('Todas as datas e grupos', ''));
     ['Antes','Depois','Para classificar'].forEach(k => filter.add(new Option(k, 'group:' + k)));
@@ -2429,7 +2429,7 @@ async function renderExplorer() {
   const visible = rows.filter(r => (!ex.onlyIds || ex.onlyIds.includes(r.id)) && (!ex.filter || (ex.filter.startsWith('group:') ? r.title === ex.filter.slice(6) : ex.filter === 'unknown' ? !r.value.captureDay : r.value.captureDay === ex.filter)));
   ex.visible = visible;
   const grid = $('exGrid'); grid.replaceChildren();
-  visible.forEach(r => {
+  (ex.sessionMode ? [] : visible).forEach(r => {
     const label = document.createElement('label'); label.className = 'exCard';
     const check = document.createElement('input'); check.type = 'checkbox'; check.checked = ex.selected.has(r.id); check.setAttribute('aria-label', 'Selecionar ' + r.title + ' ' + r.note);
     check.onchange = () => { if (check.checked) ex.selected.add(r.id); else ex.selected.delete(r.id); exCounts(); };
@@ -2448,20 +2448,23 @@ function renderSessions(ex) {
   $('exClose').textContent = ex.sessionMode ? 'Continuar montagem' : '‹ Voltar';
   if (ex.kind !== 'photos' || !ex.comp) return;
   $('exBulk').hidden = !!ex.sessionMode; $('exClassify').hidden = !!ex.sessionMode;
-  if (ex.onlyIds) exButton('Todas as fotos do projeto', () => { ex.onlyIds = null; ex.filter = ''; ex.selected.clear(); renderExplorer(); },box);
+  if (ex.onlyIds && !ex.sessionMode) exButton('Todas as fotos do projeto', () => { ex.onlyIds = null; ex.filter = ''; ex.selected.clear(); renderExplorer(); },box);
   const toggle = document.createElement('button'); toggle.className = 'btn';
-  toggle.textContent = ex.sessionMode ? 'Selecionar fotos individualmente' : 'Direcionar por sessão';
+  toggle.textContent = ex.sessionMode ? 'Ajustar fotos individualmente' : 'Organizar por sessão';
   toggle.onclick = () => { ex.sessionMode = !ex.sessionMode; ex.selected.clear(); renderExplorer(); }; box.append(toggle);
   $('exGrid').hidden = !!ex.sessionMode;
   if (!ex.sessionMode) return;
-  exButton('Voltar ao projeto e continuar depois', () => { ex.sessionMode = false; closeExplorer(); openFolder(ex.comp); },box);
+  if (!ex.notice) $('exDescription').textContent = 'Escolha Antes ou Depois. Depois toque em Continuar montagem. As fotos pendentes podem ser organizadas mais tarde.';
+  const batch = document.createElement('div'); batch.className='flex';
+  for(const [label,side] of [['Todas como Antes','A'],['Todas como Depois','D']]) exButton(label,()=>{ex.selected=new Set(ex.visible.map(r=>r.id));classify(side);},batch);
+  box.append(batch);
   const {groups, unknown} = PhotoDates.sessions(ex.visible.map(r => r.value));
   if (unknown.length) groups.push(unknown);
   groups.forEach((group,i) => {
     const card = document.createElement('div'); card.className = 'sessionCard';
     const title = document.createElement('b');
     const format = t => new Date(t).toLocaleString('pt-BR');
-    title.textContent = Number.isFinite(group[0].capturedAt) ? `Sessão ${i+1} · ${format(group[0].capturedAt)} a ${format(group[group.length-1].capturedAt)}` : 'Fotos sem data de captura';
+    title.textContent = Number.isFinite(group[0].capturedAt) ? `Grupo ${i+1} · ${new Date(group[0].capturedAt).toLocaleDateString('pt-BR')}` : 'Fotos sem data';
     const sides = new Set(group.map(s => ex.comp.A.includes(s.id) ? 'Antes' : ex.comp.D.includes(s.id) ? 'Depois' : 'Para classificar'));
     const note = document.createElement('p'); note.textContent = `${group.length} foto${group.length === 1 ? '' : 's'} · ${[...sides].join(' / ')}`;
     const thumbs = document.createElement('div'); thumbs.className = 'sessionThumbs';
@@ -2490,20 +2493,34 @@ $('exClear').onclick = () => { explorer.selected.clear(); renderExplorer(); };
 async function exAction(action) {
   if (!explorer || explorerBusy) return;
   explorerBusy = true; exCounts();
-  const prior = Pj ? {rec:cloneValue(Pj.rec),shots:Pj.shots.map(s => ({...s}))} : null;
+  let prior = null;
   const currentId = curComp?.id, compId = explorer.comp?.id;
-  try { await action(explorer); }
+  try {
+    await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,0)));
+    prior = Pj ? {rec:cloneValue(Pj.rec),shots:Pj.shots.map(s => ({...s}))} : null;
+    await action(explorer);
+  }
   catch (err) {
     if (prior) { Pj = prior; curComp = Pj.rec.comps?.find(c => c.id === currentId) || null; explorer.comp = Pj.rec.comps?.find(c => c.id === compId); }
     setStatus('Não foi possível concluir: ' + err.message, false); explorer.notice = 'Não foi possível concluir. ' + err.message; }
-  finally { explorerBusy = false; if (explorer) { await renderExplorer(); } }
+  finally {
+    explorerBusy = false;
+    if (explorer) {
+      exCounts(); // Always unlock the existing controls, even if repainting fails.
+      try { await renderExplorer(); }
+      catch(err) { $('exDescription').textContent='Não consegui atualizar a tela. Toque em Continuar montagem para voltar.'; exCounts(); }
+    }
+  }
 }
 async function classify(side) {
   await exAction(async ex => {
     const c = ex.comp; if (!c) return;
+    const changed=[];
+    $('exDescription').textContent='Guardando a escolha…';
     for (const id of ex.selected) {
+      const s = shotById(id); if(!s) continue;
       for (const k of ['A','D','U']) c[k] = (c[k] || []).filter(x => x !== id);
-      c[side].push(id); const s = shotById(id); s.kind = side; s.of = null;
+      c[side].push(id); s.kind = side; s.of = null; changed.push(s);
     }
     if (!c.A.includes(c.selA)) { c.selA = null; c.tf = null; }
     if (!c.D.includes(c.selD)) { c.selD = null; c.tf = null; }
@@ -2511,7 +2528,9 @@ async function classify(side) {
       if (!c.A.includes(d.selA)) { d.selA = null; d.tf = null; }
       if (!c.D.includes(d.selD)) { d.selD = null; d.tf = null; }
     });
-    await commitProject(); ex.selected.clear();
+    await commitProject([],changed);
+    ex.notice = `${changed.length} fotos em ${side==='A'?'Antes':side==='D'?'Depois':'Para classificar'} ✓. Toque em Continuar montagem ou organize outro grupo.`;
+    ex.selected.clear();
   });
 }
 $('exBefore').onclick = () => classify('A'); $('exAfter').onclick = () => classify('D'); $('exUnknown').onclick = () => classify('U');

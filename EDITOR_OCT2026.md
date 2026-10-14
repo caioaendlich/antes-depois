@@ -4,6 +4,8 @@ Implementação na branch `fix/prisma-import-cutout-editor-oct2026`, versão de 
 
 ## Alterações e evidência
 
+Atualização da versão 33: a montagem mantém uma foto acessível quando o ângulo não é reconhecido e ajusta a seleção quando a estimativa chega, preservando a escolha manual. Fotos U ficam sinalizadas para organizar sem reimportar. A tela de direcionamento apresenta Antes/Depois por grupo ou lote inteiro, confirma a escolha e permite voltar à montagem com pendências. Classificação grava apenas os registros selecionados; grade individual não é criada oculta durante o direcionamento; detecção facial espera essa tela fechar. Garantida liberação dos controles em falhas de ação/renderização e fechado o modal de importação antes de abrir a organização. 34 testes aprovados, incluindo persistência restrita e rollback da classificação. O travamento específico do aparelho não foi reproduzido fisicamente.
+
 Caio esclareceu que a prioridade é o arquivo final salvo na galeria. A exportação e os ângulos salvos também usam canvas Display P3 quando suportado e JPEG 0,95, sem compensação de exposição. Corrigido um caminho adicional: Salvar na galeria guardava no projeto apenas um recorte de 240 × 300 em JPEG 0,8; agora mantém a montagem completa em JPEG 0,95. A exportação direta já era completa. Essa correção não comprova que o clareamento HDR foi resolvido.
 
 - Cor: não foram encontrados controles automáticos de exposição, brilho ou saturação no fluxo de importação. O original permanece sem recompressão. A prévia passava por JPEG de 540 px/qualidade 0,82; agora usa até 1080 px/0,94. Os canvases fotográficos solicitam Display P3, com fallback do navegador para sRGB. A máscara/modelo continua separada da cor da fotografia. Não foi aplicada compensação artificial à pele.
@@ -25,3 +27,4 @@ Check no aparelho: importar fotos fora de ordem → conferir sequência e cor �
 ## LOG DE EDIÇÃO
 - 2026-10-14 11:44 -0300 · Codex — Registradas seis melhorias do editor, aviso antecipado de importação, 31 testes e limites de validação no iPhone/HDR.
 - 2026-10-14 11:48 -0300 · Codex — Por esclarecimento de Caio, explicitado foco na imagem final e corrigido resultado do projeto de 240x300/JPEG0,8 para montagem completa/JPEG0,95; 32 testes aprovados; HDR ainda sem validação física.
+- 2026-10-14 12:54 -0300 · Codex — Versão 33: simplificada classificação com retorno livre, reduzidas gravações/miniaturas/detecção concorrente, liberados controles em falhas e mantidas fotos acessíveis sem reconhecimento de ângulo; 34 testes.

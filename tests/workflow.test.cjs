@@ -5,6 +5,28 @@ const vm = require('node:vm');
 const source = fs.readFileSync(require('node:path').join(__dirname, '../index.html'),'utf8');
 const dates = require('../photo-dates.js');
 const plain = value => JSON.parse(JSON.stringify(value));
+test('routing a session persists only its photos, keeps pending photos and unlocks controls',async()=>{
+  const c={id:'c',A:['a'],D:[],U:['d','pending'],drafts:{}};
+  const shots=[{id:'a',kind:'A'},{id:'d',kind:'U'},{id:'pending',kind:'U'},{id:'other',kind:'A'}];
+  let commits=0,unlock=0;
+  const {ctx,elements}=context({Pj:{rec:{comps:[c]},shots},curComp:c,explorer:{comp:c,selected:new Set(['d'])},explorerBusy:false,
+    cloneValue:plain,exCounts:()=>{unlock++;},renderExplorer:async()=>{},setStatus(){},shotById:id=>shots.find(s=>s.id===id),
+    commitProject:async(removed,changed)=>{commits++;assert.deepEqual(plain(changed).map(s=>s.id),['d']);}});
+  const start=source.indexOf('async function exAction(');
+  vm.runInContext(source.slice(start,source.indexOf("$('exBefore').onclick",start)),ctx);
+  await ctx.classify('D');
+  assert.equal(commits,1);assert.deepEqual(c.D,['d']);assert.deepEqual(c.U,['pending']);
+  assert.equal(ctx.explorerBusy,false);assert.ok(unlock>=2);assert.match(ctx.explorer.notice,/Depois/);
+});
+test('failed routing restores assignments and allows another attempt',async()=>{
+  const c={id:'c',A:[],D:[],U:['s'],drafts:{}};
+  const {ctx}=context({Pj:{rec:{comps:[c]},shots:[{id:'s',kind:'U'}]},curComp:c,explorer:{comp:c,selected:new Set(['s'])},explorerBusy:false,
+    cloneValue:plain,exCounts(){},renderExplorer:async()=>{},setStatus(){},shotById:id=>ctx.Pj.shots.find(s=>s.id===id),commitProject:async()=>{throw Error('storage failure');}});
+  const start=source.indexOf('async function exAction(');
+  vm.runInContext(source.slice(start,source.indexOf("$('exBefore').onclick",start)),ctx);
+  await ctx.classify('D');assert.equal(ctx.explorerBusy,false);assert.deepEqual(plain(ctx.curComp.U),['s']);assert.deepEqual(plain(ctx.curComp.D),[]);
+  assert.match(ctx.explorer.notice,/storage failure/);
+});
 test('angle selection ignores old automatic drafts and preserves deliberate selections',async()=>{
   for(const manual of [false,true]) {
     const comp={angle:'Frente',drafts:{'45° direita':{selA:'wrong',manual}},angles:[]};
@@ -18,7 +40,7 @@ test('angle selection ignores old automatic drafts and preserves deliberate sele
   vm.runInContext(source.slice(source.indexOf('function pickIndexForAngle('),source.indexOf('function openPick(')),ctx);
   const list=[{id:'f',pose:'Frente'},{id:'r',pose:'Perfil D'}];
   assert.equal(ctx.pickIndexForAngle(list,null,'Perfil D'),1);
-  assert.equal(ctx.pickIndexForAngle(list,null,'45° D'),-1);
+  assert.equal(ctx.pickIndexForAngle(list,null,'45° D'),0);
   assert.equal(ctx.pickIndexForAngle(list,'f','Perfil D'),0);
 });
 test('ghost pyramid is recalculated from the reference photo, then reused',async()=>{
@@ -83,7 +105,7 @@ test('one block, three blocks and missing timestamps require classification', ()
 });
 function context(extra = {}) {
   const elements = {};
-  const ctx = vm.createContext({console,Blob,File,TextEncoder,TextDecoder,Uint8Array,ArrayBuffer,DataView,fetch,Date,
+  const ctx = vm.createContext({requestAnimationFrame:fn=>fn(),setTimeout:fn=>fn(),console,Blob,File,TextEncoder,TextDecoder,Uint8Array,ArrayBuffer,DataView,fetch,Date,
     $: id => elements[id] ||= {disabled:false}, ...extra});
   return {ctx,elements};
 }
