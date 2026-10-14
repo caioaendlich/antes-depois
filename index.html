@@ -255,7 +255,7 @@ html,body{overflow-x:clip}
   <p class="note" id="storeNote" style="text-align:center;margin-top:14px"></p>
   <div class="tools"><button class="btn small" id="freeMode" type="button">Montagem avulsa</button><button class="btn small" id="restore" type="button">Restaurar backup</button></div>
   <p class="note">As fotos ficam guardadas só neste aparelho, dentro do app. Ao fechar cada paciente, toque em Backup e guarde o arquivo no Drive ou em Arquivos.</p>
-  <p class="note" style="opacity:.6">Versão 33</p>
+  <p class="note" style="opacity:.6">Versão 34</p>
 </section>
 
 <section id="proj" class="scr" hidden>
@@ -1216,7 +1216,7 @@ const antesList = () => Pj ? Pj.shots.filter(s => s.kind === 'A').sort(PhotoDate
 // comparação atual: conjunto de antes e depois escolhidos para uma montagem (o paciente pode ter várias, por data)
 let curComp = null;
 const shotById = id => Pj ? Pj.shots.find(s => s.id === id) : null;
-const compList = (c, k) => c ? c[k].map(shotById).filter(Boolean).sort(PhotoDates.compare) : [];
+const compList = (c, k) => c ? c[k].map(shotById).filter(Boolean).sort(PhotoDates.selectorCompare) : [];
 const camA = () => curComp ? compList(curComp, 'A') : antesList();
 function saveComp() { if (Pj) { Pj.rec.u = Date.now(); Pj.rec.dirty = (Pj.rec.dirty || 0) + 1; return DB.put('projects', Pj.rec); } return Promise.resolve(); }
 const depOf = a => Pj && a ? Pj.shots.find(s => s.kind === 'D' && s.of === a.id) : null;
@@ -2158,6 +2158,27 @@ function openPick(c) {
   $('app').classList.add('picking', 'proj'); $('pickBox').hidden = false; $('halves').hidden = false; show('edit');
   scBuild($('scrA'), pickA, 'A'); scBuild($('scrD'), pickD, 'D'); pkLabels(); pickA.concat(pickD).forEach(pickImg);
   render();
+  hydrateZoom(c);
+}
+const zoomReads = new WeakSet();
+async function hydrateZoom(c) {
+  const project = Pj;
+  for(const s of projectPhotos(c)) {
+    if(s.zoomMetaVersion===1 || zoomReads.has(s) || !s.blob) continue;
+    zoomReads.add(s);
+    try {
+      const meta=PhotoDates.readExif(await s.blob.slice(0,1024*1024).arrayBuffer());
+      s.focal35=meta?.focal35 || null;s.digitalZoom=meta?.digitalZoom || null;s.zoomMetaVersion=1;
+      await DB.put('shots',s);
+      if(Pj===project && curComp===c && picking) {
+        const selectedA=pickA[pickL]?.id,selectedD=pickD[pickR]?.id;
+        pickA=compList(c,'A');pickD=compList(c,'D');
+        pickL=pickIndexForAngle(pickA,selectedA,null);pickR=pickIndexForAngle(pickD,selectedD,null);
+        scBuild($('scrA'),pickA,'A');scBuild($('scrD'),pickD,'D');pkLabels();render();
+      }
+    } catch(err) { s.zoomMetaVersion=0; }
+    finally { zoomReads.delete(s); }
+  }
 }
 function closePick() { picking = false; $('app').classList.remove('picking'); $('pickBox').hidden = true; $('halves').hidden = true; }
 function pkAlbum(side) { pkSide = side; $('fileAlbum').click(); }

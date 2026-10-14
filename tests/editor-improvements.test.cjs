@@ -4,6 +4,22 @@ const fs=require('node:fs'),vm=require('node:vm');
 const {History,turnDelta}=require('../editor-actions.js');
 const dates=require('../photo-dates.js');
 const source=fs.readFileSync(require('node:path').join(__dirname,'../index.html'),'utf8');
+test('selector groups 1x then 2x per angle, with capture order within each zoom',()=>{
+  const shots=[{id:'2b',pose:'Frente',focal35:48,capturedAt:4},{id:'1b',pose:'Frente',focal35:24,capturedAt:3},{id:'2a',pose:'Frente',focal35:48,capturedAt:1},{id:'1a',pose:'Frente',focal35:24,capturedAt:2},{id:'unknown',pose:'Frente',capturedAt:0},{id:'side',pose:'45° D',focal35:24,capturedAt:0}];
+  assert.deepEqual(shots.slice().sort(dates.selectorCompare).map(s=>s.id),['1a','1b','2a','2b','unknown','side']);
+  assert.equal(dates.zoomGroup({digitalZoom:2}),2);
+  assert.equal(dates.zoomGroup({focal35:48,digitalZoom:2}),2);
+});
+test('EXIF reads equivalent focal length and rational digital zoom without requiring a date',()=>{
+  for(const little of [true,false]) {
+    const b=Buffer.alloc(60),w16=(x,p)=>little?b.writeUInt16LE(x,p):b.writeUInt16BE(x,p),w32=(x,p)=>little?b.writeUInt32LE(x,p):b.writeUInt32BE(x,p);
+    b.write(little?'II':'MM');w16(42,2);w32(8,4);w16(2,8);
+    w16(0xa405,10);w16(3,12);w32(1,14);w16(48,18);
+    w16(0xa404,22);w16(5,24);w32(1,26);w32(40,30);w32(2,40);w32(1,44);
+    const m=dates.readExif(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength));
+    assert.equal(m.focal35,48);assert.equal(m.digitalZoom,2);assert.equal(m.capturedAt,undefined);
+  }
+});
 test('saving to gallery retains the complete rendered output in the project',()=>{
   let rendered=false;
   const comp={};

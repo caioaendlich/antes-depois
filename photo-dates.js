@@ -30,10 +30,15 @@
           visited.add(offset);
           const count = u16(offset);
           if (count > 1024 || base + offset + 2 + count * 12 > n) return null;
-          let nested = null, date = '', subsecond = '', offsetValue = '';
+          let nested = null, date = '', subsecond = '', offsetValue = '', focal35 = null, digitalZoom = null;
           for (let i = 0; i < count; i++) {
             const p = offset + 2 + i * 12, tag = u16(p), type = u16(p + 2), len = u32(p + 4);
             if (tag === 0x8769 && type === 4 && len === 1) nested = u32(p + 8);
+            if (tag === 0xa405 && type === 3 && len === 1) focal35 = u16(p+8) || null;
+            if (tag === 0xa404 && type === 5 && len === 1) {
+              const start=u32(p+8);
+              if(base+start+8<=n) { const denominator=u32(start+4); if(denominator) digitalZoom=u32(start)/denominator || null; }
+            }
             if ([0x9003,0x9291,0x9011].includes(tag) && type === 2 && len > 0 && len <= 64) {
               const start = len <= 4 ? p + 8 : u32(p + 8);
               if (base + start + len <= n) {
@@ -44,12 +49,27 @@
               }
             }
           }
-          return parseDate(date,subsecond,offsetValue) || (nested ? ifd(nested, depth + 1) : null);
+          const child=nested ? ifd(nested, depth+1) : null;
+          const result={...(parseDate(date,subsecond,offsetValue)||{}),...(child||{})};
+          if(focal35) result.focal35=focal35;
+          if(digitalZoom) result.digitalZoom=digitalZoom;
+          return Object.keys(result).length ? result : null;
         }
         const found = ifd(u32(4), 0); if (found) return found;
       }
     } catch (_) { /* Unrecognized or stripped metadata: ask the user to classify. */ }
     return null;
+  }
+  function zoomGroup(s) {
+    // Equivalent focal length already incorporates crop: do not multiply twice.
+    if(Number.isFinite(s.focal35) && s.focal35>0) return s.focal35 < 40 ? 1 : s.focal35 <= 65 ? 2 : 3;
+    if(Number.isFinite(s.digitalZoom) && s.digitalZoom>0) return s.digitalZoom < 1.6 ? 1 : s.digitalZoom < 2.6 ? 2 : 3;
+    return 9;
+  }
+  function selectorCompare(a,b) {
+    const angles=['Perfil E','45° E','Frente','45° D','Perfil D'];
+    const rank=s=>{const i=angles.indexOf(s.pose);return i<0?9:i;};
+    return rank(a)-rank(b) || zoomGroup(a)-zoomGroup(b) || compare(a,b);
   }
   function compare(a,b) {
     const ad = Number.isFinite(a.capturedAt), bd = Number.isFinite(b.capturedAt);
@@ -76,6 +96,6 @@
     if (groups.length === 2 && !unknown.length) groups.forEach((group,i) => group.forEach(s => sides.set(s.id, i ? 'D' : 'A')));
     return shots.map(s => ({id:s.id, side:sides.get(s.id) || 'U'}));
   }
-  const api = { readExif, parseDate, sessions, split, compare };
+  const api = { readExif, parseDate, sessions, split, compare, zoomGroup, selectorCompare };
   if (typeof module !== 'undefined') module.exports = api; else root.PhotoDates = api;
 })(typeof window !== 'undefined' ? window : globalThis);
