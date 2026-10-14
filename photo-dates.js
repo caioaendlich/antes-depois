@@ -1,12 +1,18 @@
 /* Capture dates only. File modification time is intentionally never a fallback. */
 (function(root) {
-  function parseDate(value) {
+  function parseDate(value, subsecond = '', offset = '') {
     const m = /^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/.exec(value || '');
     if (!m) return null;
     const [y, mo, d, h, mi, s] = m.slice(1).map(Number);
     const date = new Date(y, mo - 1, d, h, mi, s);
     if (y < 1900 || date.getFullYear() !== y || date.getMonth() !== mo - 1 || date.getDate() !== d || h > 23 || mi > 59 || s > 59) return null;
-    return { capturedAt: date.getTime(), captureDay: `${m[1]}-${m[2]}-${m[3]}`, captureSource: 'EXIF' };
+    const fraction = /^\d+$/.test(subsecond) ? subsecond : '';
+    let time = date.getTime();
+    if (/^[+-](?:0\d|1[0-4]):[0-5]\d$/.test(offset)) {
+      const sign = offset[0] === '+' ? 1 : -1;
+      time = Date.UTC(y,mo-1,d,h,mi,s) - sign * (+offset.slice(1,3)*60 + +offset.slice(4))*60000;
+    }
+    return { capturedAt: time + Number(('0.' + (fraction || '0'))) * 1000, captureSubsecond: fraction, captureOffset: offset, captureDay: `${m[1]}-${m[2]}-${m[3]}`, captureSource: 'EXIF' };
   }
   function readExif(buffer) {
     try {
@@ -24,21 +30,36 @@
           visited.add(offset);
           const count = u16(offset);
           if (count > 1024 || base + offset + 2 + count * 12 > n) return null;
-          let nested = null, result = null;
+          let nested = null, date = '', subsecond = '', offsetValue = '';
           for (let i = 0; i < count; i++) {
             const p = offset + 2 + i * 12, tag = u16(p), type = u16(p + 2), len = u32(p + 4);
             if (tag === 0x8769 && type === 4 && len === 1) nested = u32(p + 8);
-            if (tag === 0x9003 && type === 2 && len >= 19 && len <= 64) {
-              const start = u32(p + 8);
-              if (base + start + len <= n) result = parseDate(new TextDecoder().decode(new Uint8Array(buffer, base + start, len)));
+            if ([0x9003,0x9291,0x9011].includes(tag) && type === 2 && len > 0 && len <= 64) {
+              const start = len <= 4 ? p + 8 : u32(p + 8);
+              if (base + start + len <= n) {
+                const value = new TextDecoder().decode(new Uint8Array(buffer, base + start, len)).replace(/\0.*$/s,'').trim();
+                if (tag === 0x9003) date = value;
+                else if (tag === 0x9291) subsecond = value;
+                else offsetValue = value;
+              }
             }
           }
-          return result || (nested ? ifd(nested, depth + 1) : null);
+          return parseDate(date,subsecond,offsetValue) || (nested ? ifd(nested, depth + 1) : null);
         }
         const found = ifd(u32(4), 0); if (found) return found;
       }
     } catch (_) { /* Unrecognized or stripped metadata: ask the user to classify. */ }
     return null;
+  }
+  function compare(a,b) {
+    const ad = Number.isFinite(a.capturedAt), bd = Number.isFinite(b.capturedAt);
+    if (ad !== bd) return ad ? -1 : 1;
+    if (ad && a.capturedAt !== b.capturedAt) return a.capturedAt - b.capturedAt;
+    const fraction=(a.captureSubsecond||'').padEnd(9,'0').localeCompare((b.captureSubsecond||'').padEnd(9,'0'));
+    if(ad && fraction) return fraction;
+    const an = a.originalName || a.name || '', bn = b.originalName || b.name || '';
+    const names = an.localeCompare(bn, 'en', {numeric:true, sensitivity:'base'});
+    return names || (a.t || 0) - (b.t || 0);
   }
   function sessions(shots) {
     const dated = shots.filter(s => Number.isFinite(s.capturedAt)).slice().sort((a,b) => a.capturedAt - b.capturedAt);
@@ -55,6 +76,6 @@
     if (groups.length === 2 && !unknown.length) groups.forEach((group,i) => group.forEach(s => sides.set(s.id, i ? 'D' : 'A')));
     return shots.map(s => ({id:s.id, side:sides.get(s.id) || 'U'}));
   }
-  const api = { readExif, parseDate, sessions, split };
+  const api = { readExif, parseDate, sessions, split, compare };
   if (typeof module !== 'undefined') module.exports = api; else root.PhotoDates = api;
 })(typeof window !== 'undefined' ? window : globalThis);
