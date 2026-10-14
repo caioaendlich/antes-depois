@@ -77,12 +77,12 @@ test('wide-gamut context requested, safe fallback without exposure manipulation'
   assert.equal(setting.colorSpace,'display-p3');
   assert.equal(ctx.photoContext({getContext:(kind,s)=>{if(s)throw Error('unsupported');return expected;}}),expected);
 });
-test('import waiting dialog opens in the click gesture before the native picker',()=>{
+test('opening the native picker does not display import progress before selection',()=>{
   const calls=[],events={};
   const elements=new Proxy({}, {get:(o,k)=>o[k] ||= {addEventListener:(event,fn)=>{events[k+event]=fn;},showModal:()=>calls.push('waiting'),click:()=>calls.push('picker'),close:()=>calls.push('closed')}});
   const ctx=vm.createContext({$:id=>elements[id]});
   vm.runInContext(source.slice(source.indexOf('let awaitingPhotoFiles ='),source.indexOf("$('filePool').onchange =")),ctx);
-  elements.importMore.onclick();assert.deepEqual(calls,['waiting','picker']);
+  elements.importMore.onclick();assert.deepEqual(calls,['picker']);
   events.filePoolcancel();assert.equal(calls.at(-1),'closed');
 });
 test('loupe follows contact, stays inside viewport and disappears without a stroke',()=>{

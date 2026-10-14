@@ -255,7 +255,7 @@ html,body{overflow-x:clip}
   <p class="note" id="storeNote" style="text-align:center;margin-top:14px"></p>
   <div class="tools"><button class="btn small" id="freeMode" type="button">Montagem avulsa</button><button class="btn small" id="restore" type="button">Restaurar backup</button></div>
   <p class="note">As fotos ficam guardadas só neste aparelho, dentro do app. Ao fechar cada paciente, toque em Backup e guarde o arquivo no Drive ou em Arquivos.</p>
-  <p class="note" style="opacity:.6">Versão 31</p>
+  <p class="note" style="opacity:.6">Versão 32</p>
 </section>
 
 <section id="proj" class="scr" hidden>
@@ -405,8 +405,8 @@ html,body{overflow-x:clip}
 <input type="file" id="filePair" accept="image/*" multiple hidden>
 <input type="file" id="fileAlbum" accept="image/*" multiple hidden>
 <input type="file" id="fileZip" accept=".zip,application/zip" hidden>
+<input type="file" id="filePool" accept="image/*" multiple hidden>
 <dialog id="importProgress" aria-labelledby="importTitle" style="background:#191a1d;color:#eee;border:1px solid #d8c3a0;border-radius:20px;padding:32px;text-align:center">
-  <input type="file" id="filePool" accept="image/*" multiple hidden>
   <div class="importSpinner" aria-hidden="true">◇</div><h2 id="importTitle">Importando fotos, aguarde</h2><p id="importCount" role="status">Preparando suas fotos…</p>
   <p id="importExplanation">As fotos serão guardadas no projeto, com o fundo original.</p>
   <button class="btn" id="cancelImportWait" type="button" hidden>Voltar</button>
@@ -2321,10 +2321,6 @@ $('filePool').addEventListener('cancel',cancelImportWait);
 $('importProgress').addEventListener('cancel', e => { if(awaitingPhotoFiles) cancelImportWait(); else e.preventDefault(); });
 $('importPool').onclick = $('importMore').onclick = () => {
   awaitingPhotoFiles=true;
-  $('importTitle').textContent='Aguardando fotos do iPhone';
-  $('importCount').textContent='Ao confirmar a seleção, aguarde o iPhone preparar e entregar as fotos.';
-  $('cancelImportWait').hidden=false;
-  $('importProgress').showModal();
   // Keep the picker in the original user gesture (no await or timer before click).
   $('filePool').click();
 };
