@@ -4,6 +4,8 @@ Implementação na branch `fix/prisma-import-cutout-editor-oct2026`, versão de 
 
 ## Alterações e evidência
 
+Caio esclareceu que a prioridade é o arquivo final salvo na galeria. A exportação e os ângulos salvos também usam canvas Display P3 quando suportado e JPEG 0,95, sem compensação de exposição. Corrigido um caminho adicional: Salvar na galeria guardava no projeto apenas um recorte de 240 × 300 em JPEG 0,8; agora mantém a montagem completa em JPEG 0,95. A exportação direta já era completa. Essa correção não comprova que o clareamento HDR foi resolvido.
+
 - Cor: não foram encontrados controles automáticos de exposição, brilho ou saturação no fluxo de importação. O original permanece sem recompressão. A prévia passava por JPEG de 540 px/qualidade 0,82; agora usa até 1080 px/0,94. Os canvases fotográficos solicitam Display P3, com fallback do navegador para sRGB. A máscara/modelo continua separada da cor da fotografia. Não foi aplicada compensação artificial à pele.
 - Cabelo: máscara mantém o componente principal conectado; fragmentos destacados deixam de ser preservados pelo antigo limiar de 8% da área. A faixa externa cai de 10 para 2 pixels da máscara de 1024 px; a transição de alpha é contínua e um pouco mais definida. Pode remover fios soltos ou objetos separados desejados: a ferramenta Restaurar continua disponível. Máscaras antigas são atualizadas ao editar, exceto no modo de fundo original; as imagens originais não são alteradas.
 - Ordem: DateTimeOriginal, SubSecTimeOriginal e OffsetTimeOriginal são lidos nos dois formatos de byte TIFF; data vem antes da ordem numérica do nome (IMG_9 antes de IMG_12). Importação, faixas da montagem e referências da câmera usam o mesmo comparador. Metadados de fração/fuso entram no backup. Arquivos sem data ficam depois dos datados, ordenados pelo nome. Nome e data de modificação não inventam data de captura nem divisão Antes/Depois. Metadados removidos, sequências IMG reiniciadas e EXIF além do primeiro MB continuam ambíguos.
@@ -22,3 +24,4 @@ Check no aparelho: importar fotos fora de ordem → conferir sequência e cor �
 
 ## LOG DE EDIÇÃO
 - 2026-10-14 11:44 -0300 · Codex — Registradas seis melhorias do editor, aviso antecipado de importação, 31 testes e limites de validação no iPhone/HDR.
+- 2026-10-14 11:48 -0300 · Codex — Por esclarecimento de Caio, explicitado foco na imagem final e corrigido resultado do projeto de 240x300/JPEG0,8 para montagem completa/JPEG0,95; 32 testes aprovados; HDR ainda sem validação física.

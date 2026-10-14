@@ -1128,8 +1128,8 @@ function showOut(blob) { overlay(URL.createObjectURL(blob), 'Toque e segure na i
 // Salvar na galeria: folha de compartilhamento do aparelho (tem "Salvar imagem"); se não houver, o salvamento do app; por último, segurar a imagem
 function compThumb() {
   if (!curComp || !linked) return;
-  const h = Math.round(W * 5 / 4), c = mkCanvas(240, 300); c.getContext('2d').drawImage(cv, 0, (H - h) / 2, W, h, 0, 0, 240, 300);
-  curComp.out = c.toDataURL('image/jpeg', 0.8); savePair(); saveComp();
+  render();
+  curComp.out = cv.toDataURL('image/jpeg', 0.95); savePair(); saveComp();
 }
 $('save').onclick = async () => {
   compThumb();

@@ -4,6 +4,14 @@ const fs=require('node:fs'),vm=require('node:vm');
 const {History,turnDelta}=require('../editor-actions.js');
 const dates=require('../photo-dates.js');
 const source=fs.readFileSync(require('node:path').join(__dirname,'../index.html'),'utf8');
+test('saving to gallery retains the complete rendered output in the project',()=>{
+  let rendered=false;
+  const comp={};
+  const ctx=vm.createContext({curComp:comp,linked:true,render:()=>{rendered=true;},savePair(){},saveComp(){},
+    cv:{toDataURL:(mime,quality)=>{assert.equal(rendered,true);assert.equal(mime,'image/jpeg');assert.equal(quality,.95);return 'full-output';}}});
+  vm.runInContext(source.slice(source.indexOf('function compThumb('),source.indexOf("$('save').onclick =")),ctx);
+  ctx.compThumb();assert.equal(comp.out,'full-output');
+});
 
 test('each stroke reverses independently, redo restores, new paint discards redo',()=>{
   const h=new History(), state=new Uint8Array(8);
