@@ -447,6 +447,7 @@ html,body{overflow-x:clip}
 <div class="exActions" id="exClassify"><span>Marcar seleção como:</span><button class="btn" id="exBefore">Antes</button><button class="btn" id="exAfter">Depois</button><button class="btn" id="exUnknown">Para classificar</button></div><div id="exSessions"></div><div class="exGrid" id="exGrid"></div></div></section>
 <canvas id="brushLoupe" width="240" height="240" aria-label="Lupa de precisão" hidden style="position:fixed;width:120px;height:120px;border:2px solid #d8c3a0;border-radius:50%;z-index:60;pointer-events:none;background:#222;box-shadow:0 2px 12px #0008"></canvas>
 <script src="photo-dates.js"></script>
+<script src="import-tools.js"></script>
 <script src="editor-actions.js"></script>
 <script src="mask-refinement.js"></script>
 <script>
@@ -1609,11 +1610,9 @@ function touchProj(noDirty) {
 }
 async function importToProject(files, kind, startA) {
   const pool = kind === 'D' && !startA, added = [];
-  const ordered = [];
-  for (const file of files) {
-    const capture = PhotoDates.readExif(await file.slice(0,1024*1024).arrayBuffer()) || {};
-    ordered.push({file, ...capture, name:file.name});
-  }
+  const ordered = await ImportTools.readMetadata(files,(done,total)=>{
+    $('importCount').textContent='Lendo datas: ' + done + ' de ' + total;
+  });
   ordered.sort(PhotoDates.compare);
   let a = startA, n = 0;
   for (const entry of ordered) {
@@ -1624,7 +1623,11 @@ async function importToProject(files, kind, startA) {
     if (kind === 'D' && !a && !pool) break;
     let img, url = URL.createObjectURL(f);
     try { img = await loadImg(url); } catch (e) { URL.revokeObjectURL(url); continue; }
-    const w = img.naturalWidth, h = img.naturalHeight, pv = previews(img, w, h); URL.revokeObjectURL(url);
+    const w = img.naturalWidth, h = img.naturalHeight;
+    let pv;
+    try { pv = await ImportTools.previews(img,w,h,mkCanvas,freeCanvas); }
+    catch(error) { URL.revokeObjectURL(url); img.src=''; throw error; }
+    URL.revokeObjectURL(url); img.src=''; // Release decoded full-size image before the next file.
     const p = null; // pontos do rosto ficam para depois (em segundo plano): as fotos aparecem na hora
     freeCanvas(pv.canvas);
     const {file:unusedFile,name:unusedName,...capture} = entry;
@@ -2334,15 +2337,16 @@ $('importPool').onclick = $('importMore').onclick = () => {
   $('filePool').click();
 };
 $('filePool').onchange = async e => {
-  const files = [...e.target.files]; e.target.value = ''; if (!files.length || !curComp) { cancelImportWait(); return; }
+  if (!e.target.files?.length || !curComp) { cancelImportWait(); return; }
   awaitingPhotoFiles=false;
   $('cancelImportWait').hidden=true;
   $('importTitle').textContent='Importando fotos, aguarde';
-  $('importCount').textContent='Lendo datas e organizando as fotos…';
+  $('importCount').textContent='Recebidas ' + e.target.files.length + ' fotos. Preparando importação…';
   const c = curComp;
   if (!$('importProgress').open) $('importProgress').showModal();
-  await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
   $('importPool').disabled = $('importMore').disabled = true; $('app').inert = $('top').inert = true;
+  await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
+  const files = [...e.target.files]; e.target.value = '';
   try {
     rememberDraft();
     const hadPhotos = projectPhotos(c).length > 0;
