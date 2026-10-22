@@ -364,6 +364,7 @@ html,body{overflow-x:clip}
     <div class="panel">
       <div class="row-head"><span class="lbl">Recorte</span>
         <div class="seg" role="group" aria-label="Ferramenta na prévia"><button id="toolMove" aria-pressed="true">Mover</button><button id="toolAdd" aria-pressed="false">Restaurar</button><button id="toolDel" aria-pressed="false">Apagar</button></div></div>
+      <button class="btn small" id="refineCut">Reprocessar recorte deste lado</button>
       <label class="sl">Borda <input type="range" id="edge" min="0" max="100" value="20"><output id="edgeV">20</output></label>
       <label class="sl">Pincel <input type="range" id="brush" min="8" max="140" value="44"><output id="brushV">44</output></label>
       <div class="flex"><button class="btn small" id="undoBrush">↶ Desfazer pincelada</button><button class="btn small" id="redoBrush">↷ Refazer pincelada</button></div>
@@ -447,6 +448,7 @@ html,body{overflow-x:clip}
 <canvas id="brushLoupe" width="240" height="240" aria-label="Lupa de precisão" hidden style="position:fixed;width:120px;height:120px;border:2px solid #d8c3a0;border-radius:50%;z-index:60;pointer-events:none;background:#222;box-shadow:0 2px 12px #0008"></canvas>
 <script src="photo-dates.js"></script>
 <script src="editor-actions.js"></script>
+<script src="mask-refinement.js"></script>
 <script>
 (() => {
 const W = 1080, H = 1920;
@@ -623,7 +625,7 @@ async function pump() {
       const left = queue.length;
       setStatus('Recortando · faltam ' + (left + 1), true);
       it.status = 'processando'; markThumb(it);
-      try { await cutout(it); it.status = 'pronto'; if (it.shot && Pj && Pj.shots.includes(it.shot) && it.raw && it.shot.mask !== it.raw) { it.shot.mask = it.raw; it.shot.mc = 2; DB.put('shots', it.shot).catch(() => {}); } }
+      try { await cutout(it); it.status = 'pronto'; if (it.shot && Pj && Pj.shots.includes(it.shot) && it.raw && it.shot.mask !== it.raw) { it.shot.mask = it.raw; it.shot.mc = 3; DB.put('shots', it.shot).catch(() => {}); } }
       catch (e) { it.status = 'erro'; it.cutError = e.message || String(e); console.error(e); }
       markThumb(it); render();
       await new Promise(r => setTimeout(r, 0));
@@ -646,48 +648,18 @@ async function cutout(it) {
   }
   const out = await runModel(inp), u8 = new Uint8Array(out.length);
   for (let j = 0; j < out.length; j++) { const v = out[j]; u8[j] = v <= 0 ? 0 : v >= 1 ? 255 : Math.round(v * 255); }
-  it.raw = cleanMask(u8);
+  it.raw = u8; // Preserve original model probabilities; cleanup is derived and reversible.
+  it.cleanedRaw = cleanMask(u8);
   if (it.edge == null) it.edge = 20;
-  it.meta = analyse(it.raw, it.w, it.h);
+  it.meta = analyse(it.cleanedRaw || it.raw, it.w, it.h);
   if (isSelected(it)) { if (it.src !== src) freeCanvas(it.src); it.src = src; buildBase(it); await restorePaint(it); composeCut(it); }
   it.cutError = null;
   } finally { if (src !== it.src) freeCanvas(src); }
 }
 
 // limpeza da máscara: fica só o corpo principal (some a poeira solta no fundo) e furos pequenos dentro do rosto são preenchidos
-function cleanMask(m) {
-  const N = RES, n = N * N, lab = new Int32Array(n), q = new Int32Array(n), on = i => m[i] > 127;
-  const areas = [0]; let nl = 0;
-  const grow = (i, test, id) => {
-    let h = 0, t = 0, border = false; q[t++] = i; lab[i] = id;
-    while (h < t) {
-      const j = q[h++], x = j % N, y = (j / N) | 0;
-      if (x === 0 || y === 0 || x === N - 1 || y === N - 1) border = true;
-      if (x > 0 && !lab[j - 1] && test(j - 1)) { lab[j - 1] = id; q[t++] = j - 1; }
-      if (x < N - 1 && !lab[j + 1] && test(j + 1)) { lab[j + 1] = id; q[t++] = j + 1; }
-      if (y > 0 && !lab[j - N] && test(j - N)) { lab[j - N] = id; q[t++] = j - N; }
-      if (y < N - 1 && !lab[j + N] && test(j + N)) { lab[j + N] = id; q[t++] = j + N; }
-    }
-    return { a: t, border };
-  };
-  for (let i = 0; i < n; i++) if (!lab[i] && on(i)) areas.push(grow(i, on, ++nl).a);
-  if (!nl) return m;
-  const big = areas.reduce((max, area) => Math.max(max,area),0), K = new Uint8Array(n);
-  const main = areas.indexOf(big);
-  for (let i = 0; i < n; i++) if (lab[i] === main) K[i] = 1;
-  lab.fill(0); let id = 0;
-  for (let i = 0; i < n; i++) if (!K[i] && !lab[i]) {
-    const r = grow(i, j => !K[j], ++id);
-    if (!r.border && r.a < n * 0.004) for (let k = 0; k < r.a; k++) K[q[k]] = 2;
-  }
-  // Keep only a narrow soft fringe near the connected subject, not distant hair fragments.
-  const R = 2, D1 = new Uint8Array(n), D2 = new Uint8Array(n), pre = new Int32Array(N + 1);
-  for (let y = 0; y < N; y++) { const o = y * N; for (let x = 0; x < N; x++) pre[x + 1] = pre[x] + (K[o + x] ? 1 : 0); for (let x = 0; x < N; x++) D1[o + x] = pre[Math.min(N, x + R + 1)] - pre[Math.max(0, x - R)] > 0 ? 1 : 0; }
-  for (let x = 0; x < N; x++) { for (let y = 0; y < N; y++) pre[y + 1] = pre[y] + D1[y * N + x]; for (let y = 0; y < N; y++) D2[y * N + x] = pre[Math.min(N, y + R + 1)] - pre[Math.max(0, y - R)] > 0 ? 1 : 0; }
-  const out = new Uint8Array(n);
-  for (let i = 0; i < n; i++) out[i] = K[i] === 2 ? 255 : D2[i] ? m[i] : 0;
-  return out;
-}
+function cleanMask(m) { return MaskRefinement.cleanMask(m, RES); }
+
 function isSelected(it) { return items.A[sel.A] === it || items.D[sel.D] === it; }
 function freeCanvas(c) { if (c) { c.width = c.height = 0; } }
 function release(it) {
@@ -710,7 +682,7 @@ function keepLive() {
 function mkCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; photoContext(c); return c; }
 function buildBase(it) {
   const lo = 0.04 + it.edge / 100 * 0.35, span = Math.max(0.2, 1 - lo - 0.04);
-  const m = it.raw, n = RES * RES, md = mg.createImageData(RES, RES);
+  const m = it.cleanedRaw ||= cleanMask(it.raw), n = RES * RES, md = mg.createImageData(RES, RES);
   for (let j = 0, i = 0; j < n; j++, i += 4) {
     let a = (m[j] / 255 - lo) / span; a = a < 0 ? 0 : a > 1 ? 1 : a;
     a = a*a*(3-2*a); // Defined but continuous alpha edge; never change photograph RGB.
@@ -718,7 +690,7 @@ function buildBase(it) {
   }
   mg.putImageData(md, 0, 0);
   {
-    const k = Math.min(1, 1100 / Math.max(it.w, it.h));
+    const k = Math.min(1, 1600 / Math.max(it.w, it.h));
     const w = Math.round(it.w * k), h = Math.round(it.h * k);
     if (!it.base) it.base = mkCanvas(w, h);
     if (!it.plus) it.plus = mkCanvas(w, h);
@@ -728,6 +700,13 @@ function buildBase(it) {
   }
   const b = it.base.getContext('2d'); b.clearRect(0, 0, it.base.width, it.base.height);
   b.imageSmoothingQuality = 'high'; b.drawImage(mc, 0, 0, it.base.width, it.base.height);
+  // Refine the upsampled matte against image detail at editing resolution; RGB stays untouched.
+  const w=it.base.width,h=it.base.height,mask=b.getImageData(0,0,w,h),alpha=new Uint8Array(w*h);
+  for(let i=0;i<alpha.length;i++)alpha[i]=mask.data[i*4+3];
+  const guide=mkCanvas(w,h),gg=guide.getContext('2d');gg.drawImage(it.src,0,0,w,h);
+  const refined=MaskRefinement.refineEdges(alpha,gg.getImageData(0,0,w,h).data,w,h);freeCanvas(guide);
+  for(let i=0;i<refined.length;i++)mask.data[i*4+3]=refined[i];b.putImageData(mask,0,0);
+
 }
 function composeCut(it) {
   const f = it.fin.getContext('2d'), w = it.fin.width, h = it.fin.height;
@@ -1796,8 +1775,9 @@ function stopBg() { for (let i = queue.length - 1; i >= 0; i--) if (queue[i].sid
 function itemFromShot(s, side, noQueue) {
   const k = Math.min(1, MAX_SRC / Math.max(s.w, s.h)), img = new Image(); img.onload = () => { if (screen === 'edit') render(); }; img.src = s.prev;
   const it = { id: ++uid, file: s.blob, w: Math.round(s.w * k), h: Math.round(s.h * k), prev: img, src: null, thumbUrl: s.thumb, cut: null, meta: null, status: 'fila', shot: s, edge: s.edge != null ? s.edge : 20, pyr: s.pyr };
-  if (s.mask && s.mc !== 2 && curComp?.edit?.backgroundRemoved !== false) { s.mask = cleanMask(s.mask); s.mc = 2; DB.put('shots', s).catch(() => {}); }
-  if (s.mask) { it.raw = s.mask; it.meta = analyse(it.raw, it.w, it.h); it.status = 'pronto'; } else if (!noQueue) queue.push({ side, it });
+  // Legacy masks remain usable; never destructively clean a persisted mask again.
+
+  if (s.mask) { it.raw = s.mask; it.meta = analyse(it.cleanedRaw || it.raw, it.w, it.h); it.status = 'pronto'; } else if (!noQueue) queue.push({ side, it });
   const edit = curComp?.edit, saved = edit?.[side];
   if (edit?.backgroundRemoved === false) { it.raw = new Uint8Array(RES * RES).fill(255); it.meta = analyse(it.raw,it.w,it.h); it.status = 'pronto'; }
   if (saved?.id === s.id) { it.edge = saved.edge ?? it.edge; it.savedPaint = saved; }
@@ -2201,7 +2181,8 @@ async function startEditing(removeBackground) {
 }
 $('pkGo').onclick = () => startEditing(true);
 $('pkOriginal').onclick = () => startEditing(false);
-$('retryCut').onclick = () => { if (working) return; resetModel(new Error('Reiniciando recorte')); for (const side of ['A','D']) { const it = items[side][sel[side]]; if (it) { it.status = 'fila'; it._liveErr = 0; it.cutError = null; if (it.raw) ensureLive(it); else queueIt(it,side); } } pump(); };
+$('refineCut').onclick = () => { if (working || !linked || picking) return; const it = items[active][sel[active]]; if (!it) return; it.raw = null; it.cleanedRaw = null; it.cutError = null; it.status = 'fila'; queueIt(it,active); pump(); };
+$('retryCut').onclick = () => { if (working) return; resetModel(new Error('Reiniciando recorte')); for (const side of ['A','D']) { const it = items[side][sel[side]]; if (it) { it.status = 'fila'; it._liveErr = 0; it.cutError = null; it.raw = null; it.cleanedRaw = null; queueIt(it,side); } } pump(); };
 $('useOriginal').onclick = () => { if (!curComp) return; openPick(curComp); startEditing(false); };
 $('pickAgain').onclick = () => { savePair(); openPick(curComp); };
 $('pNew').onclick = () => { if (Pj) newComp(); };

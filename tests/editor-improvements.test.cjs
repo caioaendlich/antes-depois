@@ -76,7 +76,7 @@ test('capture time wins over selector order and numeric filenames break ties',()
   assert.equal(shots[0].name,'IMG_12.jpg');
 });
 test('mask cleanup removes detached fragments and preserves subject and narrow fringe',()=>{
-  const N=48,m=new Uint8Array(N*N),ctx=vm.createContext({RES:N,Uint8Array,Int32Array});
+  const N=48,m=new Uint8Array(N*N),ctx=vm.createContext({RES:N,Uint8Array,Int32Array,MaskRefinement:require('../mask-refinement.js')});
   vm.runInContext(source.slice(source.indexOf('function cleanMask('),source.indexOf('function isSelected(')),ctx);
   for(let y=10;y<38;y++)for(let x=12;x<34;x++)m[y*N+x]=255;
   m[20*N+11]=100; // soft fringe one pixel outside subject
