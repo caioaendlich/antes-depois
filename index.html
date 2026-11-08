@@ -220,7 +220,7 @@ input.wide{width:100%}
 #workflow button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 #workflow small{display:block;font-size:9px;line-height:12px}
 #projectActions{display:grid;gap:8px;margin:10px 0}#app.picking .controls>#projectActions{display:grid!important}#projectActions .flex{flex-wrap:wrap}
-.folderHead{display:flex;gap:10px;align-items:center;justify-content:space-between}.folderHead h2{font-size:18px}.angleGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}.angleTile{min-width:0;position:relative}.angleTile>.angleOpen{display:flex;flex-direction:column;width:100%;padding:8px;gap:8px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--fg);font:inherit;overflow:hidden}.angleOpen img{width:100%;aspect-ratio:4/5;object-fit:contain;background:#111}.angleAdd{min-height:180px;justify-content:center;align-items:center}.angleAdd span{font-size:42px;font-weight:300}.cardRow{display:flex;align-items:stretch;gap:6px}.cardRow>.pcard,.cardRow>.ccard{flex:1;min-width:0}.cardMenu{flex:none;align-self:center;min-width:40px;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--fg);font:600 21px var(--ui)}.angleTile>.cardMenu{position:absolute;right:10px;top:10px;z-index:1}.pcard,.ccard,.angleOpen{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;touch-action:pan-y}
+.folderHead{display:flex;gap:10px;align-items:center;justify-content:space-between}.folderHead #folderModes{margin-left:auto}.folderHead h2{font-size:18px}.angleGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}.angleTile{min-width:0;position:relative}.angleTile>.angleOpen{display:flex;flex-direction:column;width:100%;padding:8px;gap:8px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--fg);font:inherit;overflow:hidden}.angleOpen img{width:100%;aspect-ratio:4/5;object-fit:contain;background:#111}.angleAdd{min-height:180px;justify-content:center;align-items:center}.angleAdd span{font-size:42px;font-weight:300}.cardRow{display:flex;align-items:stretch;gap:6px}.cardRow>.pcard,.cardRow>.ccard{flex:1;min-width:0}.cardMenu{flex:none;align-self:center;min-width:40px;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--fg);font:600 21px var(--ui)}.angleTile>.cardMenu{position:absolute;right:10px;top:10px;z-index:1}.pcard,.ccard,.angleOpen{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;touch-action:pan-y}
 #exFilter{font:inherit;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px;min-height:44px;width:100%}
 #poolInfo{margin:0}#saveAngle{width:100%}.explorer{position:fixed;inset:0;z-index:80;background:var(--bg);overflow:auto;padding:max(16px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom))}
 .exContent{max-width:900px;margin:auto}.exHead,.exActions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.exHead h2{flex:1;margin:0;font-size:20px}.exActions{padding:10px 0}.exActions.sticky{position:sticky;top:-16px;background:var(--bg);z-index:2}.exGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:10px;margin-top:10px}.exCard{display:flex;position:relative;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;padding:8px;gap:6px;background:var(--panel)}.exCard:has(input:checked){border:2px solid var(--accent);padding:7px}.exCard input{width:24px;height:24px;accent-color:var(--accent)}.exCard img{width:100%;height:135px;object-fit:contain}.exCard b,.exCard small{display:block;overflow-wrap:anywhere}.exCard small{color:var(--muted);margin-top:4px}.danger{color:#ffb6ab!important}#exCount{flex:1;min-width:120px}
@@ -275,7 +275,7 @@ html,body{overflow-x:clip}
 </section>
 
 <section id="projectFolder" class="scr" hidden>
-  <div class="folderHead"><h2 id="folderTitle"></h2><button class="btn small" id="folderSelect">Selecionar</button></div>
+  <div class="folderHead"><h2 id="folderTitle"></h2><button class="btn small" id="folderModes">Criar modos</button><button class="btn small" id="folderSelect">Selecionar</button></div>
   <div class="angleGrid" id="folderAngles"></div>
   <div class="tools" id="folderAlbum"><button class="btn small" id="folderPhotos">Álbum do projeto</button><span class="note" id="folderPoolCount"></span></div>
 </section>
@@ -2336,7 +2336,7 @@ function renderFolder() {
   if (!curComp) return;
   const c = curComp, angles = c.angles || [], box = $('folderAngles');
   $('folderTitle').textContent = 'Projeto ' + dateLabel(c);
-  $('folderSelect').hidden = !angles.length;
+  $('folderSelect').hidden = !angles.length; $('folderModes').hidden = !angles.length;
   $('folderAlbum').hidden = !projectPhotos(c).length;
   $('folderPoolCount').textContent = projectPhotos(c).length + ' fotos compartilhadas';
   box.replaceChildren();
@@ -2370,6 +2370,44 @@ function editSavedAngle(c, a) {
   closePick(); openEditor(before, after);
 }
 $('folderSelect').onclick = () => openExplorer('angles', curComp);
+// Caio 08/11 00:59: criar Espectral, Galeria e Detalhe a partir dos antes e depois já montados na pasta do paciente.
+const MODE_NAMES = { espectral: 'Espectral', galeria: 'Galeria', detalhe: 'Detalhe' }, LOOK_NAMES = { classico: 'Preto', claro: 'Light Touch claro', escuro: 'Light Touch escuro' };
+$('folderModes').onclick = () => {
+  const c = curComp; if (!c) return; const n = (c.angles || []).length;
+  const pickLook = layouts => overlay(null, 'Cor das montagens:', [
+    ...Object.entries(LOOK_NAMES).map(([k, v]) => [v, () => generateModes(c, layouts, k), k === 'classico' ? 'primary' : '']), ['Cancelar', closeOut]]);
+  overlay(null, 'Criar a partir dos ' + n + (n === 1 ? ' ângulo salvo' : ' ângulos salvos') + ' desta pasta. Os ângulos salvos não mudam.', [
+    ['Os três modos', () => pickLook(['espectral', 'galeria', 'detalhe']), 'primary'],
+    ...Object.entries(MODE_NAMES).map(([k, v]) => [v, () => pickLook([k])]), ['Cancelar', closeOut]]);
+};
+async function generateModes(c, layouts, look) {
+  closeOut();
+  const angles = (c.angles || []).filter(a => shotById(a.selA) && shotById(a.selD)), files = [];
+  if (!angles.length) { setStatus('Nenhum ângulo salvo com as duas fotos', false); return; }
+  for (const a of angles) {
+    editSavedAngle(c, a);
+    const A = items.A[sel.A], D = items.D[sel.D]; if (!A || !D) continue;
+    queueIt(A, 'A'); queueIt(D, 'D'); pump();
+    for (let k = 0; k < 240 && !(A.cut && D.cut) && A.status !== 'erro' && D.status !== 'erro'; k++) {
+      setStatus('Preparando ' + a.name, true);
+      if (A.raw && !A.cut) await ensureLive(A); if (D.raw && !D.cut) await ensureLive(D);
+      if (!(A.cut && D.cut)) await new Promise(r => setTimeout(r, 250));
+    }
+    if (!(A.cut && D.cut)) continue;
+    const keep = { layout: opts.layout, look: opts.look };
+    for (const ly of layouts) {
+      opts.layout = ly; opts.look = look; setStatus('Criando ' + a.name + ' · ' + MODE_NAMES[ly], true);
+      const { file, blob, name } = makeFile(slug(Pj.rec.name) + '_' + slug(a.name) + '_' + ly + (look === 'classico' ? '' : '_lighttouch-' + look));
+      files.push(file || new File([blob], name, { type: 'image/jpeg' }));
+      await new Promise(r => setTimeout(r, 0));
+    }
+    Object.assign(opts, keep);
+  }
+  openFolder(c); setStatus('Pronto', false);
+  if (!files.length) { setStatus('Não consegui montar nenhum ângulo', false); return; }
+  overlay(URL.createObjectURL(files[0]), files.length + (files.length === 1 ? ' imagem pronta.' : ' imagens prontas.') + ' Na folha que abrir, escolha "Salvar imagens".', [
+    ['Salvar ' + files.length + (files.length === 1 ? ' imagem' : ' imagens'), () => deliverImages(files), 'primary'], ['Fechar', closeOut]]);
+}
 $('folderPhotos').onclick = () => openExplorer('photos', curComp);
 function bindCard(el, open, menu) {
   let timer = null, start = null, held = false;
