@@ -513,6 +513,47 @@ function lupaSpot(it, aspect) {
   // borda de cima da lupa logo abaixo do olho; desloca para fora, para pegar o canto (pés de galinha)
   return { x: eye.x + dir * d * .15, y: eye.y + d * .2 + ch / 2, w: cw };
 }
+// Caio 08/11 02:24: cada pessoa tem um pescoço. Segue a pele do pescoço linha a linha (bordas do esternocleidomastóideo)
+// a partir do queixo; para quando ele alarga de repente (começo do trapézio/ombro), afina demais ou vira roupa.
+// Os dois pontos onde parou viram o corte, ligados por um arco que desce pelo centro do pescoço.
+function neckOf(it) {
+  if (it._neck && it._neck.c === it.cut) return it._neck.v;
+  let v = null; const face = faceOf(it), pts = it.pyr && it.pyr.pts;
+  try { if (face && pts && it.src && it.cut) {
+    const w0 = Math.min(360, it.w), k = it.w / w0, h0 = Math.max(2, Math.round(it.h / k));
+    const c = document.createElement('canvas'); c.width = w0; c.height = h0; const q = c.getContext('2d', { willReadFrequently: true });
+    q.drawImage(it.src, 0, 0, w0, h0); const rgb = q.getImageData(0, 0, w0, h0).data; q.clearRect(0, 0, w0, h0); q.drawImage(it.cut, 0, 0, w0, h0); const al = q.getImageData(0, 0, w0, h0).data;
+    const nose = [pts[2].x * w0, pts[2].y * h0], lip = [pts[3].x * w0, pts[3].y * h0], ex = (pts[0].x + pts[1].x) / 2 * w0, ey = (pts[0].y + pts[1].y) / 2 * h0;
+    const chin = [face.chin[0] * w0, face.chin[1] * h0], fh = Math.max(20, Math.abs(face.chin[1] - face.top[1]) * h0);
+    let sr = 0, sg = 0, sb = 0, n = 0;
+    const take = (x, y) => { x = Math.round(x); y = Math.round(y); if (x < 0 || y < 0 || x >= w0 || y >= h0) return; const i = (y * w0 + x) * 4; if (al[i + 3] < 200) return; sr += rgb[i]; sg += rgb[i + 1]; sb += rgb[i + 2]; n++; };
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -3; dx <= 3; dx++) { take(lip[0] + dx, (lip[1] + chin[1]) / 2 + dy); take((ex + nose[0]) / 2 + dx, (ey + lip[1]) / 2 + dy); }
+    if (n > 12) {
+      const R = sr / n, G = sg / n, B = sb / n, S = R + G + B, cr = R / S, cg = G / S;
+      const skin = (x, y) => { if (x < 0 || x >= w0 || y < 0 || y >= h0) return false; const i = (y * w0 + x) * 4; if (al[i + 3] < 128) return false; const r = rgb[i], g = rgb[i + 1], b = rgb[i + 2], t = r + g + b + 1; return Math.abs(r / t - cr) < .05 && Math.abs(g / t - cg) < .04 && t > S * .3 && t < S * 1.7; };
+      const dir = Math.sign(ex - nose[0]) || 0; let cx = chin[0] + dir * fh * .12; const rows = [];
+      for (let y = Math.round(chin[1] + fh * .02); y < Math.min(h0 - 1, chin[1] + fh * 1.3); y++) {
+        let x = Math.round(cx);
+        if (!skin(x, y)) { let f = -1; for (let r = 1; r < fh * .2; r++) { if (skin(x + r, y)) { f = x + r; break; } if (skin(x - r, y)) { f = x - r; break; } } if (f < 0) break; x = f; }
+        let l = x, r = x; while (skin(l - 1, y) || skin(l - 2, y) || skin(l - 3, y)) l -= skin(l - 1, y) ? 1 : skin(l - 2, y) ? 2 : 3;
+        while (skin(r + 1, y) || skin(r + 2, y) || skin(r + 3, y)) r += skin(r + 1, y) ? 1 : skin(r + 2, y) ? 2 : 3;
+        rows.push([y, l, r]); cx = (l + r) / 2;
+      }
+      if (rows.length > fh * .12) {
+        const win = rows.filter(r => r[0] < chin[1] + fh * .5); let mi = 0; win.forEach((r, i) => { if (r[2] - r[1] < win[mi][2] - win[mi][1]) mi = i; });
+        const wmin = Math.max(3, rows[mi][2] - rows[mi][1]); let end = mi;
+        for (let i = mi + 1; i < rows.length; i++) {
+          const [y, l, r] = rows[i], w = r - l, [, pl, pr] = rows[i - 1];
+          if (w > wmin * 1.35 || w < wmin * .7 || Math.abs(l - pl) > fh * .05 || Math.abs(r - pr) > fh * .05) break;
+          end = i;
+        }
+        const use = rows.slice(0, end + 1), last = use[use.length - 1];
+        if (last[0] - use[0][0] > fh * .08) v = { left: use.map(r => [r[1] * k, r[0] * k]), right: use.map(r => [(r[2] + 1) * k, r[0] * k]), top: use[0][0] * k, cut: last[0] * k, a: [last[1] * k, last[0] * k], b: [(last[2] + 1) * k, last[0] * k] };
+      }
+    }
+  } } catch (e) { console.warn('pescoço', e); }
+  it._neck = { c: it.cut, v }; return v;
+}
 function shapeOf(it) {
   if (it._shape && it._shape.c === it.cut) return it._shape;
   const w0 = Math.min(360, it.w), h0 = Math.max(2, Math.round(it.h * w0 / it.w)), c = document.createElement('canvas'); c.width = w0; c.height = h0;
@@ -582,11 +623,14 @@ function drawDisplay(g) {
       chinY = c0.y; chinX = c0.x; fh = Math.max(60, Math.hypot(c0.x - t0.x, c0.y - t0.y)); const pts = item.pyr.pts, ex = (pts[0].x + pts[1].x) / 2, dir = Math.sign(ex - pts[2].x) || 0;
       neckX = chinX + dir * fh * .13; }
     else { fh = sh.faceH * k0; chinY = nk.y - fh * .2; chinX = nk.x; neckX = nk.x; }
-    const cut = chinY + fh * .16, fadeEnd = cut + fh * .1;
+    let cut = chinY + fh * .16, fadeEnd = cut + fh * .1, ringX = neckX, ringW = null;
+    const nkp = neckOf(item);
+    if (nkp) { const A = m0.transformPoint({ x: nkp.a[0], y: nkp.a[1] }), Bp = m0.transformPoint({ x: nkp.b[0], y: nkp.b[1] });
+      const dip = Math.hypot(Bp.x - A.x, Bp.y - A.y) * .22; cut = Math.min(A.y, Bp.y); fadeEnd = Math.max(A.y, Bp.y) + dip; ringX = (A.x + Bp.x) / 2; ringW = Math.hypot(Bp.x - A.x, Bp.y - A.y); }
     const sink = 65 * rise;   // na entrada, tudo desce junto com a cabeça
-    return { item, side, face, sh, cx, m, m0, k0, neck: fadeEnd + sink, cut: cut + sink, ringY: cut + fh * .03, neckX: neckX - 18 * rise, faceH: fh, chinY: chinY + sink, facingRight };
+    return { item, side, face, sh, cx, m, m0, k0, nkp, neck: fadeEnd + sink, cut: cut + sink, ringY: nkp ? (cut + fadeEnd) / 2 : cut + fh * .03, neckX: ringX - 18 * rise, ringW, faceH: fh, chinY: chinY + sink, facingRight };
   });
-  const ringR = Math.max(90, Math.min(180, Math.max(L[0].faceH, L[1].faceH) * .34));   // anel proporcional ao rosto, não ao cabelo
+  const ringR = Math.max(90, Math.min(200, Math.max(...L.map(o => o.ringW ? o.ringW * .5 * 1.55 : o.faceH * .34))));   // anel proporcional ao rosto, não ao cabelo
   // quem fica na frente: galeria pelo lado para onde os rostos olham; lado a lado pela escolha "Na frente"
   let order = [0, 1];
   if (gallery) { if (L[0].facingRight && L[1].facingRight) order = [1, 0]; }
@@ -599,8 +643,18 @@ function drawDisplay(g) {
     const fade = q.createLinearGradient(0, 0, 0, H), cl = v => Math.max(0, Math.min(1, v / H));
     fade.addColorStop(0, 'rgba(0,0,0,1)'); fade.addColorStop(cl(o.cut), 'rgba(0,0,0,1)'); fade.addColorStop(cl(o.neck), 'rgba(0,0,0,0)'); fade.addColorStop(1, 'rgba(0,0,0,0)');
     q.globalCompositeOperation = 'destination-in'; q.fillStyle = fade; q.fillRect(0, 0, W, H); q.globalCompositeOperation = 'source-over';
+    if (o.nkp) { const mk = maskCv(), mq = mk.getContext('2d'), n = o.nkp, T = pt => o.m.transformPoint({ x: pt[0], y: pt[1] }), big = 4 * Math.max(o.item.w, o.item.h);
+      mq.setTransform(1, 0, 0, 1, 0, 0); mq.clearRect(0, 0, W, H); mq.save(); mq.shadowColor = '#fff'; mq.shadowBlur = 10; mq.shadowOffsetX = 4 * W; mq.fillStyle = '#fff'; mq.translate(-4 * W, 0);
+      const poly = [[-big, -big], [big, -big], [big, n.top], ...n.right, ...[...n.left].reverse(), [-big, n.top]].map(T);
+      const A = T(n.a), Bp = T(n.b), mid = { x: (A.x + Bp.x) / 2, y: Math.max(A.y, Bp.y) + Math.hypot(Bp.x - A.x, Bp.y - A.y) * .22 };
+      mq.beginPath(); mq.moveTo(poly[0].x, poly[0].y);
+      for (const pt of poly.slice(1, 3 + n.right.length)) mq.lineTo(pt.x, pt.y);
+      mq.quadraticCurveTo(mid.x + (mid.x - (A.x + Bp.x) / 2), mid.y + (mid.y - (A.y + Bp.y) / 2), A.x, A.y);   // arco inferior pelo centro do pescoço
+      for (const pt of poly.slice(3 + n.right.length)) mq.lineTo(pt.x, pt.y);
+      mq.closePath(); mq.fill(); mq.restore();
+      q.globalCompositeOperation = 'destination-in'; q.drawImage(mk, 0, 0); q.globalCompositeOperation = 'source-over'; }
     // Caio 08/11 02:05: abaixo do rosto fica só o pescoço; ombro, trapézio e clavícula saem (afinando do queixo para baixo).
-    { const mk = maskCv(), mq = mk.getContext('2d'), fh = o.faceH, y0 = o.chinY - fh * .18, y1 = o.chinY + fh * .03, hw = Math.max(40, fh * .24), wide = fh * .46;
+    else { const mk = maskCv(), mq = mk.getContext('2d'), fh = o.faceH, y0 = o.chinY - fh * .18, y1 = o.chinY + fh * .03, hw = Math.max(40, fh * .24), wide = fh * .46;
       mq.setTransform(1, 0, 0, 1, 0, 0); mq.clearRect(0, 0, W, H); mq.save(); mq.shadowColor = '#fff'; mq.shadowBlur = 18; mq.shadowOffsetX = 4 * W; mq.fillStyle = '#fff'; mq.translate(-4 * W, 0);
       mq.beginPath(); mq.moveTo(-40, -40); mq.lineTo(W + 40, -40); mq.lineTo(W + 40, y0); mq.lineTo(o.neckX + wide, y0);
       mq.bezierCurveTo(o.neckX + wide * .6, (y0 + y1) / 2, o.neckX + hw, y1 - fh * .04, o.neckX + hw, y1); mq.lineTo(o.neckX + hw, H + 40); mq.lineTo(o.neckX - hw, H + 40); mq.lineTo(o.neckX - hw, y1);
