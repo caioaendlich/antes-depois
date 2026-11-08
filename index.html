@@ -548,7 +548,8 @@ function neckOf(it) {
           end = i;
         }
         const use = rows.slice(0, end + 1), last = use[use.length - 1];
-        if (last[0] - use[0][0] > fh * .08) v = { left: use.map(r => [r[1] * k, r[0] * k]), right: use.map(r => [(r[2] + 1) * k, r[0] * k]), top: use[0][0] * k, cut: last[0] * k, a: [last[1] * k, last[0] * k], b: [(last[2] + 1) * k, last[0] * k] };
+        if (last[0] - use[0][0] > fh * .08) v = { left: use.map(r => [r[1] * k, r[0] * k]), right: use.map(r => [(r[2] + 1) * k, r[0] * k]), top: use[0][0] * k, cut: last[0] * k, a: [last[1] * k, last[0] * k], b: [(last[2] + 1) * k, last[0] * k],
+          c0: [(use[0][1] + use[0][2] + 1) / 2 * k, use[0][0] * k], c1: [(last[1] + last[2] + 1) / 2 * k, last[0] * k] };   // eixo do pescoço (centro de cima → centro de baixo)
       }
     }
   } } catch (e) { console.warn('pescoço', e); }
@@ -623,12 +624,14 @@ function drawDisplay(g) {
       chinY = c0.y; chinX = c0.x; fh = Math.max(60, Math.hypot(c0.x - t0.x, c0.y - t0.y)); const pts = item.pyr.pts, ex = (pts[0].x + pts[1].x) / 2, dir = Math.sign(ex - pts[2].x) || 0;
       neckX = chinX + dir * fh * .13; }
     else { fh = sh.faceH * k0; chinY = nk.y - fh * .2; chinX = nk.x; neckX = nk.x; }
-    let cut = chinY + fh * .16, fadeEnd = cut + fh * .1, ringX = neckX, ringW = null;
+    let cut = chinY + fh * .16, fadeEnd = cut + fh * .1, ringX = neckX, ringW = null, axis = [0, 1];
     const nkp = neckOf(item);
     if (nkp) { const A = m0.transformPoint({ x: nkp.a[0], y: nkp.a[1] }), Bp = m0.transformPoint({ x: nkp.b[0], y: nkp.b[1] });
-      const dip = Math.hypot(Bp.x - A.x, Bp.y - A.y) * .22; cut = Math.min(A.y, Bp.y); fadeEnd = Math.max(A.y, Bp.y) + dip; ringX = (A.x + Bp.x) / 2; ringW = Math.hypot(Bp.x - A.x, Bp.y - A.y); }
+      const C0 = m0.transformPoint({ x: nkp.c0[0], y: nkp.c0[1] }), C1 = m0.transformPoint({ x: nkp.c1[0], y: nkp.c1[1] });
+      let ux = C1.x - C0.x, uy = C1.y - C0.y; const ul = Math.hypot(ux, uy) || 1; ux /= ul; uy /= ul; if (uy < .5) { uy = .5; ux = Math.sign(ux) * Math.sqrt(.75); }
+      const dip = Math.hypot(Bp.x - A.x, Bp.y - A.y) * .22; cut = Math.min(A.y, Bp.y); fadeEnd = Math.max(A.y, Bp.y) + dip * uy; ringX = (A.x + Bp.x) / 2 + dip * ux * .5; ringW = Math.hypot(Bp.x - A.x, Bp.y - A.y); axis = [ux, uy]; }
     const sink = 65 * rise;   // na entrada, tudo desce junto com a cabeça
-    return { item, side, face, sh, cx, m, m0, k0, nkp, neck: fadeEnd + sink, cut: cut + sink, ringY: nkp ? (cut + fadeEnd) / 2 : cut + fh * .03, neckX: ringX - 18 * rise, ringW, faceH: fh, chinY: chinY + sink, facingRight };
+    return { item, side, face, sh, cx, m, m0, k0, nkp, neck: fadeEnd + sink, cut: cut + sink, ringY: nkp ? (cut + fadeEnd) / 2 : cut + fh * .03, neckX: ringX - 18 * rise, ringW, axis, faceH: fh, chinY: chinY + sink, facingRight };
   });
   const ringR = Math.max(90, Math.min(200, Math.max(...L.map(o => o.ringW ? o.ringW * .5 * 1.55 : o.faceH * .34))));   // anel proporcional ao rosto, não ao cabelo
   // quem fica na frente: galeria pelo lado para onde os rostos olham; lado a lado pela escolha "Na frente"
@@ -640,13 +643,16 @@ function drawDisplay(g) {
     q.setTransform(1, 0, 0, 1, 0, 0); q.clearRect(0, 0, W, H);
     q.save(); q.setTransform(o.m); q.globalAlpha = show; q.imageSmoothingQuality = 'high'; q.drawImage(o.item.cut, 0, 0, o.item.w, o.item.h); q.restore();
     // o pescoço some aos poucos antes do arco e nada aparece abaixo dele
-    const fade = q.createLinearGradient(0, 0, 0, H), cl = v => Math.max(0, Math.min(1, v / H));
-    fade.addColorStop(0, 'rgba(0,0,0,1)'); fade.addColorStop(cl(o.cut), 'rgba(0,0,0,1)'); fade.addColorStop(cl(o.neck), 'rgba(0,0,0,0)'); fade.addColorStop(1, 'rgba(0,0,0,0)');
+    // gola em degradê na direção do pescoço
+    const ax = o.axis || [0, 1], gx = o.neckX, span = Math.max(1, o.neck - o.cut) / Math.max(.3, ax[1]);
+    const fade = q.createLinearGradient(gx - ax[0] * 3000, o.cut - ax[1] * 3000, gx + ax[0] * (span + 3000), o.cut + ax[1] * (span + 3000)), cl = v => Math.max(0, Math.min(1, v));
+    const tot = span + 6000; fade.addColorStop(0, 'rgba(0,0,0,1)'); fade.addColorStop(cl(3000 / tot), 'rgba(0,0,0,1)'); fade.addColorStop(cl((3000 + span) / tot), 'rgba(0,0,0,0)'); fade.addColorStop(1, 'rgba(0,0,0,0)');
     q.globalCompositeOperation = 'destination-in'; q.fillStyle = fade; q.fillRect(0, 0, W, H); q.globalCompositeOperation = 'source-over';
     if (o.nkp) { const mk = maskCv(), mq = mk.getContext('2d'), n = o.nkp, T = pt => o.m.transformPoint({ x: pt[0], y: pt[1] }), big = 4 * Math.max(o.item.w, o.item.h);
       mq.setTransform(1, 0, 0, 1, 0, 0); mq.clearRect(0, 0, W, H); mq.save(); mq.shadowColor = '#fff'; mq.shadowBlur = 10; mq.shadowOffsetX = 4 * W; mq.fillStyle = '#fff'; mq.translate(-4 * W, 0);
       const poly = [[-big, -big], [big, -big], [big, n.top], ...n.right, ...[...n.left].reverse(), [-big, n.top]].map(T);
-      const A = T(n.a), Bp = T(n.b), mid = { x: (A.x + Bp.x) / 2, y: Math.max(A.y, Bp.y) + Math.hypot(Bp.x - A.x, Bp.y - A.y) * .22 };
+      // Caio 08/11 02:31: o arco desce seguindo a direção do pescoço (o eixo dele), não reto para baixo
+      const A = T(n.a), Bp = T(n.b), dd = Math.hypot(Bp.x - A.x, Bp.y - A.y) * .22, mid = { x: (A.x + Bp.x) / 2 + o.axis[0] * dd, y: (A.y + Bp.y) / 2 + o.axis[1] * dd };
       mq.beginPath(); mq.moveTo(poly[0].x, poly[0].y);
       for (const pt of poly.slice(1, 3 + n.right.length)) mq.lineTo(pt.x, pt.y);
       mq.quadraticCurveTo(mid.x + (mid.x - (A.x + Bp.x) / 2), mid.y + (mid.y - (A.y + Bp.y) / 2), A.x, A.y);   // arco inferior pelo centro do pescoço
