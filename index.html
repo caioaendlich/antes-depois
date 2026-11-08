@@ -403,6 +403,7 @@ html,body{overflow-x:clip}
       <button class="btn" id="pickAgain" type="button">Trocar fotos</button>
       <button class="btn primary" id="save" disabled>Salvar na galeria</button>
       <button class="btn" id="saveFile" disabled>Baixar arquivo</button>
+      <button class="btn" id="saveAnim" hidden disabled>Baixar animação</button>
     </div>
     <p class="note">As fotos não saem do aparelho: o recorte é feito aqui mesmo. Na primeira vez o recorte baixa cerca de 55 MB e pode levar alguns segundos por foto.</p>
   </div>
@@ -500,7 +501,9 @@ function faceOf(it) {   // nariz, queixo e topo estimados pelos pontos do rosto 
   const ex = (p[0].x + p[1].x) / 2, ey = (p[0].y + p[1].y) / 2, d = p[3].y - ey;
   return { nose: [p[2].x, p[2].y], chin: [p[3].x, p[3].y + d * .75], top: [ex, ey - d * 1.5] };
 }
+let animT = 1, recordingAnim = false;   // 0..1: entrada animada (como no Video Studio); 1 = imagem parada
 function drawDisplay(g) {
+  const t = animT, rise = (1 - Math.min(1, t / .72)) ** 2, show = Math.min(1, t / .3), lupa = Math.max(0, (t - .72) / .28);
   const S = [items.A[sel.A], items.D[sel.D]]; if (!S.every(it => it && it.cut && it.src)) return false;
   const style = opts.layout, gallery = style === 'galeria', spectral = style === 'espectral';
   const tone = DISPLAY_TONE[opts.look] || DISPLAY_TONE.classico, lt = LT[opts.look], bg = tone.bg, ink = tone.ink;
@@ -513,18 +516,19 @@ function drawDisplay(g) {
     g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = lt.title; g.fillText(opts.ltTitle.trim(), W / 2, spectral ? 430 : 300);
   }
   for (let i = 0; i < 2; i++) {
-    const side = i ? 'D' : 'A', item = S[i], P = place(item), t = tf[side], face = faceOf(item);
+    const side = i ? 'D' : 'A', item = S[i], P = place(item), T = tf[side], face = faceOf(item);
     const cx = gallery ? (i ? 716 : 355) : (i ? 793 : 287), eyeY = gallery ? (i ? 1070 : 465) : (spectral ? 585 : 415);
-    const targetY = eyeY + (P.oy - 825) * .8, k = P.k0 * t.s * (gallery ? 1.22 : spectral ? .99 : .86);
-    const m = new DOMMatrix().translate(cx + t.dx, targetY + t.dy).rotate(t.r + P.r0).scale(k).translate(-P.ax, -P.ay);
+    const targetY = eyeY + (P.oy - 825) * .8, k0 = P.k0 * T.s * (gallery ? 1.22 : spectral ? .99 : .86), k = k0 * (1 - .15 * rise);
+    const m = new DOMMatrix().translate(cx + T.dx - 18 * rise, targetY + T.dy + 65 * rise).rotate(T.r + P.r0).scale(k).translate(-P.ax, -P.ay);
+    const m0 = new DOMMatrix().translate(cx + T.dx, targetY + T.dy).rotate(T.r + P.r0).scale(k0).translate(-P.ax, -P.ay);
     const center = face ? face.nose : [.5, .48], focus = m.transformPoint({ x: center[0] * item.w, y: center[1] * item.h });
-    const chinY = face ? m.transformPoint({ x: face.chin[0] * item.w, y: face.chin[1] * item.h }).y : eyeY + 300;
+    const chinY = face ? m0.transformPoint({ x: face.chin[0] * item.w, y: face.chin[1] * item.h }).y : eyeY + 300;
     const neck = Math.min(gallery ? (i ? 1630 : 940) : spectral ? 1160 : 840, chinY + 68 + (opts.fade - .8) * 400);
-    const ringX = cx + t.dx, radius = Math.max(150, Math.min(250, k * item.w * .2));
+    const ringX = cx + T.dx, radius = Math.max(150, Math.min(250, k * item.w * .2));
     const arc = (from, to) => { g.save(); g.strokeStyle = tone.ring; g.shadowColor = tone.ring; g.shadowBlur = 14; g.lineWidth = 3; g.beginPath(); g.ellipse(ringX, neck, radius, 31, 0, from, to); g.stroke(); g.restore(); };
     if (spectral) arc(Math.PI, 2 * Math.PI);
     g.save(); g.beginPath(); g.rect(gallery ? 0 : i * 540, gallery && i ? 760 : 0, gallery ? 1080 : 540, neck - (gallery && i ? 760 : 0) + 19); g.clip();
-    g.save(); g.setTransform(m); g.imageSmoothingQuality = 'high'; g.drawImage(item.cut, 0, 0, item.w, item.h); g.restore();
+    g.save(); g.setTransform(m); g.globalAlpha = show; g.imageSmoothingQuality = 'high'; g.drawImage(item.cut, 0, 0, item.w, item.h); g.restore();
     const fl = spectral ? 50 : 95, fade = g.createLinearGradient(0, neck - fl, 0, neck + 19); fade.addColorStop(0, bg + '00'); fade.addColorStop(1, bg);
     g.fillStyle = fade; g.fillRect(gallery ? 0 : i * 540, neck - fl, gallery ? 1080 : 540, fl + 20); g.restore();
     if (spectral) arc(0, Math.PI);
@@ -534,11 +538,12 @@ function drawDisplay(g) {
     const x = spectral ? 32 + i * 535 : 55, y = spectral ? 1360 : 935 + i * 369, w = spectral ? 481 : 970, h = spectral ? 340 : 324;
     const span = item.h * (face ? Math.max(.05, Math.abs(face.chin[1] - face.top[1])) : .6);
     const cw = Math.min(item.w, span * 1.8 / 3), ch = cw * h / w;
-    const end = { x: x + w / 2, y }; g.strokeStyle = tone.line; g.lineWidth = 2; g.strokeRect(focus.x - 14, focus.y - 14, 28, 28);
-    g.beginPath(); g.moveTo(focus.x, focus.y + 14); g.lineTo(end.x, end.y); g.stroke();
+    if (lupa <= 0) continue;
+    const end = { x: x + w / 2, y }; g.save(); g.globalAlpha = lupa; g.strokeStyle = tone.line; g.lineWidth = 2; g.strokeRect(focus.x - 14, focus.y - 14, 28, 28);
+    g.beginPath(); g.moveTo(focus.x, focus.y + 14); g.lineTo(focus.x + (end.x - focus.x) * lupa, focus.y + 14 + (end.y - focus.y - 14) * lupa); g.stroke();
     g.fillStyle = bg; g.fillRect(x, y, w, h);
     g.drawImage(item.src, center[0] * item.w - cw / 2, center[1] * item.h - ch / 2, cw, ch, x, y, w, h); g.strokeStyle = tone.frame; g.strokeRect(x, y, w, h);
-    if (opts.labels) label(title, x + w / 2, y + h + 24, 20);
+    if (opts.labels) label(title, x + w / 2, y + h + 24, 20); g.restore();
   }
   if (opts.title && opts.titleTxt.trim()) { g.fillStyle = ink; g.font = '300 33px Figtree, system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; spaced(g, opts.titleTxt.trim().toUpperCase(), W / 2, 102, 10); }
   if (lt && opts.ltLine.trim()) { g.fillStyle = lt.soft; g.textAlign = 'center'; g.font = serif ? `italic 400 38px ${ltf}` : '400 28px Figtree, system-ui, sans-serif'; g.fillText(opts.ltLine.trim(), W / 2, 1795); }
@@ -1177,6 +1182,7 @@ let savingAngle = false;
 function updateSave() {
   const ok = ['A', 'D'].every(s => items[s][sel[s]]?.cut && !items[s][sel[s]]._live && !items[s][sel[s]].savedPaint);
   $('save').disabled = !ok; $('saveFile').disabled = !ok; $('saveAngle').disabled = !ok || savingAngle;
+  $('saveAnim').hidden = !opts.layout || opts.layout === 'classico'; $('saveAnim').disabled = !ok || recordingAnim;
   $('cutRecovery').hidden = !linked || picking || ok || !['A','D'].some(side => items[side][sel[side]]?.status === 'erro');
 }
 let downloads = null;
@@ -1226,6 +1232,27 @@ $('saveFile').onclick = async () => {
   }
   try { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
   catch (e) { showOut(blob); }
+};
+// Caio 08/11 01:17: baixar a animação de entrada direto do Prisma (celular e computador), sem passar pelo Video Studio.
+$('saveAnim').onclick = async () => {
+  if (recordingAnim || !cv.captureStream || typeof MediaRecorder === 'undefined') { if (!recordingAnim) setStatus('Este navegador não grava vídeo do quadro', false); return; }
+  const type = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'].find(m => MediaRecorder.isTypeSupported?.(m)) || '';
+  const stream = cv.captureStream(30), chunks = [];
+  let rec; try { rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 12e6 }); } catch (e) { setStatus('Não consegui iniciar a gravação: ' + e.message, false); return; }
+  recordingAnim = true; updateSave(); setStatus('Gravando a animação…', true);
+  rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  const done = new Promise(r => rec.onstop = r);
+  const ANIM = 1.7, HOLD = 1.3; let t0 = null;
+  rec.start(100);
+  await new Promise(resolve => { const step = now => { t0 ??= now; const el = (now - t0) / 1000; animT = Math.min(1, el / ANIM); render(); if (el < ANIM + HOLD) requestAnimationFrame(step); else resolve(); }; requestAnimationFrame(step); });
+  rec.stop(); await done; stream.getTracks().forEach(tr => tr.stop());
+  animT = 1; recordingAnim = false; render(); updateSave();
+  const mime = (rec.mimeType || type || 'video/webm').split(';')[0], ext = mime.includes('mp4') ? 'mp4' : 'webm';
+  const blob = new Blob(chunks, { type: mime }), d = new Date(), pad = x => String(x).padStart(2, '0');
+  const name = (Pj ? slug(Pj.rec.name) + '_' : '') + (curComp?.angle ? slug(curComp.angle) + '_' : '') + 'animacao-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.' + ext;
+  const file = new File([blob], name, { type: mime }); setStatus('Animação pronta', false);
+  overlay(null, 'Animação pronta (' + ext.toUpperCase() + ', ' + Math.round(blob.size / 1024) + ' KB).', [
+    ['Salvar animação', async () => { if (await shareFiles([file]) === false) download(blob, name); }, 'primary'], ['Baixar arquivo', () => download(blob, name)], ['Fechar', closeOut]]);
 };
 $('vtog').onclick = () => { const v = $('view'), full = v.classList.toggle('full'); $('vtog').textContent = full ? 'Ver ampliado 4:5' : 'Ver 9:16 inteiro'; };
 
