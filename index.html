@@ -486,7 +486,7 @@ const cv = $('cv'), ctx = photoContext(cv);
 const items = { A: [], D: [] };
 const sel = { A: 0, D: 0 };
 const tf = { A: { s: 1, dx: 0, dy: 0, r: 0 }, D: { s: 1, dx: 0, dy: 0, r: 0 } };
-const DEFAULT_OPTS = { fade: 0.80, hand: true, handTxt: '@caioendlich.md', labels: true, front: 'D', title: true, titleTxt: 'DR. CAIO ENDLICH', look: 'classico', layout: 'classico', ltTitle: 'Light Touch', ltLine: 'a beleza é reflexo da saúde', ltFont: 'Instrument Serif' };
+const DEFAULT_OPTS = { fade: 0.80, hand: true, handTxt: '@caioendlich.md', labels: true, front: 'D', title: true, titleTxt: 'DR. CAIO ENDLICH', look: 'classico', layout: 'classico', lupa: null, ltTitle: 'Light Touch', ltLine: 'a beleza é reflexo da saúde', ltFont: 'Instrument Serif' };
 // Light Touch no Prisma (Caio, 08/11/2026 00:33): o mesmo visual do Light Touch do Video Studio, em claro e escuro.
 const LT = { claro: { bg: ['#f6efe7', '#e4d5c4'], fade: '238,228,216', ink: '#6e563e', title: 'rgba(150,118,90,.9)', soft: 'rgba(110,86,62,.72)' },
   escuro: { bg: ['#2c251f', '#0b0908'], fade: '8,7,6', ink: 'rgba(242,232,220,.92)', title: 'rgba(222,203,180,.86)', soft: 'rgba(239,228,214,.6)' } };
@@ -501,7 +501,7 @@ function faceOf(it) {   // nariz, queixo e topo estimados pelos pontos do rosto 
   const ex = (p[0].x + p[1].x) / 2, ey = (p[0].y + p[1].y) / 2, d = p[3].y - ey;
   return { nose: [p[2].x, p[2].y], chin: [p[3].x, p[3].y + d * .9], top: [ex, ey - d * 1.5] };
 }
-let animT = 1, recordingAnim = false;   // 0..1: entrada animada (como no Video Studio); 1 = imagem parada
+let animT = 1, recordingAnim = false, lupaRects = [], lupaDrag = null, lupaTap = 0;   // 0..1: entrada animada (como no Video Studio); 1 = imagem parada
 // Forma do recorte (Caio 08/11 01:24): topo do cabelo e pescoço (linha mais estreita abaixo do queixo), em pixels da foto.
 function lupaSpot(it, aspect) {
   const p = it.pyr && it.pyr.pts;
@@ -551,6 +551,7 @@ function drawPortal(g, x, y, r, tone, half) {
 function drawDisplay(g) {
   const t = animT, rise = (1 - Math.min(1, t / .72)) ** 2, show = Math.min(1, t / .3), lupa = Math.max(0, (t - .72) / .28);
   const S = [items.A[sel.A], items.D[sel.D]]; if (!S.every(it => it && it.cut && it.src)) return false;
+  lupaRects = [];
   const style = opts.layout, gallery = style === 'galeria', spectral = style === 'espectral';
   const tone = DISPLAY_TONE[opts.look] || DISPLAY_TONE.classico, lt = LT[opts.look], bg = tone.bg, ink = tone.ink;
   const serif = lt && opts.ltFont !== 'Figtree', ltf = `"${opts.ltFont || 'Instrument Serif'}", Georgia, serif`;
@@ -599,8 +600,10 @@ function drawDisplay(g) {
     const x = spectral ? 32 + i * 535 : 55, y = spectral ? 1360 : 935 + i * 369, w = spectral ? 481 : 970, h = spectral ? 340 : 324;
     // Caio 08/11 01:34: lupa padronizada no canto do rosto: pés de galinha, pálpebra inferior (olheira) e bochecha alta,
     // um pouco de cada, com zoom para ver a pele e sem mostrar o olho. Fica do lado do rosto que aparece mais.
-    const z = lupaSpot(item, w / h), center = [z.x / item.w, z.y / item.h], focus = o.m.transformPoint({ x: z.x, y: z.y });
-    const cw = z.w, ch = z.w * h / w;
+    const z = lupaSpot(item, w / h), off = opts.lupa?.[o.side];   // Caio 08/11 01:37: arrastar o dedo na lupa muda o lugar
+    if (off) { z.x = Math.max(z.w / 2, Math.min(item.w - z.w / 2, z.x + off.x * item.w)); z.y = Math.max(0, Math.min(item.h, z.y + off.y * item.h)); }
+    const center = [z.x / item.w, z.y / item.h], focus = o.m.transformPoint({ x: z.x, y: z.y });
+    const cw = z.w, ch = z.w * h / w; lupaRects[i] = { side: o.side, x, y, w, h, k: cw / w, iw: item.w, ih: item.h };
     const end = { x: x + w / 2, y }; g.save(); g.globalAlpha = lupa; g.strokeStyle = tone.line; g.lineWidth = 2; g.strokeRect(focus.x - 14, focus.y - 14, 28, 28);
     g.beginPath(); g.moveTo(focus.x, focus.y + 14); g.lineTo(focus.x + (end.x - focus.x) * lupa, focus.y + 14 + (end.y - focus.y - 14) * lupa); g.stroke();
     g.fillStyle = bg; g.fillRect(x, y, w, h);
@@ -1203,7 +1206,16 @@ cv.addEventListener('pointerdown', e => {
     stamp(it, lastImg, lastImg); scheduleRecut(it, false); g0 = null; return;
   }
   finishStroke(); brushing = false; ring = null;
-  if (ptrs.size === 1 && tool === 'move') setActive(p.x < W / 2 ? 'A' : 'D');
+  const disp = opts.layout && opts.layout !== 'classico';
+  if (disp && tool === 'move' && ptrs.size === 1) {
+    const r = lupaRects.find(r => r && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h);
+    if (r) {
+      const now = Date.now();
+      if (now - lupaTap < 320) { const l = { ...(opts.lupa || {}) }; delete l[r.side]; opts.lupa = l; lupaTap = 0; render(); return; }   // dois toques: volta ao padrão
+      lupaTap = now; lupaDrag = { r, p, o: { ...(opts.lupa?.[r.side] || { x: 0, y: 0 }) } }; g0 = null; return;
+    }
+  }
+  if (ptrs.size === 1 && tool === 'move') setActive(disp && opts.layout === 'galeria' ? (p.y < 760 ? 'A' : 'D') : (p.x < W / 2 ? 'A' : 'D'));
   g0 = snap();
 });
 function snap() {
@@ -1221,6 +1233,11 @@ cv.addEventListener('pointermove', e => {
     const it = items[active][sel[active]]; if (!it || !it.plus) return;
     const cur = toImage(active, p); stamp(it, lastImg, cur); lastImg = cur; scheduleRecut(it, false); return;
   }
+  if (lupaDrag && ptrs.size === 1) {
+    const p = toCanvas(e), d = lupaDrag, k = d.r.k;
+    opts.lupa = { ...(opts.lupa || {}), [d.r.side]: { x: d.o.x - (p.x - d.p.x) * k / d.r.iw, y: d.o.y - (p.y - d.p.y) * k / d.r.ih } };
+    render(); return;
+  }
   if (!g0) return;
   ptrs.set(e.pointerId, toCanvas(e));
   const ps = [...ptrs.values()], t = tf[active];
@@ -1235,7 +1252,7 @@ cv.addEventListener('pointermove', e => {
   }
   syncSliders(); render();
 });
-function endPtr(e) { ptrs.delete(e.pointerId); if (brushing) { finishStroke(); brushing = false; ring = null; render(); } g0 = ptrs.size && tool === 'move' ? snap() : (ptrs.size >= 2 ? snap() : null); }
+function endPtr(e) { ptrs.delete(e.pointerId); if (lupaDrag && !ptrs.size) { lupaDrag = null; if (typeof savePair === 'function') savePair(); } if (brushing) { finishStroke(); brushing = false; ring = null; render(); } g0 = ptrs.size && tool === 'move' ? snap() : (ptrs.size >= 2 ? snap() : null); }
 cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', endPtr);
 cv.addEventListener('wheel', e => { e.preventDefault(); const t = tf[active]; t.s = Math.min(3, Math.max(0.3, t.s * (e.deltaY < 0 ? 1.03 : 0.97))); syncSliders(); render(); }, { passive: false });
 
