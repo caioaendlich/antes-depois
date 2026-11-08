@@ -502,6 +502,39 @@ function faceOf(it) {   // nariz, queixo e topo estimados pelos pontos do rosto 
   return { nose: [p[2].x, p[2].y], chin: [p[3].x, p[3].y + d * .75], top: [ex, ey - d * 1.5] };
 }
 let animT = 1, recordingAnim = false;   // 0..1: entrada animada (como no Video Studio); 1 = imagem parada
+// Forma do recorte (Caio 08/11 01:24): topo do cabelo e pescoço (linha mais estreita abaixo do queixo), em pixels da foto.
+function shapeOf(it) {
+  if (it._shape && it._shape.c === it.cut) return it._shape;
+  const w0 = Math.min(360, it.w), h0 = Math.max(2, Math.round(it.h * w0 / it.w)), c = document.createElement('canvas'); c.width = w0; c.height = h0;
+  const q = c.getContext('2d', { willReadFrequently: true }); q.drawImage(it.cut, 0, 0, w0, h0); const px = q.getImageData(0, 0, w0, h0).data, k = it.w / w0;
+  const rows = []; let top = -1;
+  for (let y = 0; y < h0; y++) { let l = -1, r = -1; for (let x = 0; x < w0; x++) if (px[(y * w0 + x) * 4 + 3] > 128) { if (l < 0) l = x; r = x; } rows.push(l < 0 ? null : [l, r]); if (top < 0 && l >= 0 && r - l > 3) top = y; }
+  const face = faceOf(it), chin = Math.round((face ? face.chin[1] : .55) * h0), d = face ? Math.abs(face.chin[1] - face.top[1]) * h0 : h0 * .3;
+  let best = null;
+  for (let y = chin; y < Math.min(h0, chin + d * .9); y++) { const r = rows[y]; if (!r) continue; const w = r[1] - r[0]; if (!best || w < best.w) best = { y, w, x: (r[0] + r[1]) / 2 }; }
+  if (!best) best = { y: Math.min(h0 - 1, chin + d * .35), w: w0 * .3, x: w0 / 2 };
+  return it._shape = { c: it.cut, top: Math.max(0, top) * k, neckY: (best.y + d * .08) * k, neckX: best.x * k, neckW: Math.max(best.w, w0 * .08) * k };
+}
+const layerCv = [], layerOf = i => { if (!layerCv[i]) { layerCv[i] = document.createElement('canvas'); layerCv[i].width = W; layerCv[i].height = H; } return layerCv[i]; };
+function drawPortal(g, x, y, r, tone, half) {
+  // anel de vidro: disco translúcido, borda dupla com brilho e sombra dupla embaixo (Caio 08/11 01:25)
+  const ry = Math.max(16, r * .14);
+  g.save();
+  if (half === 'back') {
+    g.save(); g.globalAlpha = .55; g.fillStyle = 'rgba(0,0,0,.55)'; g.beginPath(); g.ellipse(x, y + ry * 1.6, r * 1.05, ry * 1.1, 0, 0, 2 * Math.PI); g.shadowColor = 'rgba(0,0,0,.7)'; g.shadowBlur = 40; g.fill();
+    g.globalAlpha = .35; g.beginPath(); g.ellipse(x, y + ry * 2.8, r * .8, ry * .7, 0, 0, 2 * Math.PI); g.shadowBlur = 60; g.fill(); g.restore();
+    const disc = g.createRadialGradient(x, y, r * .05, x, y, r); disc.addColorStop(0, tone.ring + '30'); disc.addColorStop(.7, tone.ring + '14'); disc.addColorStop(1, tone.ring + '44');
+    g.save(); g.translate(x, y); g.scale(1, ry / r); g.fillStyle = disc; g.beginPath(); g.arc(0, 0, r, 0, 2 * Math.PI); g.fill(); g.restore();
+    g.strokeStyle = tone.ring + '88'; g.lineWidth = 2; g.beginPath(); g.ellipse(x, y, r, ry, 0, Math.PI, 2 * Math.PI); g.stroke();
+    g.strokeStyle = tone.ring + '40'; g.lineWidth = 1.5; g.beginPath(); g.ellipse(x, y, r * .86, ry * .8, 0, Math.PI, 2 * Math.PI); g.stroke();
+  } else {
+    g.shadowColor = tone.ring; g.shadowBlur = 18; g.strokeStyle = tone.ring; g.lineWidth = 3; g.beginPath(); g.ellipse(x, y, r, ry, 0, 0, Math.PI); g.stroke();
+    g.shadowBlur = 8; g.strokeStyle = tone.ring + 'aa'; g.lineWidth = 1.5; g.beginPath(); g.ellipse(x, y + 5, r * .9, ry * .82, 0, 0.15, Math.PI - .15); g.stroke();
+    const shine = g.createLinearGradient(x - r, y, x + r, y); shine.addColorStop(0, tone.ring + '00'); shine.addColorStop(.5, '#ffffffcc'); shine.addColorStop(1, tone.ring + '00');
+    g.shadowBlur = 0; g.strokeStyle = shine; g.lineWidth = 1; g.beginPath(); g.ellipse(x, y + 1, r * .97, ry * .97, 0, .35, Math.PI - .35); g.stroke();
+  }
+  g.restore();
+}
 function drawDisplay(g) {
   const t = animT, rise = (1 - Math.min(1, t / .72)) ** 2, show = Math.min(1, t / .3), lupa = Math.max(0, (t - .72) / .28);
   const S = [items.A[sel.A], items.D[sel.D]]; if (!S.every(it => it && it.cut && it.src)) return false;
@@ -515,30 +548,45 @@ function drawDisplay(g) {
     let size = W * .2; g.font = `400 ${size}px ${ltf}`; const tw = g.measureText(opts.ltTitle.trim()).width; if (tw > W * .92) { size *= W * .92 / tw; g.font = `400 ${size}px ${ltf}`; }
     g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = lt.title; g.fillText(opts.ltTitle.trim(), W / 2, spectral ? 430 : 300);
   }
-  for (let i = 0; i < 2; i++) {
-    const side = i ? 'D' : 'A', item = S[i], P = place(item), T = tf[side], face = faceOf(item);
+  // geometria de cada lado
+  const L = S.map((item, i) => {
+    const side = i ? 'D' : 'A', P = place(item), T = tf[side], face = faceOf(item), sh = shapeOf(item);
     const cx = gallery ? (i ? 716 : 355) : (i ? 793 : 287), eyeY = gallery ? (i ? 1070 : 465) : (spectral ? 585 : 415);
-    const targetY = eyeY + (P.oy - 825) * .8, k0 = P.k0 * T.s * (gallery ? 1.22 : spectral ? .99 : .86), k = k0 * (1 - .15 * rise);
+    let targetY = eyeY + (P.oy - 825) * .8; const k0 = P.k0 * T.s * (gallery ? 1.22 : spectral ? .99 : .86);
+    const at = ty => new DOMMatrix().translate(cx + T.dx, ty + T.dy).rotate(T.r + P.r0).scale(k0).translate(-P.ax, -P.ay);
+    // galeria: o cabelo do de cima nunca sai pelo topo
+    if (gallery && !i) { const top = at(targetY).transformPoint({ x: sh.neckX, y: sh.top }).y, minTop = 150; if (top < minTop) targetY += minTop - top; }
+    const m0 = at(targetY), k = k0 * (1 - .15 * rise);
     const m = new DOMMatrix().translate(cx + T.dx - 18 * rise, targetY + T.dy + 65 * rise).rotate(T.r + P.r0).scale(k).translate(-P.ax, -P.ay);
-    const m0 = new DOMMatrix().translate(cx + T.dx, targetY + T.dy).rotate(T.r + P.r0).scale(k0).translate(-P.ax, -P.ay);
-    const center = face ? face.nose : [.5, .48], focus = m.transformPoint({ x: center[0] * item.w, y: center[1] * item.h });
-    const chinY = face ? m0.transformPoint({ x: face.chin[0] * item.w, y: face.chin[1] * item.h }).y : eyeY + 300;
-    const neck = Math.min(gallery ? (i ? 1630 : 940) : spectral ? 1160 : 840, chinY + 68 + (opts.fade - .8) * 400);
-    const ringX = cx + T.dx, radius = Math.max(150, Math.min(250, k * item.w * .2));
-    const arc = (from, to) => { g.save(); g.strokeStyle = tone.ring; g.shadowColor = tone.ring; g.shadowBlur = 14; g.lineWidth = 3; g.beginPath(); g.ellipse(ringX, neck, radius, 31, 0, from, to); g.stroke(); g.restore(); };
-    if (spectral) arc(Math.PI, 2 * Math.PI);
-    g.save(); g.beginPath(); g.rect(gallery ? 0 : i * 540, gallery && i ? 760 : 0, gallery ? 1080 : 540, neck - (gallery && i ? 760 : 0) + 19); g.clip();
-    g.save(); g.setTransform(m); g.globalAlpha = show; g.imageSmoothingQuality = 'high'; g.drawImage(item.cut, 0, 0, item.w, item.h); g.restore();
-    const fl = spectral ? 50 : 95, fade = g.createLinearGradient(0, neck - fl, 0, neck + 19); fade.addColorStop(0, bg + '00'); fade.addColorStop(1, bg);
-    g.fillStyle = fade; g.fillRect(gallery ? 0 : i * 540, neck - fl, gallery ? 1080 : 540, fl + 20); g.restore();
-    if (spectral) arc(0, Math.PI);
-    const title = i ? 'DEPOIS' : 'ANTES';
+    const nk = m0.transformPoint({ x: sh.neckX, y: sh.neckY });
+    const facingRight = face ? face.nose[0] > (face.top[0]) : false;
+    return { item, side, face, sh, cx, m, m0, k0, neck: Math.min(gallery ? (i ? 1700 : 1180) : spectral ? 1200 : 900, nk.y), neckX: nk.x, neckW: sh.neckW * k0, facingRight };
+  });
+  const ringR = Math.max(110, Math.min(260, Math.max(L[0].neckW, L[1].neckW) * .5 * 1.7));
+  // quem fica na frente: galeria pelo lado para onde os rostos olham; lado a lado pela escolha "Na frente"
+  let order = [0, 1];
+  if (gallery) { if (L[0].facingRight && L[1].facingRight) order = [1, 0]; }
+  else if (opts.front === 'A') order = [1, 0];
+  for (const i of order) {
+    const o = L[i], lay = layerOf(i), q = lay.getContext('2d');
+    q.setTransform(1, 0, 0, 1, 0, 0); q.clearRect(0, 0, W, H);
+    q.save(); q.setTransform(o.m); q.globalAlpha = show; q.imageSmoothingQuality = 'high'; q.drawImage(o.item.cut, 0, 0, o.item.w, o.item.h); q.restore();
+    // o pescoço some aos poucos antes do arco e nada aparece abaixo dele
+    const fl = spectral ? 70 : 110, fade = q.createLinearGradient(0, 0, 0, H), cl = v => Math.max(0, Math.min(1, v / H));
+    fade.addColorStop(0, 'rgba(0,0,0,1)'); fade.addColorStop(cl(o.neck - fl), 'rgba(0,0,0,1)'); fade.addColorStop(cl(o.neck), 'rgba(0,0,0,0)'); fade.addColorStop(1, 'rgba(0,0,0,0)');
+    q.globalCompositeOperation = 'destination-in'; q.fillStyle = fade; q.fillRect(0, 0, W, H); q.globalCompositeOperation = 'source-over';
+    if (spectral) drawPortal(g, o.neckX, o.neck, ringR, tone, 'back');
+    g.drawImage(lay, 0, 0);
+    if (spectral) drawPortal(g, o.neckX, o.neck, ringR, tone, 'front');
+  }
+  for (let i = 0; i < 2; i++) {
+    const o = L[i], item = o.item, title = i ? 'DEPOIS' : 'ANTES', cx = o.cx;
     if (opts.labels) label(title, gallery ? (i ? 220 : 860) : cx, gallery ? (i ? 1210 : 490) : 205, 26);
-    if (gallery) continue;
+    if (gallery || lupa <= 0) continue;
+    const center = o.face ? o.face.nose : [.5, .48], focus = o.m.transformPoint({ x: center[0] * item.w, y: center[1] * item.h });
     const x = spectral ? 32 + i * 535 : 55, y = spectral ? 1360 : 935 + i * 369, w = spectral ? 481 : 970, h = spectral ? 340 : 324;
-    const span = item.h * (face ? Math.max(.05, Math.abs(face.chin[1] - face.top[1])) : .6);
+    const span = item.h * (o.face ? Math.max(.05, Math.abs(o.face.chin[1] - o.face.top[1])) : .6);
     const cw = Math.min(item.w, span * 1.8 / 3), ch = cw * h / w;
-    if (lupa <= 0) continue;
     const end = { x: x + w / 2, y }; g.save(); g.globalAlpha = lupa; g.strokeStyle = tone.line; g.lineWidth = 2; g.strokeRect(focus.x - 14, focus.y - 14, 28, 28);
     g.beginPath(); g.moveTo(focus.x, focus.y + 14); g.lineTo(focus.x + (end.x - focus.x) * lupa, focus.y + 14 + (end.y - focus.y - 14) * lupa); g.stroke();
     g.fillStyle = bg; g.fillRect(x, y, w, h);
@@ -2416,12 +2464,15 @@ async function generateModes(c, layouts, look) {
     editSavedAngle(c, a);
     const A = items.A[sel.A], D = items.D[sel.D]; if (!A || !D) continue;
     queueIt(A, 'A'); queueIt(D, 'D'); pump();
+    // Caio 08/11 01:24: vários "Não recortou" depois de criar os modos. Cada foto é preparada uma vez só (sem insistir
+    // até virar erro) e liberada da memória ao terminar o ângulo, como faz "Salvar todos os pares".
+    const tried = new Set();
     for (let k = 0; k < 240 && !(A.cut && D.cut) && A.status !== 'erro' && D.status !== 'erro'; k++) {
       setStatus('Preparando ' + a.name, true);
-      if (A.raw && !A.cut) await ensureLive(A); if (D.raw && !D.cut) await ensureLive(D);
+      for (const it of [A, D]) if (it.raw && !it.cut && !tried.has(it)) { tried.add(it); await ensureLive(it); }
       if (!(A.cut && D.cut)) await new Promise(r => setTimeout(r, 250));
     }
-    if (!(A.cut && D.cut)) continue;
+    if (!(A.cut && D.cut)) { release(A); release(D); continue; }
     const keep = { layout: opts.layout, look: opts.look };
     for (const ly of layouts) {
       opts.layout = ly; opts.look = look; setStatus('Criando ' + a.name + ' · ' + MODE_NAMES[ly], true);
@@ -2432,7 +2483,7 @@ async function generateModes(c, layouts, look) {
       made.push({ id: newId('angle'), name, t: Date.now(), selA: a.selA, selD: a.selD, tf: cloneValue(a.tf), edit, out: data });
       await new Promise(r => setTimeout(r, 0));
     }
-    Object.assign(opts, keep);
+    Object.assign(opts, keep); A._shape = D._shape = null; release(A); release(D);
   }
   if (made.length) {
     const names = new Set(made.map(m => m.name)), old = new Map((c.angles || []).map(x => [x.name, x.id]));
