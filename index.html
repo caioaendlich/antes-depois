@@ -503,6 +503,16 @@ function faceOf(it) {   // nariz, queixo e topo estimados pelos pontos do rosto 
 }
 let animT = 1, recordingAnim = false;   // 0..1: entrada animada (como no Video Studio); 1 = imagem parada
 // Forma do recorte (Caio 08/11 01:24): topo do cabelo e pescoço (linha mais estreita abaixo do queixo), em pixels da foto.
+function lupaSpot(it, aspect) {
+  const p = it.pyr && it.pyr.pts;
+  if (!p || p.length < 4) return { x: it.w * .5, y: it.h * .45, w: Math.min(it.w, it.h * .22) };
+  const P = q => ({ x: q.x * it.w, y: q.y * it.h }), e0 = P(p[0]), e1 = P(p[1]), nose = P(p[2]), lip = P(p[3]);
+  const eyeY = (e0.y + e1.y) / 2, d = Math.max(it.h * .04, lip.y - eyeY);
+  const eye = Math.abs(e0.x - nose.x) >= Math.abs(e1.x - nose.x) ? e0 : e1, dir = Math.sign(eye.x - nose.x) || 1;
+  const cw = Math.min(it.w * .6, d * 1.05), ch = cw / aspect;
+  // borda de cima da lupa logo abaixo do olho; desloca para fora, para pegar o canto (pés de galinha)
+  return { x: eye.x + dir * d * .15, y: eye.y + d * .2 + ch / 2, w: cw };
+}
 function shapeOf(it) {
   if (it._shape && it._shape.c === it.cut) return it._shape;
   const w0 = Math.min(360, it.w), h0 = Math.max(2, Math.round(it.h * w0 / it.w)), c = document.createElement('canvas'); c.width = w0; c.height = h0;
@@ -586,14 +596,15 @@ function drawDisplay(g) {
     const o = L[i], item = o.item, title = i ? 'DEPOIS' : 'ANTES', cx = o.cx;
     if (opts.labels) label(title, gallery ? (i ? 220 : 860) : cx, gallery ? (i ? 1210 : 490) : 205, 26);
     if (gallery || lupa <= 0) continue;
-    const center = o.face ? o.face.nose : [.5, .48], focus = o.m.transformPoint({ x: center[0] * item.w, y: center[1] * item.h });
     const x = spectral ? 32 + i * 535 : 55, y = spectral ? 1360 : 935 + i * 369, w = spectral ? 481 : 970, h = spectral ? 340 : 324;
-    const span = item.h * (o.face ? Math.max(.05, Math.abs(o.face.chin[1] - o.face.top[1])) : .6);
-    const cw = Math.min(item.w, span * 1.8 / 3), ch = cw * h / w;
+    // Caio 08/11 01:34: lupa padronizada no canto do rosto: pés de galinha, pálpebra inferior (olheira) e bochecha alta,
+    // um pouco de cada, com zoom para ver a pele e sem mostrar o olho. Fica do lado do rosto que aparece mais.
+    const z = lupaSpot(item, w / h), center = [z.x / item.w, z.y / item.h], focus = o.m.transformPoint({ x: z.x, y: z.y });
+    const cw = z.w, ch = z.w * h / w;
     const end = { x: x + w / 2, y }; g.save(); g.globalAlpha = lupa; g.strokeStyle = tone.line; g.lineWidth = 2; g.strokeRect(focus.x - 14, focus.y - 14, 28, 28);
     g.beginPath(); g.moveTo(focus.x, focus.y + 14); g.lineTo(focus.x + (end.x - focus.x) * lupa, focus.y + 14 + (end.y - focus.y - 14) * lupa); g.stroke();
     g.fillStyle = bg; g.fillRect(x, y, w, h);
-    g.drawImage(item.src, center[0] * item.w - cw / 2, center[1] * item.h - ch / 2, cw, ch, x, y, w, h); g.strokeStyle = tone.frame; g.strokeRect(x, y, w, h);
+    g.drawImage(item.src, Math.max(0, Math.min(item.w - cw, z.x - cw / 2)) * item.src.width / item.w, Math.max(0, Math.min(item.h - ch, z.y - ch / 2)) * item.src.height / item.h, cw * item.src.width / item.w, Math.min(ch, item.h) * item.src.height / item.h, x, y, w, h); g.strokeStyle = tone.frame; g.strokeRect(x, y, w, h);
     if (opts.labels) label(title, x + w / 2, y + h + 24, 20); g.restore();
   }
   if (opts.title && opts.titleTxt.trim()) { g.fillStyle = ink; g.font = '300 33px Figtree, system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; spaced(g, opts.titleTxt.trim().toUpperCase(), W / 2, 102, 10); }
