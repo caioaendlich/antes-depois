@@ -526,8 +526,9 @@ function shapeOf(it) {
   for (let y = chin; y < Math.min(h0, chin + d * .4); y++) { const r = rows[y]; if (!r) continue; const w = r[1] - r[0]; if (!best || w < best.w) best = { y, w, x: (r[0] + r[1]) / 2 }; }
   if (!best) best = { y: Math.min(h0 - 1, chin + d * .25), w: w0 * .3, x: w0 / 2 };
   const fx = face ? face.chin[0] * w0 : best.x;
-  return it._shape = { c: it.cut, top: Math.max(0, top) * k, neckY: Math.max(chin + d * .12, Math.min(best.y, chin + d * .3)) * k, neckX: (best.x * .4 + fx * .6) * k, neckW: Math.max(best.w, w0 * .08) * k, faceH: d * k };
+  return it._shape = { c: it.cut, top: Math.max(0, top) * k, neckY: Math.max(chin + d * .1, Math.min(best.y, chin + d * .22)) * k, neckX: (best.x * .4 + fx * .6) * k, neckW: Math.max(best.w, w0 * .08) * k, faceH: d * k };
 }
+let maskCanvasCache = null; const maskCv = () => { if (!maskCanvasCache) { maskCanvasCache = document.createElement('canvas'); maskCanvasCache.width = W; maskCanvasCache.height = H; } return maskCanvasCache; };
 const layerCv = [], layerOf = i => { if (!layerCv[i]) { layerCv[i] = document.createElement('canvas'); layerCv[i].width = W; layerCv[i].height = H; } return layerCv[i]; };
 function drawPortal(g, x, y, r, tone, half) {
   // anel de vidro: disco translúcido, borda dupla com brilho e sombra dupla embaixo (Caio 08/11 01:25)
@@ -574,7 +575,8 @@ function drawDisplay(g) {
     const m = new DOMMatrix().translate(cx + T.dx - 18 * rise, targetY + T.dy + 65 * rise).rotate(T.r + P.r0).scale(k).translate(-P.ax, -P.ay);
     const nk = m0.transformPoint({ x: sh.neckX, y: sh.neckY });
     const facingRight = face ? face.nose[0] > (face.top[0]) : false;
-    return { item, side, face, sh, cx, m, m0, k0, neck: Math.min(gallery ? (i ? 1700 : 1180) : spectral ? 1200 : 900, nk.y), neckX: nk.x, neckW: sh.neckW * k0, faceH: sh.faceH * k0, facingRight };
+    const chinY = face ? m.transformPoint({ x: face.chin[0] * item.w, y: face.chin[1] * item.h }).y : nk.y - sh.faceH * k0 * .25;
+    return { item, side, face, sh, cx, m, m0, k0, neck: Math.min(gallery ? (i ? 1700 : 1180) : spectral ? 1200 : 900, nk.y), neckX: nk.x, neckW: sh.neckW * k0, faceH: sh.faceH * k0, chinY, facingRight };
   });
   const ringR = Math.max(100, Math.min(190, Math.max(L[0].faceH, L[1].faceH) * .42));   // anel proporcional ao rosto, não ao cabelo
   // quem fica na frente: galeria pelo lado para onde os rostos olham; lado a lado pela escolha "Na frente"
@@ -589,6 +591,13 @@ function drawDisplay(g) {
     const fl = spectral ? 45 : 110, fade = q.createLinearGradient(0, 0, 0, H), cl = v => Math.max(0, Math.min(1, v / H));
     fade.addColorStop(0, 'rgba(0,0,0,1)'); fade.addColorStop(cl(o.neck - fl), 'rgba(0,0,0,1)'); fade.addColorStop(cl(o.neck), 'rgba(0,0,0,0)'); fade.addColorStop(1, 'rgba(0,0,0,0)');
     q.globalCompositeOperation = 'destination-in'; q.fillStyle = fade; q.fillRect(0, 0, W, H); q.globalCompositeOperation = 'source-over';
+    // Caio 08/11 02:05: abaixo do rosto fica só o pescoço; ombro, trapézio e clavícula saem (afinando do queixo para baixo).
+    { const mk = maskCv(), mq = mk.getContext('2d'), fh = o.faceH, y0 = o.chinY - fh * .2, y1 = o.chinY + fh * .04, hw = Math.max(40, fh * .29), wide = fh * .48;
+      mq.setTransform(1, 0, 0, 1, 0, 0); mq.clearRect(0, 0, W, H); mq.save(); mq.shadowColor = '#fff'; mq.shadowBlur = 18; mq.shadowOffsetX = 4 * W; mq.fillStyle = '#fff'; mq.translate(-4 * W, 0);
+      mq.beginPath(); mq.moveTo(-40, -40); mq.lineTo(W + 40, -40); mq.lineTo(W + 40, y0); mq.lineTo(o.neckX + wide, y0);
+      mq.bezierCurveTo(o.neckX + wide * .6, (y0 + y1) / 2, o.neckX + hw, y1 - fh * .04, o.neckX + hw, y1); mq.lineTo(o.neckX + hw, H + 40); mq.lineTo(o.neckX - hw, H + 40); mq.lineTo(o.neckX - hw, y1);
+      mq.bezierCurveTo(o.neckX - hw, y1 - fh * .04, o.neckX - wide * .6, (y0 + y1) / 2, o.neckX - wide, y0); mq.lineTo(-40, y0); mq.closePath(); mq.fill(); mq.restore();
+      q.globalCompositeOperation = 'destination-in'; q.drawImage(mk, 0, 0); q.globalCompositeOperation = 'source-over'; }
     if (spectral) drawPortal(g, o.neckX, o.neck, ringR, tone, 'back');
     g.drawImage(lay, 0, 0);
     if (spectral) drawPortal(g, o.neckX, o.neck, ringR, tone, 'front');
