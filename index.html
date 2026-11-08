@@ -13,6 +13,7 @@
 <title>Prisma</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" media="print" onload="this.media='all'">
 <style>
 /* Layout: estúdio de foto escuro. Prévia 9:16 em cima (ou à esquerda no Mac), faixas de miniaturas e ajustes embaixo. */
 :root{
@@ -373,6 +374,11 @@ html,body{overflow-x:clip}
 
     <div class="panel">
       <span class="lbl">Acabamento</span>
+      <div class="row-head"><span class="check" style="gap:10px">Estilo</span>
+        <div class="seg" role="group" aria-label="Estilo da montagem"><button id="lkC" aria-pressed="true">Clássico</button><button id="lkL" aria-pressed="false">Light Touch claro</button><button id="lkE" aria-pressed="false">Light Touch escuro</button></div></div>
+      <div class="flex lt-only" hidden><label class="check">Título</label><input type="text" id="ltTitle" value="Light Touch" aria-label="Título Light Touch" maxlength="30"></div>
+      <div class="flex lt-only" hidden><label class="check">Frase</label><input type="text" id="ltLine" value="a beleza é reflexo da saúde" aria-label="Frase Light Touch" maxlength="60"></div>
+      <div class="flex lt-only" hidden><label class="check">Fonte</label><select id="ltFont" aria-label="Fonte do Light Touch"><option>Instrument Serif</option><option>Cormorant Garamond</option><option>Playfair Display</option><option>Figtree</option></select></div>
       <label class="sl">Fundo preto <input type="range" id="fade" min="55" max="92" value="80"><output id="fadeV">80%</output></label>
       <div class="flex">
         <label class="check"><input type="checkbox" id="hand" checked> Assinatura</label>
@@ -476,13 +482,21 @@ const cv = $('cv'), ctx = photoContext(cv);
 const items = { A: [], D: [] };
 const sel = { A: 0, D: 0 };
 const tf = { A: { s: 1, dx: 0, dy: 0, r: 0 }, D: { s: 1, dx: 0, dy: 0, r: 0 } };
-const DEFAULT_OPTS = { fade: 0.80, hand: true, handTxt: '@caioendlich.md', labels: true, front: 'D', title: true, titleTxt: 'DR. CAIO ENDLICH' };
+const DEFAULT_OPTS = { fade: 0.80, hand: true, handTxt: '@caioendlich.md', labels: true, front: 'D', title: true, titleTxt: 'DR. CAIO ENDLICH', look: 'classico', ltTitle: 'Light Touch', ltLine: 'a beleza é reflexo da saúde', ltFont: 'Instrument Serif' };
+// Light Touch no Prisma (Caio, 08/11/2026 00:33): o mesmo visual do Light Touch do Video Studio, em claro e escuro.
+const LT = { claro: { bg: ['#f6efe7', '#e4d5c4'], fade: '238,228,216', ink: '#6e563e', title: 'rgba(150,118,90,.9)', soft: 'rgba(110,86,62,.72)' },
+  escuro: { bg: ['#2c251f', '#0b0908'], fade: '8,7,6', ink: 'rgba(242,232,220,.92)', title: 'rgba(222,203,180,.86)', soft: 'rgba(239,228,214,.6)' } };
+function setLook(k) { opts.look = k; [['lkC','classico'],['lkL','claro'],['lkE','escuro']].forEach(([id,v]) => $(id)?.setAttribute?.('aria-pressed', String(v === k)));
+  if (typeof document !== 'undefined' && document.querySelectorAll) document.querySelectorAll('.lt-only').forEach(n => n.hidden = k === 'classico'); loadLtFont(); }
+function loadLtFont() { const go = () => { if (typeof render === 'function' && typeof ctx !== 'undefined' && ctx) render(); }; const f = opts.ltFont || 'Instrument Serif';
+  if (typeof document !== 'undefined' && document.fonts?.load) Promise.all([document.fonts.load(`80px "${f}"`), document.fonts.load(`italic 40px "${f}"`)]).then(go, go); else go(); }
 const opts = {...DEFAULT_OPTS};
 function restoreFinish(edit) {
   Object.assign(opts, DEFAULT_OPTS, edit?.opts || {});
   $('fade').value = Math.round(opts.fade * 100); $('fadeV').textContent = $('fade').value + '%';
   for (const [id,key] of [['hand','hand'],['labels','labels'],['titleOn','title']]) $(id).checked = opts[key];
   $('handTxt').value = opts.handTxt; $('titleTxt').value = opts.titleTxt;
+  $('ltTitle').value = opts.ltTitle; $('ltLine').value = opts.ltLine; $('ltFont').value = opts.ltFont; setLook(opts.look || 'classico');
 }
 function snapshotEdit() {
   const photo = side => {
@@ -821,9 +835,18 @@ function spaced(g, txt, cx, y, sp) {
 function render() {
   const g = ctx;
   g.setTransform(1, 0, 0, 1, 0, 0);
+  const lt = LT[opts.look], ltf = `"${opts.ltFont || 'Instrument Serif'}", Georgia, serif`;
   const bg = g.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, '#a3a3a3'); bg.addColorStop(0.42, '#5d5d5d'); bg.addColorStop(0.72, '#262626'); bg.addColorStop(1, '#0a0a0a');
+  if (lt) { bg.addColorStop(0, lt.bg[0]); bg.addColorStop(1, lt.bg[1]); }
+  else { bg.addColorStop(0, '#a3a3a3'); bg.addColorStop(0.42, '#5d5d5d'); bg.addColorStop(0.72, '#262626'); bg.addColorStop(1, '#0a0a0a'); }
   g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  if (lt && !picking && opts.ltTitle.trim()) {
+    // título grande atrás das fotos, como o Light Touch v6 do Video Studio
+    let size = W * 0.2; g.font = `400 ${size}px ${ltf}`;
+    const tw = g.measureText(opts.ltTitle.trim()).width; if (tw > W * 0.92) { size *= W * 0.92 / tw; g.font = `400 ${size}px ${ltf}`; }
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = lt.title;
+    g.fillText(opts.ltTitle.trim(), W / 2, (H - W * 5 / 4) / 2 + W * 5 / 4 * 0.24);
+  }
 
   let any;
   if (picking) any = drawPick(g);
@@ -831,26 +854,33 @@ function render() {
 
   const fy = opts.fade * H, fl = 0.13 * H;
   const fg = g.createLinearGradient(0, fy - fl, 0, fy);
-  fg.addColorStop(0, 'rgba(0,0,0,0)'); fg.addColorStop(0.55, 'rgba(0,0,0,0.72)'); fg.addColorStop(1, 'rgba(0,0,0,1)');
+  const fc = lt ? lt.fade : '0,0,0';
+  fg.addColorStop(0, `rgba(${fc},0)`); fg.addColorStop(0.55, `rgba(${fc},0.72)`); fg.addColorStop(1, `rgba(${fc},1)`);
   g.fillStyle = fg; g.fillRect(0, fy - fl, W, fl);
-  g.fillStyle = '#000'; g.fillRect(0, fy - 1, W, H - fy + 1);
+  g.fillStyle = `rgb(${fc})`; g.fillRect(0, fy - 1, W, H - fy + 1);
 
   g.textAlign = 'center'; g.textBaseline = 'middle';
   const bottomSpace = H - fy;
   if (opts.labels && !picking) {
-    g.font = '500 30px Figtree, system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.9)';
     const ly = fy + Math.min(70, bottomSpace * 0.3);
-    spaced(g, 'ANTES', COL.A, ly, 9); spaced(g, 'DEPOIS', COL.D, ly, 9);
+    if (lt) { const serif = opts.ltFont !== 'Figtree'; g.font = serif ? `italic 400 46px ${ltf}` : '500 30px Figtree, system-ui, sans-serif'; g.fillStyle = lt.ink;
+      spaced(g, serif ? 'antes' : 'ANTES', COL.A, ly, serif ? 3 : 9); spaced(g, serif ? 'depois' : 'DEPOIS', COL.D, ly, serif ? 3 : 9); }
+    else { g.font = '500 30px Figtree, system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.9)';
+      spaced(g, 'ANTES', COL.A, ly, 9); spaced(g, 'DEPOIS', COL.D, ly, 9); }
+  }
+  if (lt && !picking && opts.ltLine.trim()) {
+    g.font = opts.ltFont !== 'Figtree' ? `italic 400 40px ${ltf}` : '400 30px Figtree, system-ui, sans-serif'; g.fillStyle = lt.soft;
+    g.fillText(opts.ltLine.trim(), W / 2, fy + bottomSpace * 0.52);
   }
   if (opts.title && opts.titleTxt.trim() && !picking) {
     // nome no topo, fino e espaçado, dentro da área que aparece no post 4:5
     const ty = (H - W * 5 / 4) / 2 + 92;
-    g.font = '300 38px Figtree, system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.9)';
+    g.font = '300 38px Figtree, system-ui, sans-serif'; g.fillStyle = lt ? lt.ink : 'rgba(255,255,255,.9)';
     spaced(g, opts.titleTxt.trim().toUpperCase(), W / 2, ty, 13);
-    g.fillStyle = 'rgba(255,255,255,.45)'; g.fillRect(W / 2 - 34, ty + 34, 68, 1.5);
+    g.fillStyle = lt ? lt.soft : 'rgba(255,255,255,.45)'; g.fillRect(W / 2 - 34, ty + 34, 68, 1.5);
   }
   if (opts.hand && opts.handTxt.trim()) {
-    g.font = '500 30px Figtree, system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.62)';
+    g.font = '500 30px Figtree, system-ui, sans-serif'; g.fillStyle = lt ? lt.soft : 'rgba(255,255,255,.62)';
     g.fillText(opts.handTxt.trim(), W / 2, H - Math.max(70, bottomSpace * 0.32));
   }
   if (!any) {
@@ -949,6 +979,9 @@ $('titleOn').onchange = e => { opts.title = e.target.checked; render(); };
 $('titleTxt').oninput = e => { opts.titleTxt = e.target.value; render(); };
 function setFront(s) { opts.front = s; $('frA').setAttribute('aria-pressed', s === 'A'); $('frD').setAttribute('aria-pressed', s === 'D'); render(); }
 $('frA').onclick = () => setFront('A'); $('frD').onclick = () => setFront('D');
+$('lkC').onclick = () => setLook('classico'); $('lkL').onclick = () => setLook('claro'); $('lkE').onclick = () => setLook('escuro');
+$('ltTitle').oninput = e => { opts.ltTitle = e.target.value; render(); }; $('ltLine').oninput = e => { opts.ltLine = e.target.value; render(); };
+$('ltFont').onchange = e => { opts.ltFont = e.target.value; loadLtFont(); };
 
 // gestos na prévia: 1 dedo move, 2 dedos zoom e giro
 const ptrs = new Map(); let g0 = null;
