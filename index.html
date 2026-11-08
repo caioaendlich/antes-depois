@@ -577,22 +577,30 @@ function shapeOf(it) {
 let maskCanvasCache = null; const maskCv = () => { if (!maskCanvasCache) { maskCanvasCache = document.createElement('canvas'); maskCanvasCache.width = W; maskCanvasCache.height = H; } return maskCanvasCache; };
 const layerCv = [], layerOf = i => { if (!layerCv[i]) { layerCv[i] = document.createElement('canvas'); layerCv[i].width = W; layerCv[i].height = H; } return layerCv[i]; };
 function drawPortal(g, x, y, r, tone, half) {
-  if (fastDraw) { const ry = Math.max(16, r * .14); g.save(); g.strokeStyle = tone.ring; g.lineWidth = 3; g.beginPath(); g.ellipse(x, y, r, ry, 0, half === 'back' ? Math.PI : 0, half === 'back' ? 2 * Math.PI : Math.PI); g.stroke(); g.restore(); return; }
-  // anel de vidro: disco translúcido, borda dupla com brilho e sombra dupla embaixo (Caio 08/11 01:25)
-  const ry = Math.max(16, r * .14);
+  // Caio 08/11 02:43: é um ANEL de vidro, e dentro dele é preto (o vazio de onde o pescoço sai). Embaixo, só uma sombra
+  // em disco cinza-escuro, mais escura no centro do que nas bordas.
+  const ry = Math.max(14, r * .16);
+  if (fastDraw) { g.save(); g.strokeStyle = tone.ring; g.lineWidth = 3; g.beginPath(); g.ellipse(x, y, r, ry, 0, half === 'back' ? Math.PI : 0, half === 'back' ? 2 * Math.PI : Math.PI); g.stroke(); g.restore(); return; }
   g.save();
   if (half === 'back') {
-    g.save(); g.globalAlpha = .55; g.fillStyle = 'rgba(0,0,0,.55)'; g.beginPath(); g.ellipse(x, y + ry * 1.6, r * 1.05, ry * 1.1, 0, 0, 2 * Math.PI); g.shadowColor = 'rgba(0,0,0,.7)'; g.shadowBlur = 40; g.fill();
-    g.globalAlpha = .35; g.beginPath(); g.ellipse(x, y + ry * 2.8, r * .8, ry * .7, 0, 0, 2 * Math.PI); g.shadowBlur = 60; g.fill(); g.restore();
-    const disc = g.createRadialGradient(x, y, r * .05, x, y, r); disc.addColorStop(0, tone.ring + '30'); disc.addColorStop(.7, tone.ring + '14'); disc.addColorStop(1, tone.ring + '44');
-    g.save(); g.translate(x, y); g.scale(1, ry / r); g.fillStyle = disc; g.beginPath(); g.arc(0, 0, r, 0, 2 * Math.PI); g.fill(); g.restore();
-    g.strokeStyle = tone.ring + '88'; g.lineWidth = 2; g.beginPath(); g.ellipse(x, y, r, ry, 0, Math.PI, 2 * Math.PI); g.stroke();
-    g.strokeStyle = tone.ring + '40'; g.lineWidth = 1.5; g.beginPath(); g.ellipse(x, y, r * .86, ry * .8, 0, Math.PI, 2 * Math.PI); g.stroke();
+    // sombra em disco embaixo do anel
+    g.save(); g.translate(x, y + ry * 2.4); g.scale(1, (ry * 1.05) / (r * 1.1));
+    const sd = g.createRadialGradient(0, 0, 0, 0, 0, r * 1.1); sd.addColorStop(0, 'rgba(8,8,9,.92)'); sd.addColorStop(.55, 'rgba(28,28,30,.65)'); sd.addColorStop(.85, 'rgba(55,55,58,.3)'); sd.addColorStop(1, 'rgba(60,60,62,0)');
+    g.fillStyle = sd; g.beginPath(); g.arc(0, 0, r * 1.1, 0, 2 * Math.PI); g.fill(); g.restore();
+    // dentro do anel: preto
+    g.fillStyle = '#000'; g.beginPath(); g.ellipse(x, y, r * .97, ry * .9, 0, 0, 2 * Math.PI); g.fill();
+    // metade de trás do aro de vidro (mais apagada)
+    const back = g.createLinearGradient(x - r, y, x + r, y); back.addColorStop(0, 'rgba(255,255,255,.25)'); back.addColorStop(.5, 'rgba(255,255,255,.55)'); back.addColorStop(1, 'rgba(255,255,255,.25)');
+    g.strokeStyle = back; g.lineWidth = 2.5; g.beginPath(); g.ellipse(x, y, r, ry, 0, Math.PI, 2 * Math.PI); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,.18)'; g.lineWidth = 1; g.beginPath(); g.ellipse(x, y + 3, r * .985, ry * .95, 0, Math.PI, 2 * Math.PI); g.stroke();
   } else {
-    g.shadowColor = tone.ring; g.shadowBlur = 18; g.strokeStyle = tone.ring; g.lineWidth = 3; g.beginPath(); g.ellipse(x, y, r, ry, 0, 0, Math.PI); g.stroke();
-    g.shadowBlur = 8; g.strokeStyle = tone.ring + 'aa'; g.lineWidth = 1.5; g.beginPath(); g.ellipse(x, y + 5, r * .9, ry * .82, 0, 0.15, Math.PI - .15); g.stroke();
-    const shine = g.createLinearGradient(x - r, y, x + r, y); shine.addColorStop(0, tone.ring + '00'); shine.addColorStop(.5, '#ffffffcc'); shine.addColorStop(1, tone.ring + '00');
-    g.shadowBlur = 0; g.strokeStyle = shine; g.lineWidth = 1; g.beginPath(); g.ellipse(x, y + 1, r * .97, ry * .97, 0, .35, Math.PI - .35); g.stroke();
+    // metade da frente do aro: vidro com brilho, duas linhas finas (espessura do vidro) e reflexo
+    g.shadowColor = 'rgba(255,255,255,.55)'; g.shadowBlur = 10;
+    const front = g.createLinearGradient(x - r, y, x + r, y); front.addColorStop(0, 'rgba(255,255,255,.55)'); front.addColorStop(.3, 'rgba(255,255,255,.95)'); front.addColorStop(.7, 'rgba(225,232,240,.8)'); front.addColorStop(1, 'rgba(255,255,255,.5)');
+    g.strokeStyle = front; g.lineWidth = 3; g.beginPath(); g.ellipse(x, y, r, ry, 0, 0, Math.PI); g.stroke();
+    g.shadowBlur = 0; g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1.2; g.beginPath(); g.ellipse(x, y + 4, r * .985, ry * .95, 0, .05, Math.PI - .05); g.stroke();
+    const glint = g.createLinearGradient(x - r * .6, y, x - r * .1, y); glint.addColorStop(0, 'rgba(255,255,255,0)'); glint.addColorStop(.5, 'rgba(255,255,255,1)'); glint.addColorStop(1, 'rgba(255,255,255,0)');
+    g.strokeStyle = glint; g.lineWidth = 2; g.beginPath(); g.ellipse(x, y, r, ry, 0, Math.PI * .55, Math.PI * .85); g.stroke();
   }
   g.restore();
 }
