@@ -374,8 +374,11 @@ html,body{overflow-x:clip}
 
     <div class="panel">
       <span class="lbl">Acabamento</span>
-      <div class="row-head"><span class="check" style="gap:10px">Estilo</span>
-        <div class="seg" role="group" aria-label="Estilo da montagem"><button id="lkC" aria-pressed="true">Clássico</button><button id="lkL" aria-pressed="false">Light Touch claro</button><button id="lkE" aria-pressed="false">Light Touch escuro</button></div></div>
+      <div class="row-head"><span class="check" style="gap:10px">Montagem</span>
+        <div class="seg" role="group" aria-label="Montagem"><button id="lyC" aria-pressed="true">Clássica</button><button id="lyA" aria-pressed="false">Espectral</button><button id="lyB" aria-pressed="false">Galeria</button><button id="lyD" aria-pressed="false">Detalhe</button></div></div>
+      <p class="note" id="lyNote" hidden>Espectral: as duas cabeças saindo do anel e duas lupas embaixo. Galeria: antes em cima, depois embaixo. Detalhe: as duas cabeças em cima e duas lupas em faixas.</p>
+      <div class="row-head"><span class="check" style="gap:10px">Cor</span>
+        <div class="seg" role="group" aria-label="Cor da montagem"><button id="lkC" aria-pressed="true">Preto</button><button id="lkL" aria-pressed="false">Light Touch claro</button><button id="lkE" aria-pressed="false">Light Touch escuro</button></div></div>
       <div class="flex lt-only" hidden><label class="check">Título</label><input type="text" id="ltTitle" value="Light Touch" aria-label="Título Light Touch" maxlength="30"></div>
       <div class="flex lt-only" hidden><label class="check">Frase</label><input type="text" id="ltLine" value="a beleza é reflexo da saúde" aria-label="Frase Light Touch" maxlength="60"></div>
       <div class="flex lt-only" hidden><label class="check">Fonte</label><select id="ltFont" aria-label="Fonte do Light Touch"><option>Instrument Serif</option><option>Cormorant Garamond</option><option>Playfair Display</option><option>Figtree</option></select></div>
@@ -482,10 +485,66 @@ const cv = $('cv'), ctx = photoContext(cv);
 const items = { A: [], D: [] };
 const sel = { A: 0, D: 0 };
 const tf = { A: { s: 1, dx: 0, dy: 0, r: 0 }, D: { s: 1, dx: 0, dy: 0, r: 0 } };
-const DEFAULT_OPTS = { fade: 0.80, hand: true, handTxt: '@caioendlich.md', labels: true, front: 'D', title: true, titleTxt: 'DR. CAIO ENDLICH', look: 'classico', ltTitle: 'Light Touch', ltLine: 'a beleza é reflexo da saúde', ltFont: 'Instrument Serif' };
+const DEFAULT_OPTS = { fade: 0.80, hand: true, handTxt: '@caioendlich.md', labels: true, front: 'D', title: true, titleTxt: 'DR. CAIO ENDLICH', look: 'classico', layout: 'classico', ltTitle: 'Light Touch', ltLine: 'a beleza é reflexo da saúde', ltFont: 'Instrument Serif' };
 // Light Touch no Prisma (Caio, 08/11/2026 00:33): o mesmo visual do Light Touch do Video Studio, em claro e escuro.
 const LT = { claro: { bg: ['#f6efe7', '#e4d5c4'], fade: '238,228,216', ink: '#6e563e', title: 'rgba(150,118,90,.9)', soft: 'rgba(110,86,62,.72)' },
   escuro: { bg: ['#2c251f', '#0b0908'], fade: '8,7,6', ink: 'rgba(242,232,220,.92)', title: 'rgba(222,203,180,.86)', soft: 'rgba(239,228,214,.6)' } };
+function setLayout(k) { opts.layout = k; [['lyC','classico'],['lyA','espectral'],['lyB','galeria'],['lyD','detalhe']].forEach(([id,v]) => $(id)?.setAttribute?.('aria-pressed', String(v === k)));
+  const n = $('lyNote'); if (n) n.hidden = k === 'classico'; if (typeof render === 'function' && typeof ctx !== 'undefined' && ctx) render(); }
+// Modos do Video Studio no Prisma (Caio, 08/11/2026 00:55): Espectral, Galeria e Detalhe, em preto ou Light Touch.
+const DISPLAY_TONE = { classico: { bg: '#101013', ink: '#f4f1eb', frame: '#827e78', ring: '#eeedf0', line: '#dcdbe0' },
+  claro: { bg: '#f2e9d9', ink: '#4a3c2f', frame: '#a8988a', ring: '#b8977b', line: '#9c8572' },
+  escuro: { bg: '#1d1814', ink: '#efe4d6', frame: '#7d6f62', ring: '#e6d6c2', line: '#cdbca8' } };
+function faceOf(it) {   // nariz, queixo e topo estimados pelos pontos do rosto (olhos, ponta do nariz, lábio)
+  const p = it.pyr && it.pyr.pts; if (!p || p.length < 4) return null;
+  const ex = (p[0].x + p[1].x) / 2, ey = (p[0].y + p[1].y) / 2, d = p[3].y - ey;
+  return { nose: [p[2].x, p[2].y], chin: [p[3].x, p[3].y + d * .75], top: [ex, ey - d * 1.5] };
+}
+function drawDisplay(g) {
+  const S = [items.A[sel.A], items.D[sel.D]]; if (!S.every(it => it && it.cut && it.src)) return false;
+  const style = opts.layout, gallery = style === 'galeria', spectral = style === 'espectral';
+  const tone = DISPLAY_TONE[opts.look] || DISPLAY_TONE.classico, lt = LT[opts.look], bg = tone.bg, ink = tone.ink;
+  const serif = lt && opts.ltFont !== 'Figtree', ltf = `"${opts.ltFont || 'Instrument Serif'}", Georgia, serif`;
+  const label = (text, x, y, size) => { g.fillStyle = ink; g.textAlign = 'center'; g.textBaseline = 'middle';
+    if (serif) { g.font = `italic 400 ${Math.round(size * 1.5)}px ${ltf}`; g.fillText(text.toLowerCase(), x, y); } else { g.font = `500 ${size}px Figtree, system-ui, sans-serif`; spaced(g, text, x, y, size * .3); } };
+  g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  if (lt && opts.ltTitle.trim() && !gallery) {
+    let size = W * .2; g.font = `400 ${size}px ${ltf}`; const tw = g.measureText(opts.ltTitle.trim()).width; if (tw > W * .92) { size *= W * .92 / tw; g.font = `400 ${size}px ${ltf}`; }
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = lt.title; g.fillText(opts.ltTitle.trim(), W / 2, spectral ? 430 : 300);
+  }
+  for (let i = 0; i < 2; i++) {
+    const side = i ? 'D' : 'A', item = S[i], P = place(item), t = tf[side], face = faceOf(item);
+    const cx = gallery ? (i ? 716 : 355) : (i ? 793 : 287), eyeY = gallery ? (i ? 1070 : 465) : (spectral ? 585 : 415);
+    const targetY = eyeY + (P.oy - 825) * .8, k = P.k0 * t.s * (gallery ? 1.22 : spectral ? .99 : .86);
+    const m = new DOMMatrix().translate(cx + t.dx, targetY + t.dy).rotate(t.r + P.r0).scale(k).translate(-P.ax, -P.ay);
+    const center = face ? face.nose : [.5, .48], focus = m.transformPoint({ x: center[0] * item.w, y: center[1] * item.h });
+    const chinY = face ? m.transformPoint({ x: face.chin[0] * item.w, y: face.chin[1] * item.h }).y : eyeY + 300;
+    const neck = Math.min(gallery ? (i ? 1630 : 940) : spectral ? 1160 : 840, chinY + 68 + (opts.fade - .8) * 400);
+    const ringX = cx + t.dx, radius = Math.max(150, Math.min(250, k * item.w * .2));
+    const arc = (from, to) => { g.save(); g.strokeStyle = tone.ring; g.shadowColor = tone.ring; g.shadowBlur = 14; g.lineWidth = 3; g.beginPath(); g.ellipse(ringX, neck, radius, 31, 0, from, to); g.stroke(); g.restore(); };
+    if (spectral) arc(Math.PI, 2 * Math.PI);
+    g.save(); g.beginPath(); g.rect(gallery ? 0 : i * 540, gallery && i ? 760 : 0, gallery ? 1080 : 540, neck - (gallery && i ? 760 : 0) + 19); g.clip();
+    g.save(); g.setTransform(m); g.imageSmoothingQuality = 'high'; g.drawImage(item.cut, 0, 0, item.w, item.h); g.restore();
+    const fl = spectral ? 50 : 95, fade = g.createLinearGradient(0, neck - fl, 0, neck + 19); fade.addColorStop(0, bg + '00'); fade.addColorStop(1, bg);
+    g.fillStyle = fade; g.fillRect(gallery ? 0 : i * 540, neck - fl, gallery ? 1080 : 540, fl + 20); g.restore();
+    if (spectral) arc(0, Math.PI);
+    const title = i ? 'DEPOIS' : 'ANTES';
+    if (opts.labels) label(title, gallery ? (i ? 220 : 860) : cx, gallery ? (i ? 1210 : 490) : 205, 26);
+    if (gallery) continue;
+    const x = spectral ? 32 + i * 535 : 55, y = spectral ? 1360 : 935 + i * 369, w = spectral ? 481 : 970, h = spectral ? 340 : 324;
+    const span = item.h * (face ? Math.max(.05, Math.abs(face.chin[1] - face.top[1])) : .6);
+    const cw = Math.min(item.w, span * 1.8 / 3), ch = cw * h / w;
+    const end = { x: x + w / 2, y }; g.strokeStyle = tone.line; g.lineWidth = 2; g.strokeRect(focus.x - 14, focus.y - 14, 28, 28);
+    g.beginPath(); g.moveTo(focus.x, focus.y + 14); g.lineTo(end.x, end.y); g.stroke();
+    g.fillStyle = bg; g.fillRect(x, y, w, h);
+    g.drawImage(item.src, center[0] * item.w - cw / 2, center[1] * item.h - ch / 2, cw, ch, x, y, w, h); g.strokeStyle = tone.frame; g.strokeRect(x, y, w, h);
+    if (opts.labels) label(title, x + w / 2, y + h + 24, 20);
+  }
+  if (opts.title && opts.titleTxt.trim()) { g.fillStyle = ink; g.font = '300 33px Figtree, system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; spaced(g, opts.titleTxt.trim().toUpperCase(), W / 2, 102, 10); }
+  if (lt && opts.ltLine.trim()) { g.fillStyle = lt.soft; g.textAlign = 'center'; g.font = serif ? `italic 400 38px ${ltf}` : '400 28px Figtree, system-ui, sans-serif'; g.fillText(opts.ltLine.trim(), W / 2, 1795); }
+  if (opts.hand && opts.handTxt.trim()) { g.fillStyle = lt ? lt.soft : ink; g.font = '500 26px Figtree, system-ui, sans-serif'; g.textAlign = 'center'; g.fillText(opts.handTxt.trim(), W / 2, 1848); }
+  g.restore(); return true;
+}
 function setLook(k) { opts.look = k; [['lkC','classico'],['lkL','claro'],['lkE','escuro']].forEach(([id,v]) => $(id)?.setAttribute?.('aria-pressed', String(v === k)));
   if (typeof document !== 'undefined' && document.querySelectorAll) document.querySelectorAll('.lt-only').forEach(n => n.hidden = k === 'classico'); loadLtFont(); }
 function loadLtFont() { const go = () => { if (typeof render === 'function' && typeof ctx !== 'undefined' && ctx) render(); }; const f = opts.ltFont || 'Instrument Serif';
@@ -496,7 +555,7 @@ function restoreFinish(edit) {
   $('fade').value = Math.round(opts.fade * 100); $('fadeV').textContent = $('fade').value + '%';
   for (const [id,key] of [['hand','hand'],['labels','labels'],['titleOn','title']]) $(id).checked = opts[key];
   $('handTxt').value = opts.handTxt; $('titleTxt').value = opts.titleTxt;
-  $('ltTitle').value = opts.ltTitle; $('ltLine').value = opts.ltLine; $('ltFont').value = opts.ltFont; setLook(opts.look || 'classico');
+  $('ltTitle').value = opts.ltTitle; $('ltLine').value = opts.ltLine; $('ltFont').value = opts.ltFont; setLook(opts.look || 'classico'); setLayout(opts.layout || 'classico');
 }
 function snapshotEdit() {
   const photo = side => {
@@ -835,6 +894,7 @@ function spaced(g, txt, cx, y, sp) {
 function render() {
   const g = ctx;
   g.setTransform(1, 0, 0, 1, 0, 0);
+  if (!picking && tool === 'move' && opts.layout && opts.layout !== 'classico' && drawDisplay(g)) { $('hint').hidden = true; $('etools').hidden = false; drawLoupe(); syncHistory(); return; }
   const lt = LT[opts.look], ltf = `"${opts.ltFont || 'Instrument Serif'}", Georgia, serif`;
   const bg = g.createLinearGradient(0, 0, 0, H);
   if (lt) { bg.addColorStop(0, lt.bg[0]); bg.addColorStop(1, lt.bg[1]); }
@@ -979,6 +1039,7 @@ $('titleOn').onchange = e => { opts.title = e.target.checked; render(); };
 $('titleTxt').oninput = e => { opts.titleTxt = e.target.value; render(); };
 function setFront(s) { opts.front = s; $('frA').setAttribute('aria-pressed', s === 'A'); $('frD').setAttribute('aria-pressed', s === 'D'); render(); }
 $('frA').onclick = () => setFront('A'); $('frD').onclick = () => setFront('D');
+$('lyC').onclick = () => setLayout('classico'); $('lyA').onclick = () => setLayout('espectral'); $('lyB').onclick = () => setLayout('galeria'); $('lyD').onclick = () => setLayout('detalhe');
 $('lkC').onclick = () => setLook('classico'); $('lkL').onclick = () => setLook('claro'); $('lkE').onclick = () => setLook('escuro');
 $('ltTitle').oninput = e => { opts.ltTitle = e.target.value; render(); }; $('ltLine').oninput = e => { opts.ltLine = e.target.value; render(); };
 $('ltFont').onchange = e => { opts.ltFont = e.target.value; loadLtFont(); };
