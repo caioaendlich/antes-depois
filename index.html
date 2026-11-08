@@ -640,7 +640,7 @@ function drawDisplay(g) {
     let cut = chinY + fh * .16, fadeEnd = cut + fh * .1, ringX = neckX, ringW = null, axis = [0, 1];
     let nkp = neckOf(item);
     // Caio 08/11 02:44: a detecção não sabe onde o pescoço vira colo/busto; arrastar o anel sobe ou desce o corte
-    const man = opts.neckCut?.[side];
+    const man = opts.neckCut?.[side] == null ? null : Math.max(.06, opts.neckCut[side]);   // o anel nunca sobe para dentro do rosto
     if (man != null && face) { const cy0 = face.chin[1] * item.h, fhi = Math.abs(face.chin[1] - face.top[1]) * item.h, yc = cy0 + man * fhi;
       if (nkp) { const keep = nkp.left.map((pt, j) => j).filter(j => nkp.left[j][1] <= yc); let L2 = keep.map(j => nkp.left[j]), R2 = keep.map(j => nkp.right[j]);
         if (!L2.length) { L2 = [nkp.left[0]]; R2 = [nkp.right[0]]; }
@@ -670,7 +670,7 @@ function drawDisplay(g) {
     const ax = o.axis || [0, 1], gx = o.neckX, span = Math.max(1, f1 - f0) / Math.max(.3, ax[1]);
     const fade = q.createLinearGradient(gx - ax[0] * 3000, f0 - ax[1] * 3000, gx + ax[0] * (span + 3000), f0 + ax[1] * (span + 3000)), cl = v => Math.max(0, Math.min(1, v));
     const tot = span + 6000; fade.addColorStop(0, 'rgba(0,0,0,1)'); fade.addColorStop(cl(3000 / tot), 'rgba(0,0,0,1)'); fade.addColorStop(cl((3000 + span) / tot), 'rgba(0,0,0,0)'); fade.addColorStop(1, 'rgba(0,0,0,0)');
-    q.globalCompositeOperation = 'destination-in'; q.fillStyle = fade; q.fillRect(0, 0, W, H); q.globalCompositeOperation = 'source-over';
+    if (!spectral) { q.globalCompositeOperation = 'destination-in'; q.fillStyle = fade; q.fillRect(0, 0, W, H); q.globalCompositeOperation = 'source-over'; }
     if (o.nkp) { const mk = maskCv(), mq = mk.getContext('2d'), n = o.nkp, T = pt => o.m.transformPoint({ x: pt[0], y: pt[1] }), big = 4 * Math.max(o.item.w, o.item.h);
       mq.setTransform(1, 0, 0, 1, 0, 0); mq.clearRect(0, 0, W, H); mq.save(); mq.shadowColor = '#fff'; mq.shadowBlur = fastDraw ? 0 : 10; mq.shadowOffsetX = 4 * W; mq.fillStyle = '#fff'; mq.translate(-4 * W, 0);
       const poly = [[-big, -big], [big, -big], [big, n.top], ...n.right, ...[...n.left].reverse(), [-big, n.top]].map(T);
@@ -691,9 +691,19 @@ function drawDisplay(g) {
       mq.bezierCurveTo(o.neckX + wide * .6, (y0 + y1) / 2, o.neckX + hw, y1 - fh * .04, o.neckX + hw, y1); mq.lineTo(o.neckX + hw, H + 40); mq.lineTo(o.neckX - hw, H + 40); mq.lineTo(o.neckX - hw, y1);
       mq.bezierCurveTo(o.neckX - hw, y1 - fh * .04, o.neckX - wide * .6, (y0 + y1) / 2, o.neckX - wide, y0); mq.lineTo(-40, y0); mq.closePath(); mq.fill(); mq.restore();
       q.globalCompositeOperation = 'destination-in'; q.drawImage(mk, 0, 0); q.globalCompositeOperation = 'source-over'; }
-    if (spectral) { const mk = maskCv(), mq = mk.getContext('2d');   // só passa o que está acima do anel ou dentro da boca dele
-      mq.setTransform(1, 0, 0, 1, 0, 0); mq.clearRect(0, 0, W, H); mq.fillStyle = '#fff'; mq.fillRect(0, 0, W, o.ringY);
-      mq.beginPath(); mq.ellipse(o.neckX, o.ringY, ringR * .97, rry, 0, 0, Math.PI); mq.closePath(); mq.fill();
+    // Caio 08/11 02:52: com o anel colado no rosto, o degradê e o corte não podem atravessar o rosto.
+    // Máscara única: degradê horizontal só no pescoço, só passa o que está acima do anel ou dentro da boca dele,
+    // e o rosto (até logo abaixo do queixo) fica sempre inteiro.
+    if (spectral) { const mk = maskCv(), mq = mk.getContext('2d'), fh = o.faceH, chin = o.chinY;
+      const g1 = o.ringY + rry, g0 = Math.min(Math.max(o.ringY - fh * .05, chin + fh * .04), g1 - 4);
+      mq.setTransform(1, 0, 0, 1, 0, 0); mq.clearRect(0, 0, W, H);
+      const vg = mq.createLinearGradient(0, g0, 0, g1); vg.addColorStop(0, '#fff'); vg.addColorStop(1, 'rgba(255,255,255,0)');
+      mq.fillStyle = vg; mq.fillRect(0, 0, W, H);
+      mq.globalCompositeOperation = 'destination-in'; mq.fillStyle = '#fff'; mq.beginPath(); mq.rect(0, 0, W, o.ringY);
+      mq.ellipse(o.neckX, o.ringY, ringR * .97, rry, 0, 0, Math.PI); mq.fill();
+      mq.globalCompositeOperation = 'source-over';
+      const pg = mq.createLinearGradient(0, chin + fh * .01, 0, chin + fh * .05); pg.addColorStop(0, '#fff'); pg.addColorStop(1, 'rgba(255,255,255,0)');
+      mq.fillStyle = pg; mq.fillRect(0, 0, W, chin + fh * .05);
       q.globalCompositeOperation = 'destination-in'; q.drawImage(mk, 0, 0); q.globalCompositeOperation = 'source-over'; }
     if (spectral) ringHits[i] = { side: o.side, x: o.neckX, y: o.ringY, r: ringR, fh: o.faceH };
     if (spectral) drawPortal(g, o.neckX, o.ringY, ringR, tone, 'back');
@@ -1353,7 +1363,7 @@ cv.addEventListener('pointermove', e => {
     const cur = toImage(active, p); stamp(it, lastImg, cur); lastImg = cur; scheduleRecut(it, false); return;
   }
   if (neckDrag && ptrs.size === 1) {
-    const p = toCanvas(e), d = neckDrag; opts.neckCut = { ...(opts.neckCut || {}), [d.side]: Math.max(-.05, Math.min(.8, d.base + (p.y - d.p.y) / Math.max(40, d.fh))) };
+    const p = toCanvas(e), d = neckDrag; opts.neckCut = { ...(opts.neckCut || {}), [d.side]: Math.max(.06, Math.min(.8, d.base + (p.y - d.p.y) / Math.max(40, d.fh))) };
     fastDraw = true; if (!rafDraw) rafDraw = requestAnimationFrame(() => { rafDraw = 0; render(); }); return;
   }
   if (lupaDrag && ptrs.size === 1) {
