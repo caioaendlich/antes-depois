@@ -2376,13 +2376,14 @@ $('folderModes').onclick = () => {
   const c = curComp; if (!c) return; const n = (c.angles || []).length;
   const pickLook = layouts => overlay(null, 'Cor das montagens:', [
     ...Object.entries(LOOK_NAMES).map(([k, v]) => [v, () => generateModes(c, layouts, k), k === 'classico' ? 'primary' : '']), ['Cancelar', closeOut]]);
-  overlay(null, 'Criar a partir dos ' + n + (n === 1 ? ' ângulo salvo' : ' ângulos salvos') + ' desta pasta. Os ângulos salvos não mudam.', [
+  overlay(null, 'Cria ângulos novos nesta pasta a partir dos ângulos salvos. Depois é só tocar em cada um para ajustar. Os ângulos originais não mudam.', [
     ['Os três modos', () => pickLook(['espectral', 'galeria', 'detalhe']), 'primary'],
     ...Object.entries(MODE_NAMES).map(([k, v]) => [v, () => pickLook([k])]), ['Cancelar', closeOut]]);
 };
 async function generateModes(c, layouts, look) {
+  // Caio 08/11 01:16: cada modo vira um ângulo novo na pasta do paciente, para abrir e ajustar depois.
   closeOut();
-  const angles = (c.angles || []).filter(a => shotById(a.selA) && shotById(a.selD)), files = [];
+  const angles = (c.angles || []).filter(a => shotById(a.selA) && shotById(a.selD) && !/ · (Espectral|Galeria|Detalhe)/.test(a.name)), made = [];
   if (!angles.length) { setStatus('Nenhum ângulo salvo com as duas fotos', false); return; }
   for (const a of angles) {
     editSavedAngle(c, a);
@@ -2397,16 +2398,23 @@ async function generateModes(c, layouts, look) {
     const keep = { layout: opts.layout, look: opts.look };
     for (const ly of layouts) {
       opts.layout = ly; opts.look = look; setStatus('Criando ' + a.name + ' · ' + MODE_NAMES[ly], true);
-      const { file, blob, name } = makeFile(slug(Pj.rec.name) + '_' + slug(a.name) + '_' + ly + (look === 'classico' ? '' : '_lighttouch-' + look));
-      files.push(file || new File([blob], name, { type: 'image/jpeg' }));
+      const name = a.name + ' · ' + MODE_NAMES[ly] + (look === 'classico' ? '' : ' · ' + LOOK_NAMES[look]);
+      const output = makeFile();
+      const data = await new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = () => reject(r.error); r.readAsDataURL(output.blob); });
+      const edit = cloneValue(a.edit) || {}; edit.opts = { ...(edit.opts || {}), layout: ly, look };
+      made.push({ id: newId('angle'), name, t: Date.now(), selA: a.selA, selD: a.selD, tf: cloneValue(a.tf), edit, out: data });
       await new Promise(r => setTimeout(r, 0));
     }
     Object.assign(opts, keep);
   }
-  openFolder(c); setStatus('Pronto', false);
-  if (!files.length) { setStatus('Não consegui montar nenhum ângulo', false); return; }
-  overlay(URL.createObjectURL(files[0]), files.length + (files.length === 1 ? ' imagem pronta.' : ' imagens prontas.') + ' Na folha que abrir, escolha "Salvar imagens".', [
-    ['Salvar ' + files.length + (files.length === 1 ? ' imagem' : ' imagens'), () => deliverImages(files), 'primary'], ['Fechar', closeOut]]);
+  if (made.length) {
+    const names = new Set(made.map(m => m.name)), old = new Map((c.angles || []).map(x => [x.name, x.id]));
+    made.forEach(m => { if (old.has(m.name)) m.id = old.get(m.name); });
+    c.angles = [...(c.angles || []).filter(x => !names.has(x.name)), ...made];
+    await saveComp();
+  }
+  openFolder(c);
+  setStatus(made.length ? made.length + (made.length === 1 ? ' ângulo novo na pasta' : ' ângulos novos na pasta') + ' · toque para ajustar' : 'Não consegui montar nenhum ângulo', false);
 }
 $('folderPhotos').onclick = () => openExplorer('photos', curComp);
 function bindCard(el, open, menu) {
