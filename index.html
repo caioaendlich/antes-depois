@@ -542,12 +542,16 @@ function neckOf(it) {
       if (rows.length > fh * .12) {
         const win = rows.filter(r => r[0] < chin[1] + fh * .5); let mi = 0; win.forEach((r, i) => { if (r[2] - r[1] < win[mi][2] - win[mi][1]) mi = i; });
         const wmin = Math.max(3, rows[mi][2] - rows[mi][1]); let end = mi;
+        // Caio 08/11 02:41: no antes a pele do colo continuava e o corte descia até o peito; no depois as bordas pulavam.
+        // Agora o pescoço tem limite de comprimento (até 0,4 rosto abaixo do queixo), só pode alargar 20% e as bordas
+        // são suavizadas (média móvel e nunca voltando para dentro de repente).
         for (let i = mi + 1; i < rows.length; i++) {
           const [y, l, r] = rows[i], w = r - l, [, pl, pr] = rows[i - 1];
-          if (w > wmin * 1.35 || w < wmin * .7 || Math.abs(l - pl) > fh * .05 || Math.abs(r - pr) > fh * .05) break;
+          if (y > chin[1] + fh * .4 || w > wmin * 1.2 || w < wmin * .75 || Math.abs(l - pl) > fh * .03 || Math.abs(r - pr) > fh * .03) break;
           end = i;
         }
-        const use = rows.slice(0, end + 1), last = use[use.length - 1];
+        const raw = rows.slice(0, end + 1), sm = (j, c) => { let a = 0, n2 = 0; for (let t = Math.max(0, j - 4); t <= Math.min(raw.length - 1, j + 4); t++) { a += raw[t][c]; n2++; } return a / n2; };
+        const use = raw.map((r, j) => [r[0], Math.round(sm(j, 1)), Math.round(sm(j, 2))]), last = use[use.length - 1];
         if (last[0] - use[0][0] > fh * .08) v = { left: use.map(r => [r[1] * k, r[0] * k]), right: use.map(r => [(r[2] + 1) * k, r[0] * k]), top: use[0][0] * k, cut: last[0] * k, a: [last[1] * k, last[0] * k], b: [(last[2] + 1) * k, last[0] * k],
           c0: [(use[0][1] + use[0][2] + 1) / 2 * k, use[0][0] * k], c1: [(last[1] + last[2] + 1) / 2 * k, last[0] * k] };   // eixo do pescoço (centro de cima → centro de baixo)
       }
