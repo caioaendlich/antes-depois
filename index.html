@@ -499,7 +499,7 @@ const DISPLAY_TONE = { classico: { bg: '#101013', ink: '#f4f1eb', frame: '#827e7
 function faceOf(it) {   // nariz, queixo e topo estimados pelos pontos do rosto (olhos, ponta do nariz, lábio)
   const p = it.pyr && it.pyr.pts; if (!p || p.length < 4) return null;
   const ex = (p[0].x + p[1].x) / 2, ey = (p[0].y + p[1].y) / 2, d = p[3].y - ey;
-  return { nose: [p[2].x, p[2].y], chin: [p[3].x, p[3].y + d * .75], top: [ex, ey - d * 1.5] };
+  return { nose: [p[2].x, p[2].y], chin: [p[3].x, p[3].y + d * .9], top: [ex, ey - d * 1.5] };
 }
 let animT = 1, recordingAnim = false;   // 0..1: entrada animada (como no Video Studio); 1 = imagem parada
 // Forma do recorte (Caio 08/11 01:24): topo do cabelo e pescoço (linha mais estreita abaixo do queixo), em pixels da foto.
@@ -510,10 +510,13 @@ function shapeOf(it) {
   const rows = []; let top = -1;
   for (let y = 0; y < h0; y++) { let l = -1, r = -1; for (let x = 0; x < w0; x++) if (px[(y * w0 + x) * 4 + 3] > 128) { if (l < 0) l = x; r = x; } rows.push(l < 0 ? null : [l, r]); if (top < 0 && l >= 0 && r - l > 3) top = y; }
   const face = faceOf(it), chin = Math.round((face ? face.chin[1] : .55) * h0), d = face ? Math.abs(face.chin[1] - face.top[1]) * h0 : h0 * .3;
+  // Caio 08/11 01:31: no 45° o cabelo solto alargava o pescoço e o anel descia até o ombro (alça aparecendo).
+  // O anel fica logo abaixo do queixo: no ponto mais estreito até 0,4 rosto abaixo do queixo, nunca mais baixo que isso.
   let best = null;
-  for (let y = chin; y < Math.min(h0, chin + d * .9); y++) { const r = rows[y]; if (!r) continue; const w = r[1] - r[0]; if (!best || w < best.w) best = { y, w, x: (r[0] + r[1]) / 2 }; }
-  if (!best) best = { y: Math.min(h0 - 1, chin + d * .35), w: w0 * .3, x: w0 / 2 };
-  return it._shape = { c: it.cut, top: Math.max(0, top) * k, neckY: (best.y + d * .08) * k, neckX: best.x * k, neckW: Math.max(best.w, w0 * .08) * k };
+  for (let y = chin; y < Math.min(h0, chin + d * .4); y++) { const r = rows[y]; if (!r) continue; const w = r[1] - r[0]; if (!best || w < best.w) best = { y, w, x: (r[0] + r[1]) / 2 }; }
+  if (!best) best = { y: Math.min(h0 - 1, chin + d * .25), w: w0 * .3, x: w0 / 2 };
+  const fx = face ? face.chin[0] * w0 : best.x;
+  return it._shape = { c: it.cut, top: Math.max(0, top) * k, neckY: Math.max(chin + d * .12, Math.min(best.y, chin + d * .3)) * k, neckX: (best.x * .4 + fx * .6) * k, neckW: Math.max(best.w, w0 * .08) * k, faceH: d * k };
 }
 const layerCv = [], layerOf = i => { if (!layerCv[i]) { layerCv[i] = document.createElement('canvas'); layerCv[i].width = W; layerCv[i].height = H; } return layerCv[i]; };
 function drawPortal(g, x, y, r, tone, half) {
@@ -560,9 +563,9 @@ function drawDisplay(g) {
     const m = new DOMMatrix().translate(cx + T.dx - 18 * rise, targetY + T.dy + 65 * rise).rotate(T.r + P.r0).scale(k).translate(-P.ax, -P.ay);
     const nk = m0.transformPoint({ x: sh.neckX, y: sh.neckY });
     const facingRight = face ? face.nose[0] > (face.top[0]) : false;
-    return { item, side, face, sh, cx, m, m0, k0, neck: Math.min(gallery ? (i ? 1700 : 1180) : spectral ? 1200 : 900, nk.y), neckX: nk.x, neckW: sh.neckW * k0, facingRight };
+    return { item, side, face, sh, cx, m, m0, k0, neck: Math.min(gallery ? (i ? 1700 : 1180) : spectral ? 1200 : 900, nk.y), neckX: nk.x, neckW: sh.neckW * k0, faceH: sh.faceH * k0, facingRight };
   });
-  const ringR = Math.max(110, Math.min(260, Math.max(L[0].neckW, L[1].neckW) * .5 * 1.7));
+  const ringR = Math.max(100, Math.min(190, Math.max(L[0].faceH, L[1].faceH) * .42));   // anel proporcional ao rosto, não ao cabelo
   // quem fica na frente: galeria pelo lado para onde os rostos olham; lado a lado pela escolha "Na frente"
   let order = [0, 1];
   if (gallery) { if (L[0].facingRight && L[1].facingRight) order = [1, 0]; }
@@ -572,7 +575,7 @@ function drawDisplay(g) {
     q.setTransform(1, 0, 0, 1, 0, 0); q.clearRect(0, 0, W, H);
     q.save(); q.setTransform(o.m); q.globalAlpha = show; q.imageSmoothingQuality = 'high'; q.drawImage(o.item.cut, 0, 0, o.item.w, o.item.h); q.restore();
     // o pescoço some aos poucos antes do arco e nada aparece abaixo dele
-    const fl = spectral ? 70 : 110, fade = q.createLinearGradient(0, 0, 0, H), cl = v => Math.max(0, Math.min(1, v / H));
+    const fl = spectral ? 45 : 110, fade = q.createLinearGradient(0, 0, 0, H), cl = v => Math.max(0, Math.min(1, v / H));
     fade.addColorStop(0, 'rgba(0,0,0,1)'); fade.addColorStop(cl(o.neck - fl), 'rgba(0,0,0,1)'); fade.addColorStop(cl(o.neck), 'rgba(0,0,0,0)'); fade.addColorStop(1, 'rgba(0,0,0,0)');
     q.globalCompositeOperation = 'destination-in'; q.fillStyle = fade; q.fillRect(0, 0, W, H); q.globalCompositeOperation = 'source-over';
     if (spectral) drawPortal(g, o.neckX, o.neck, ringR, tone, 'back');
