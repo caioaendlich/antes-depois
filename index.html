@@ -739,12 +739,12 @@ function drawDisplay(g) {
       const dep = rry + 40, Cb = { x: R.x - sgn * nx * rr + ax[0] * dep, y: R.y - sgn * ny * rr + ax[1] * dep }, Gb = { x: R.x + sgn * nx * rr + ax[0] * dep, y: R.y + sgn * ny * rr + ax[1] * dep };
       mq.setTransform(1, 0, 0, 1, 0, 0); mq.clearRect(0, 0, W, H);
       // pescoço, com a gola em degradê sumindo dentro do anel
-      // Caio 09/11 01:50: transição curta, e o corte é o arco de cima do anel (elipse com o centro para cima)
-      const fd = o.faceH * .035, gr = mq.createLinearGradient(R.x - ax[0] * (rry + fd), R.y - ax[1] * (rry + fd), R.x - ax[0] * rry * .35, R.y - ax[1] * rry * .35);
+      // Caio 09/11 01:50/01:57: transição curta; o pescoço termina logo antes do arco de baixo do anel (corte em U)
+      const fd = o.faceH * .035, gr = mq.createLinearGradient(R.x + ax[0] * (rry * .9 - fd), R.y + ax[1] * (rry * .9 - fd), R.x + ax[0] * rry * .9, R.y + ax[1] * rry * .9);
       gr.addColorStop(0, '#fff'); gr.addColorStop(1, 'rgba(255,255,255,0)'); mq.fillStyle = gr;
       mq.beginPath(); mq.moveTo(C2.x, C2.y); mq.lineTo(G2.x, G2.y); mq.lineTo(Gb.x, Gb.y); mq.lineTo(Cb.x, Cb.y); mq.closePath(); mq.fill();
       // só passa o que está acima do anel ou dentro da boca dele
-      mq.globalCompositeOperation = 'destination-out'; mq.fillStyle = '#fff'; mq.beginPath(); mq.ellipse(R.x, R.y, rr, rry, 0, 0, 2 * Math.PI); mq.fill(); mq.fillRect(0, R.y, W, H);
+      mq.globalCompositeOperation = 'destination-in'; mq.fillStyle = '#fff'; mq.beginPath(); mq.rect(0, 0, W, R.y); mq.ellipse(R.x, R.y, rr * .94, rry * .9, 0, 0, Math.PI); mq.fill();
       // cabeça inteira: tudo acima da linha queixo → ângulo da mandíbula (seguindo para trás) e, na frente do queixo, na altura dele.
       // Rosto, bochecha do outro lado, orelha e cabelo ficam; ombro e alça ficam de fora.
       mq.globalCompositeOperation = 'source-over'; const lo = o.faceH * .03, big = 4 * W, ux = dx / wl, uy = dy / wl;
