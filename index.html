@@ -689,7 +689,7 @@ function drawDisplay(g) {
       item._ovalTry = 1; detectOn(item.prev).then(p => { if (p && p.oval) { item.pyr = { ...(item.pyr || { pts: [...p], w: item.w, h: item.h }), oval: p.oval, fore: p.fore }; render(); } }).catch(() => {}); }
     if (geo) { const Rm = m.transformPoint({ x: geo.R[0], y: geo.R[1] }), Cm = m.transformPoint({ x: geo.C[0], y: geo.C[1] }), Am = m.transformPoint({ x: geo.R[0] + geo.axis[0] * 100, y: geo.R[1] + geo.axis[1] * 100 }), sc = Math.hypot(m.a, m.b);
       const al = Math.hypot(Am.x - Rm.x, Am.y - Rm.y) || 1;
-      return { item, side, face, sh, cx, m, m0, k0, nkp: null, geo, neck: Rm.y, cut: Cm.y, ringY: Rm.y, neckX: Rm.x, ringW: geo.neckW * sc, axis: [(Am.x - Rm.x) / al, (Am.y - Rm.y) / al], faceH: fh, chinY: chinY + sink, facingRight }; }
+      return { item, side, face, sh, cx, m, m0, k0, nkp: null, geo, neck: Rm.y, cut: Cm.y, ringY: Rm.y, neckX: Rm.x, ringW: geo.neckW * sc * 1.15, axis: [(Am.x - Rm.x) / al, (Am.y - Rm.y) / al], faceH: fh, chinY: chinY + sink, facingRight }; }
     return { item, side, face, sh, cx, m, m0, k0, nkp, neck: fadeEnd + sink, cut: cut + sink, ringY: nkp ? (cut + fadeEnd) / 2 : cut + fh * .03, neckX: ringX - 18 * rise, ringW, axis, faceH: fh, chinY: chinY + sink, facingRight };
   });
   const ringR = Math.max(90, Math.min(200, Math.max(...L.map(o => o.ringW ? o.ringW * .5 * 1.55 : o.faceH * .34))));   // anel proporcional ao rosto, não ao cabelo
@@ -747,7 +747,7 @@ function drawDisplay(g) {
       // Caio 09/11 02:00: a borda do corte acompanha a curva do anel; o degradê curto corre ao longo do próprio arco
       const ck = clipCv(), cq = ck.getContext('2d'); cq.setTransform(1, 0, 0, 1, 0, 0); cq.clearRect(0, 0, W, H); cq.save();
       cq.shadowColor = '#fff'; cq.shadowBlur = fastDraw ? 0 : fd; cq.shadowOffsetX = 4 * W; cq.translate(-4 * W, 0); cq.fillStyle = '#fff'; cq.beginPath();
-      cq.rect(0, -H, W, H + R.y - rry * .2); cq.ellipse(R.x, R.y - rry * .2, rr * .92, rry * .95, 0, 0, Math.PI); cq.fill(); cq.restore();
+      cq.rect(0, -H, W, H + R.y - rry * .75); cq.ellipse(R.x, R.y - rry * .75, rr * .86, rry * .9, 0, 0, Math.PI); cq.fill(); cq.restore();   // Caio 09/11 02:02: mais preto entre o pescoço e o aro (anel um pouco mais baixo)
       mq.globalCompositeOperation = 'destination-in'; mq.drawImage(ck, 0, 0);
       // cabeça inteira: tudo acima da linha queixo → ângulo da mandíbula (seguindo para trás) e, na frente do queixo, na altura dele.
       // Rosto, bochecha do outro lado, orelha e cabelo ficam; ombro e alça ficam de fora.
