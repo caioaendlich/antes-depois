@@ -527,15 +527,22 @@ function neckGeo(it, man) {
   const fhi = Math.hypot(C[0] - F[0], C[1] - F[1]) * 1.1;
   let hx = C[0] - F[0], hy = C[1] - F[1]; const hl = Math.hypot(hx, hy) || 1; hx /= hl; hy /= hl;
   let ax = hx * .5, ay = hy * .5 + .5; const al = Math.hypot(ax, ay) || 1; ax /= al; ay /= al;
-  const nx = -ay, ny = ax, M = [(C[0] + G[0]) / 2, (C[1] + G[1]) / 2], mm = Math.max(.12, man == null ? .12 : man);
+  const nx = -ay, ny = ax, M = [(C[0] + G[0]) / 2, (C[1] + G[1]) / 2], mm = Math.max(.12, man == null ? .18 : man);
   const t = Math.max(fhi * .05, (C[1] + mm * fhi - M[1]) / Math.max(.3, ay));
   let R = [M[0] + ax * t, M[1] + ay * t]; const half = Math.abs((G[0] - C[0]) * nx + (G[1] - C[1]) * ny) / 2 || fhi * .2;
   let neckW = half * 1.4;
   try {
     const cw = Math.min(260, it.w), k = it.w / cw, ch = Math.max(2, Math.round(it.h / k));
     const c = document.createElement('canvas'); c.width = cw; c.height = ch; const q = c.getContext('2d', { willReadFrequently: true });
-    q.drawImage(it.cut, 0, 0, cw, ch); const d = q.getImageData(0, 0, cw, ch).data;
-    const A = (x, y) => { const X = Math.round(x / k), Y = Math.round(y / k); return X < 0 || Y < 0 || X >= cw || Y >= ch ? 0 : d[(Y * cw + X) * 4 + 3]; };
+    q.drawImage(it.cut, 0, 0, cw, ch); const d = q.getImageData(0, 0, cw, ch).data; let rgb = null;
+    if (it.src) { q.clearRect(0, 0, cw, ch); q.drawImage(it.src, 0, 0, cw, ch); rgb = q.getImageData(0, 0, cw, ch).data; }
+    // Caio 09/11 02:06: a largura conta só a pele do pescoço (gola e roupa não), para o anel ficar centrado nele
+    let cr = 0, cg = 0, S0 = 0;
+    if (rgb) { let sr = 0, sg = 0, sb = 0, n = 0; const lip = P(p.pts[3]);
+      for (let dy = -3; dy <= 3; dy++) for (let dx = -4; dx <= 4; dx++) { const X = Math.round(lip[0] / k + dx), Y = Math.round(((lip[1] + C[1]) / 2) / k + dy); if (X < 0 || Y < 0 || X >= cw || Y >= ch) continue; const i = (Y * cw + X) * 4; if (d[i + 3] < 200) continue; sr += rgb[i]; sg += rgb[i + 1]; sb += rgb[i + 2]; n++; }
+      if (n > 10) { S0 = (sr + sg + sb) / n; cr = sr / (sr + sg + sb); cg = sg / (sr + sg + sb); } }
+    const A = (x, y) => { const X = Math.round(x / k), Y = Math.round(y / k); if (X < 0 || Y < 0 || X >= cw || Y >= ch) return 0; const i = (Y * cw + X) * 4; if (!S0 || d[i + 3] < 128) return d[i + 3];
+      const r = rgb[i], g = rgb[i + 1], b = rgb[i + 2], t = r + g + b + 1; return Math.abs(r / t - cr) < .05 && Math.abs(g / t - cg) < .045 && t > S0 * .3 && t < S0 * 1.8 ? 255 : 0; };
     const lim = half * 1.15, st = Math.max(1, k); let best = null, run = null;
     for (let s = -lim; s <= lim + st; s += st) {
       const on = s <= lim && A(R[0] + nx * s, R[1] + ny * s) >= 128;
@@ -689,7 +696,7 @@ function drawDisplay(g) {
       item._ovalTry = 1; detectOn(item.prev).then(p => { if (p && p.oval) { item.pyr = { ...(item.pyr || { pts: [...p], w: item.w, h: item.h }), oval: p.oval, fore: p.fore }; render(); } }).catch(() => {}); }
     if (geo) { const Rm = m.transformPoint({ x: geo.R[0], y: geo.R[1] }), Cm = m.transformPoint({ x: geo.C[0], y: geo.C[1] }), Am = m.transformPoint({ x: geo.R[0] + geo.axis[0] * 100, y: geo.R[1] + geo.axis[1] * 100 }), sc = Math.hypot(m.a, m.b);
       const al = Math.hypot(Am.x - Rm.x, Am.y - Rm.y) || 1;
-      return { item, side, face, sh, cx, m, m0, k0, nkp: null, geo, neck: Rm.y, cut: Cm.y, ringY: Rm.y, neckX: Rm.x, ringW: geo.neckW * sc * 1.15, axis: [(Am.x - Rm.x) / al, (Am.y - Rm.y) / al], faceH: fh, chinY: chinY + sink, facingRight }; }
+      return { item, side, face, sh, cx, m, m0, k0, nkp: null, geo, neck: Rm.y, cut: Cm.y, ringY: Rm.y, neckX: Rm.x, ringW: geo.neckW * sc * 1.35, neckHalf: geo.neckW * sc / 2, axis: [(Am.x - Rm.x) / al, (Am.y - Rm.y) / al], faceH: fh, chinY: chinY + sink, facingRight }; }
     return { item, side, face, sh, cx, m, m0, k0, nkp, neck: fadeEnd + sink, cut: cut + sink, ringY: nkp ? (cut + fadeEnd) / 2 : cut + fh * .03, neckX: ringX - 18 * rise, ringW, axis, faceH: fh, chinY: chinY + sink, facingRight };
   });
   const ringR = Math.max(90, Math.min(200, Math.max(...L.map(o => o.ringW ? o.ringW * .5 * 1.55 : o.faceH * .34))));   // anel proporcional ao rosto, não ao cabelo
@@ -737,7 +744,7 @@ function drawDisplay(g) {
       const nx = -ax[1], ny = ax[0], sgn = Math.sign(dx * nx + dy * ny) || 1, rr = ringR * .97;
       const C2 = { x: C.x - dx * .05, y: C.y - dy * .05 }, G2 = { x: Gp.x + dx * .1, y: Gp.y + dy * .1 };
       // fundo da faixa = a boca do anel: o pescoço afina do queixo/ângulo da mandíbula até caber no anel
-      const dep = rry + 40, Cb = { x: R.x - sgn * nx * rr + ax[0] * dep, y: R.y - sgn * ny * rr + ax[1] * dep }, Gb = { x: R.x + sgn * nx * rr + ax[0] * dep, y: R.y + sgn * ny * rr + ax[1] * dep };
+      const dep = rry + 40, nh = o.neckHalf || rr, Cb = { x: R.x - sgn * nx * nh + ax[0] * dep, y: R.y - sgn * ny * nh + ax[1] * dep }, Gb = { x: R.x + sgn * nx * nh + ax[0] * dep, y: R.y + sgn * ny * nh + ax[1] * dep };
       mq.setTransform(1, 0, 0, 1, 0, 0); mq.clearRect(0, 0, W, H);
       // pescoço, com a gola em degradê sumindo dentro do anel
       // Caio 09/11 01:50/01:57: transição curta; o pescoço termina logo antes do arco de baixo do anel (corte em U)
@@ -747,7 +754,7 @@ function drawDisplay(g) {
       // Caio 09/11 02:00: a borda do corte acompanha a curva do anel; o degradê curto corre ao longo do próprio arco
       const ck = clipCv(), cq = ck.getContext('2d'); cq.setTransform(1, 0, 0, 1, 0, 0); cq.clearRect(0, 0, W, H); cq.save();
       cq.shadowColor = '#fff'; cq.shadowBlur = fastDraw ? 0 : fd; cq.shadowOffsetX = 4 * W; cq.translate(-4 * W, 0); cq.fillStyle = '#fff'; cq.beginPath();
-      cq.rect(0, -H, W, H + R.y - rry * .75); cq.ellipse(R.x, R.y - rry * .75, rr * .86, rry * .9, 0, 0, Math.PI); cq.fill(); cq.restore();   // Caio 09/11 02:02: mais preto entre o pescoço e o aro (anel um pouco mais baixo)
+      cq.rect(0, -H, W, H + R.y - rry * 1.05); cq.ellipse(R.x, R.y - rry * 1.05, rr * .86, rry * .9, 0, 0, Math.PI); cq.fill(); cq.restore();   // Caio 09/11 02:02: mais preto entre o pescoço e o aro (anel um pouco mais baixo)
       mq.globalCompositeOperation = 'destination-in'; mq.drawImage(ck, 0, 0);
       // cabeça inteira: tudo acima da linha queixo → ângulo da mandíbula (seguindo para trás) e, na frente do queixo, na altura dele.
       // Rosto, bochecha do outro lado, orelha e cabelo ficam; ombro e alça ficam de fora.
@@ -1400,7 +1407,7 @@ cv.addEventListener('pointerdown', e => {
       const now = Date.now();
       if (now - lupaTap < 320) { const l = { ...(opts.neckCut || {}) }; delete l[rh.side]; opts.neckCut = l; lupaTap = 0; render(); return; }   // dois toques no anel: corte automático de novo
       lupaTap = now; const it = items[rh.side][sel[rh.side]], f = it && faceOf(it);
-      let base = opts.neckCut?.[rh.side]; if (base == null && it.pyr && it.pyr.oval) base = .12; if (base == null && f) { const n = neckOf(it); base = n ? (n.cut / it.h - f.chin[1]) / Math.abs(f.chin[1] - f.top[1]) : .16; }
+      let base = opts.neckCut?.[rh.side]; if (base == null && it.pyr && it.pyr.oval) base = .18; if (base == null && f) { const n = neckOf(it); base = n ? (n.cut / it.h - f.chin[1]) / Math.abs(f.chin[1] - f.top[1]) : .16; }
       neckDrag = { side: rh.side, p, base: base ?? .16, fh: rh.fh }; g0 = null; return;
     }
     const r = lupaRects.find(r => r && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h);
