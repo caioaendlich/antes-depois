@@ -516,6 +516,37 @@ function lupaSpot(it, aspect) {
 // Caio 08/11 02:24: cada pessoa tem um pescoço. Segue a pele do pescoço linha a linha (bordas do esternocleidomastóideo)
 // a partir do queixo; para quando ele alarga de repente (começo do trapézio/ombro), afina demais ou vira roupa.
 // Os dois pontos onde parou viram o corte, ligados por um arco que desce pelo centro do pescoço.
+// Caio 09/11 00:28 (fotos reais): o pescoço sai da malha do rosto, não da cor da pele.
+// Faixa entre o queixo e o ângulo da mandíbula do lado da orelha, descendo no eixo do pescoço; a largura real
+// na altura do anel vem do próprio recorte, limitada à faixa (ombro, alça e cabelo de trás ficam de fora).
+function neckGeo(it, man) {
+  const p = it.pyr; if (!p || !p.oval || !p.fore || !p.pts || p.pts.length < 4 || !it.cut) return null;
+  const key = man + '|' + it.cut.width + 'x' + it.cut.height; if (it._geo && it._geo.k === key) return it._geo.v;
+  const P = q => [q.x * it.w, q.y * it.h], jaw0 = p.oval.map(P), C = jaw0[10], F = P(p.fore), noseX = p.pts[2].x * it.w;
+  const gi = Math.abs(jaw0[4][0] - noseX) > Math.abs(jaw0[16][0] - noseX) ? 4 : 16, G = jaw0[gi];
+  const fhi = Math.hypot(C[0] - F[0], C[1] - F[1]) * 1.1;
+  let hx = C[0] - F[0], hy = C[1] - F[1]; const hl = Math.hypot(hx, hy) || 1; hx /= hl; hy /= hl;
+  let ax = hx * .5, ay = hy * .5 + .5; const al = Math.hypot(ax, ay) || 1; ax /= al; ay /= al;
+  const nx = -ay, ny = ax, M = [(C[0] + G[0]) / 2, (C[1] + G[1]) / 2], mm = Math.max(.12, man == null ? .3 : man);
+  const t = Math.max(fhi * .05, (C[1] + mm * fhi - M[1]) / Math.max(.3, ay));
+  let R = [M[0] + ax * t, M[1] + ay * t]; const half = Math.abs((G[0] - C[0]) * nx + (G[1] - C[1]) * ny) / 2 || fhi * .2;
+  let neckW = half * 1.4;
+  try {
+    const cw = Math.min(260, it.w), k = it.w / cw, ch = Math.max(2, Math.round(it.h / k));
+    const c = document.createElement('canvas'); c.width = cw; c.height = ch; const q = c.getContext('2d', { willReadFrequently: true });
+    q.drawImage(it.cut, 0, 0, cw, ch); const d = q.getImageData(0, 0, cw, ch).data;
+    const A = (x, y) => { const X = Math.round(x / k), Y = Math.round(y / k); return X < 0 || Y < 0 || X >= cw || Y >= ch ? 0 : d[(Y * cw + X) * 4 + 3]; };
+    const lim = half * 1.15, st = Math.max(1, k); let best = null, run = null;
+    for (let s = -lim; s <= lim + st; s += st) {
+      const on = s <= lim && A(R[0] + nx * s, R[1] + ny * s) >= 128;
+      if (on) { if (!run) run = [s, s]; else run[1] = s; } else if (run) { if (!best || run[1] - run[0] > best[1] - best[0]) best = run; run = null; }
+    }
+    if (best && best[1] - best[0] > half * .5) { neckW = Math.min(best[1] - best[0], half * 1.6); const off = (best[0] + best[1]) / 2; R = [R[0] + nx * off, R[1] + ny * off]; }
+  } catch (e) {}
+  const Z = [(F[0] + C[0]) / 2, (F[1] + C[1]) / 2], jaw = jaw0.map(q => { const dx = q[0] - Z[0], dy = q[1] - Z[1], l = Math.hypot(dx, dy) || 1; return [q[0] + dx / l * fhi * .025, q[1] + dy / l * fhi * .025]; });
+  const v = { C, G, gi, R, axis: [ax, ay], neckW, half, jaw, fhi };
+  it._geo = { k: key, v }; return v;
+}
 function neckOf(it) {
   if (it._neck && it._neck.c === it.cut) return it._neck.v;
   let v = null; const face = faceOf(it), pts = it.pyr && it.pyr.pts;
@@ -652,6 +683,12 @@ function drawDisplay(g) {
       const dip = Math.hypot(Bp.x - A.x, Bp.y - A.y) * .22; cut = Math.min(A.y, Bp.y); fadeEnd = Math.max(A.y, Bp.y) + dip * uy; ringX = (A.x + Bp.x) / 2 + dip * ux * .5; ringW = Math.hypot(Bp.x - A.x, Bp.y - A.y); axis = [ux, uy]; }
     else if (man != null) { cut = chinY + man * fh; fadeEnd = cut + fh * .1; }
     const sink = 65 * rise;   // na entrada, tudo desce junto com a cabeça
+    const geo = spectral && face ? neckGeo(item, man) : null;
+    if (spectral && face && item.prev && !(item.pyr && item.pyr.oval) && !item._ovalTry) {   // fotos antigas: busca o contorno da mandíbula uma vez
+      item._ovalTry = 1; detectOn(item.prev).then(p => { if (p && p.oval) { item.pyr = { ...(item.pyr || { pts: [...p], w: item.w, h: item.h }), oval: p.oval, fore: p.fore }; render(); } }).catch(() => {}); }
+    if (geo) { const Rm = m.transformPoint({ x: geo.R[0], y: geo.R[1] }), Cm = m.transformPoint({ x: geo.C[0], y: geo.C[1] }), Am = m.transformPoint({ x: geo.R[0] + geo.axis[0] * 100, y: geo.R[1] + geo.axis[1] * 100 }), sc = Math.hypot(m.a, m.b);
+      const al = Math.hypot(Am.x - Rm.x, Am.y - Rm.y) || 1;
+      return { item, side, face, sh, cx, m, m0, k0, nkp: null, geo, neck: Rm.y, cut: Cm.y, ringY: Rm.y, neckX: Rm.x, ringW: geo.neckW * sc, axis: [(Am.x - Rm.x) / al, (Am.y - Rm.y) / al], faceH: fh, chinY: chinY + sink, facingRight }; }
     return { item, side, face, sh, cx, m, m0, k0, nkp, neck: fadeEnd + sink, cut: cut + sink, ringY: nkp ? (cut + fadeEnd) / 2 : cut + fh * .03, neckX: ringX - 18 * rise, ringW, axis, faceH: fh, chinY: chinY + sink, facingRight };
   });
   const ringR = Math.max(90, Math.min(200, Math.max(...L.map(o => o.ringW ? o.ringW * .5 * 1.55 : o.faceH * .34))));   // anel proporcional ao rosto, não ao cabelo
@@ -685,7 +722,7 @@ function drawDisplay(g) {
       mq.closePath(); mq.fill(); mq.restore();
       q.globalCompositeOperation = 'destination-in'; q.drawImage(mk, 0, 0); q.globalCompositeOperation = 'source-over'; }
     // Caio 08/11 02:05: abaixo do rosto fica só o pescoço; ombro, trapézio e clavícula saem (afinando do queixo para baixo).
-    else { const mk = maskCv(), mq = mk.getContext('2d'), fh = o.faceH, y0 = o.chinY - fh * .18, y1 = o.chinY + fh * .03, hw = Math.max(40, fh * .24), wide = fh * .46;
+    else if (!o.geo) { const mk = maskCv(), mq = mk.getContext('2d'), fh = o.faceH, y0 = o.chinY - fh * .18, y1 = o.chinY + fh * .03, hw = Math.max(40, fh * .24), wide = fh * .46;
       mq.setTransform(1, 0, 0, 1, 0, 0); mq.clearRect(0, 0, W, H); mq.save(); mq.shadowColor = '#fff'; mq.shadowBlur = fastDraw ? 0 : 18; mq.shadowOffsetX = 4 * W; mq.fillStyle = '#fff'; mq.translate(-4 * W, 0);
       mq.beginPath(); mq.moveTo(-40, -40); mq.lineTo(W + 40, -40); mq.lineTo(W + 40, y0); mq.lineTo(o.neckX + wide, y0);
       mq.bezierCurveTo(o.neckX + wide * .6, (y0 + y1) / 2, o.neckX + hw, y1 - fh * .04, o.neckX + hw, y1); mq.lineTo(o.neckX + hw, H + 40); mq.lineTo(o.neckX - hw, H + 40); mq.lineTo(o.neckX - hw, y1);
@@ -694,7 +731,31 @@ function drawDisplay(g) {
     // Caio 08/11 02:52: com o anel colado no rosto, o degradê e o corte não podem atravessar o rosto.
     // Máscara única: degradê horizontal só no pescoço, só passa o que está acima do anel ou dentro da boca dele,
     // e o rosto (até logo abaixo do queixo) fica sempre inteiro.
-    if (spectral) { const mk = maskCv(), mq = mk.getContext('2d'), fh = o.faceH, chin = o.chinY;
+    if (o.geo) { const G = o.geo, T = pt => o.m.transformPoint({ x: pt[0], y: pt[1] }), mk = maskCv(), mq = mk.getContext('2d'), ax = o.axis;
+      const R = { x: o.neckX, y: o.ringY }, C = T(G.C), Gp = T(G.G), dx = Gp.x - C.x, dy = Gp.y - C.y, wl = Math.hypot(dx, dy) || 1;
+      const nx = -ax[1], ny = ax[0], sgn = Math.sign(dx * nx + dy * ny) || 1, rr = ringR * .97;
+      const C2 = { x: C.x - dx * .05, y: C.y - dy * .05 }, G2 = { x: Gp.x + dx * .1, y: Gp.y + dy * .1 };
+      // fundo da faixa = a boca do anel: o pescoço afina do queixo/ângulo da mandíbula até caber no anel
+      const dep = rry + 40, Cb = { x: R.x - sgn * nx * rr + ax[0] * dep, y: R.y - sgn * ny * rr + ax[1] * dep }, Gb = { x: R.x + sgn * nx * rr + ax[0] * dep, y: R.y + sgn * ny * rr + ax[1] * dep };
+      mq.setTransform(1, 0, 0, 1, 0, 0); mq.clearRect(0, 0, W, H);
+      // pescoço, com a gola em degradê sumindo dentro do anel
+      const fd = o.faceH * .07, gr = mq.createLinearGradient(R.x - ax[0] * fd, R.y - ax[1] * fd, R.x + ax[0] * rry, R.y + ax[1] * rry);
+      gr.addColorStop(0, '#fff'); gr.addColorStop(1, 'rgba(255,255,255,0)'); mq.fillStyle = gr;
+      mq.beginPath(); mq.moveTo(C2.x, C2.y); mq.lineTo(G2.x, G2.y); mq.lineTo(Gb.x, Gb.y); mq.lineTo(Cb.x, Cb.y); mq.closePath(); mq.fill();
+      // só passa o que está acima do anel ou dentro da boca dele
+      mq.globalCompositeOperation = 'destination-in'; mq.fillStyle = '#fff'; mq.beginPath(); mq.rect(0, 0, W, R.y); mq.ellipse(R.x, R.y, rr, rry, 0, 0, Math.PI); mq.fill();
+      // cabeça inteira: tudo acima da linha queixo → ângulo da mandíbula (seguindo para trás) e, na frente do queixo, na altura dele.
+      // Rosto, bochecha do outro lado, orelha e cabelo ficam; ombro e alça ficam de fora.
+      mq.globalCompositeOperation = 'source-over'; const lo = o.faceH * .03, big = 4 * W, ux = dx / wl, uy = dy / wl;
+      const Cl = { x: C.x, y: C.y + lo }, Gl = { x: Gp.x, y: Gp.y + lo }, front = { x: C.x - Math.sign(ux || 1) * big, y: C.y - big * .6 }, back = { x: Gl.x + ux * big, y: Gl.y + uy * big };
+      mq.save(); mq.shadowColor = '#fff'; mq.shadowBlur = fastDraw ? 0 : 10; mq.shadowOffsetX = 4 * W; mq.translate(-4 * W, 0); mq.fillStyle = '#fff'; mq.beginPath();
+      mq.moveTo(front.x, front.y); mq.lineTo(C.x, C.y + lo * .3); mq.lineTo(Cl.x, Cl.y); mq.lineTo(Gl.x, Gl.y); mq.lineTo(back.x, back.y); mq.lineTo(back.x, -big); mq.lineTo(front.x, -big); mq.closePath(); mq.fill(); mq.restore();
+      // nuca: curva suave entre a linha de trás da cabeça e a borda do pescoço, sem degrau
+      const f = o.faceH * .1, edx = Gb.x - G2.x, edy = Gb.y - G2.y, el = Math.hypot(edx, edy) || 1;
+      mq.save(); mq.shadowColor = '#fff'; mq.shadowBlur = fastDraw ? 0 : 6; mq.shadowOffsetX = 4 * W; mq.translate(-4 * W, 0); mq.beginPath();
+      mq.moveTo(Gl.x + ux * f, Gl.y + uy * f); mq.quadraticCurveTo(G2.x, G2.y + lo, G2.x + edx / el * f, G2.y + edy / el * f); mq.lineTo(G2.x - ux * f * .5, G2.y); mq.closePath(); mq.fill(); mq.restore();
+      q.globalCompositeOperation = 'destination-in'; q.drawImage(mk, 0, 0); q.globalCompositeOperation = 'source-over'; }
+    else if (spectral) { const mk = maskCv(), mq = mk.getContext('2d'), fh = o.faceH, chin = o.chinY;
       const g1 = o.ringY + rry, g0 = Math.min(Math.max(o.ringY - fh * .05, chin + fh * .04), g1 - 4);
       mq.setTransform(1, 0, 0, 1, 0, 0); mq.clearRect(0, 0, W, H);
       const vg = mq.createLinearGradient(0, g0, 0, g1); vg.addColorStop(0, '#fff'); vg.addColorStop(1, 'rgba(255,255,255,0)');
@@ -861,7 +922,7 @@ async function addFiles(side, files) {
   sel[side] = startLen; markSel(side); scrollToSel(side, false);
   render(); pump();
   const fresh = items[side].slice(startLen);
-  (async () => { for (const it of fresh) { await new Promise(r => setTimeout(r, 0)); if (it.pyr !== undefined) continue; try { const p = await detectOn(it.prev); if (it.pyr === undefined) it.pyr = p ? { pts: [...p], w: it.w, h: it.h } : null; } catch (e) { it.pyr = null; } render(); } })();
+  (async () => { for (const it of fresh) { await new Promise(r => setTimeout(r, 0)); if (it.pyr !== undefined) continue; try { const p = await detectOn(it.prev); if (it.pyr === undefined) it.pyr = p ? { pts: [...p], oval: p.oval, fore: p.fore, w: it.w, h: it.h } : null; } catch (e) { it.pyr = null; } render(); } })();
 }
 
 // ---------- recorte ----------
@@ -1334,7 +1395,7 @@ cv.addEventListener('pointerdown', e => {
       const now = Date.now();
       if (now - lupaTap < 320) { const l = { ...(opts.neckCut || {}) }; delete l[rh.side]; opts.neckCut = l; lupaTap = 0; render(); return; }   // dois toques no anel: corte automático de novo
       lupaTap = now; const it = items[rh.side][sel[rh.side]], f = it && faceOf(it);
-      let base = opts.neckCut?.[rh.side]; if (base == null && f) { const n = neckOf(it); base = n ? (n.cut / it.h - f.chin[1]) / Math.abs(f.chin[1] - f.top[1]) : .16; }
+      let base = opts.neckCut?.[rh.side]; if (base == null && it.pyr && it.pyr.oval) base = .3; if (base == null && f) { const n = neckOf(it); base = n ? (n.cut / it.h - f.chin[1]) / Math.abs(f.chin[1] - f.top[1]) : .16; }
       neckDrag = { side: rh.side, p, base: base ?? .16, fh: rh.fh }; g0 = null; return;
     }
     const r = lupaRects.find(r => r && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h);
@@ -1566,7 +1627,7 @@ function loadFM() {
       try {
         fm = new FaceMesh({ locateFile: f => 'fm/' + f });
         fm.setOptions({ maxNumFaces: 1, refineLandmarks: false, minDetectionConfidence: 0.35, minTrackingConfidence: 0.2, selfieMode: false });
-        fm.onResults(r => { const lm = r.multiFaceLandmarks && r.multiFaceLandmarks[0]; const W = r.image && r.image.width || 1, H = r.image && r.image.height || 1; const p = lm ? pyrFromLm(lm, W, H) : null; if (fmCb) { const cb = fmCb; fmCb = null; cb(p); } });
+        fm.onResults(r => { const lm = r.multiFaceLandmarks && r.multiFaceLandmarks[0]; const W = r.image && r.image.width || 1, H = r.image && r.image.height || 1; const p = lm ? pyrFromLm(lm, W, H) : null; if (p) { p.oval = JAW_LM.map(i => ({ x: lm[i].x, y: lm[i].y })); p.fore = { x: lm[10].x, y: lm[10].y }; } if (fmCb) { const cb = fmCb; fmCb = null; cb(p); } });
         await fm.initialize(); res(fm);
       } catch (e) { rej(e); }
     };
@@ -1577,6 +1638,7 @@ function loadFM() {
   return fmLoad;
 }
 const NOSE = [1, 4, 5, 19, 195];
+const JAW_LM = [454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234];   // contorno de baixo do rosto, de orelha a orelha (152 = queixo)
 let tmpl = null, tmplDirty = false, tmplSaveT = 0;
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const crs = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
@@ -1690,7 +1752,7 @@ async function camTargetPyr() {
   else if (camMode === 'D') { const a = camA()[curA]; if (!a) return; holder = a; img = a.prev; }
   else return;
   if (!holder.pyr || holder.pyrVersion !== 2) {
-    try { const el = typeof img === 'string' ? await loadImg(img) : img; const p = await detectOn(el); holder.pyr = p ? { pts: [...p], w: holder.w, h: holder.h, hid: p.hid } : null; holder.pyrVersion = p ? 2 : 0; if (holder.pid) DB.put('shots', holder).catch(() => {}); }
+    try { const el = typeof img === 'string' ? await loadImg(img) : img; const p = await detectOn(el); holder.pyr = p ? { pts: [...p], oval: p.oval, fore: p.fore, w: holder.w, h: holder.h, hid: p.hid } : null; holder.pyrVersion = p ? 2 : 0; if (holder.pid) DB.put('shots', holder).catch(() => {}); }
     catch (e) { holder.pyr = null; }
   }
   if (tok === tgtTok) { target = holder.pyr; camDraw(); }
@@ -1988,7 +2050,7 @@ async function runDet() {
     if (r.pyr) continue;
     try {
       const im = await loadImg(r.prev), p = await detectOn(im);
-      r.pyr = p ? { pts: [...p], w: r.w, h: r.h, hid: p.hid } : null; r.yaw = p ? p.yaw : null;
+      r.pyr = p ? { pts: [...p], oval: p.oval, fore: p.fore, w: r.w, h: r.h, hid: p.hid } : null; r.yaw = p ? p.yaw : null;
       if (!r.poseManual && (r.kind === 'A' || !r.pose || r.pose === '—')) r.pose = poseOf(r.yaw);
       if (Pj && Pj.shots.includes(r)) DB.put('shots', r).catch(() => {});
       if (picking) {
