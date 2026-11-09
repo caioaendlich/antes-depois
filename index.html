@@ -527,7 +527,7 @@ function neckGeo(it, man) {
   const fhi = Math.hypot(C[0] - F[0], C[1] - F[1]) * 1.1;
   let hx = C[0] - F[0], hy = C[1] - F[1]; const hl = Math.hypot(hx, hy) || 1; hx /= hl; hy /= hl;
   let ax = hx * .5, ay = hy * .5 + .5; const al = Math.hypot(ax, ay) || 1; ax /= al; ay /= al;
-  const nx = -ay, ny = ax, M = [(C[0] + G[0]) / 2, (C[1] + G[1]) / 2], mm = Math.max(.12, man == null ? .3 : man);
+  const nx = -ay, ny = ax, M = [(C[0] + G[0]) / 2, (C[1] + G[1]) / 2], mm = Math.max(.12, man == null ? .12 : man);
   const t = Math.max(fhi * .05, (C[1] + mm * fhi - M[1]) / Math.max(.3, ay));
   let R = [M[0] + ax * t, M[1] + ay * t]; const half = Math.abs((G[0] - C[0]) * nx + (G[1] - C[1]) * ny) / 2 || fhi * .2;
   let neckW = half * 1.4;
@@ -739,11 +739,12 @@ function drawDisplay(g) {
       const dep = rry + 40, Cb = { x: R.x - sgn * nx * rr + ax[0] * dep, y: R.y - sgn * ny * rr + ax[1] * dep }, Gb = { x: R.x + sgn * nx * rr + ax[0] * dep, y: R.y + sgn * ny * rr + ax[1] * dep };
       mq.setTransform(1, 0, 0, 1, 0, 0); mq.clearRect(0, 0, W, H);
       // pescoço, com a gola em degradê sumindo dentro do anel
-      const fd = o.faceH * .07, gr = mq.createLinearGradient(R.x - ax[0] * fd, R.y - ax[1] * fd, R.x + ax[0] * rry, R.y + ax[1] * rry);
+      // Caio 09/11 01:50: transição curta, e o corte é o arco de cima do anel (elipse com o centro para cima)
+      const fd = o.faceH * .035, gr = mq.createLinearGradient(R.x - ax[0] * (rry + fd), R.y - ax[1] * (rry + fd), R.x - ax[0] * rry * .35, R.y - ax[1] * rry * .35);
       gr.addColorStop(0, '#fff'); gr.addColorStop(1, 'rgba(255,255,255,0)'); mq.fillStyle = gr;
       mq.beginPath(); mq.moveTo(C2.x, C2.y); mq.lineTo(G2.x, G2.y); mq.lineTo(Gb.x, Gb.y); mq.lineTo(Cb.x, Cb.y); mq.closePath(); mq.fill();
       // só passa o que está acima do anel ou dentro da boca dele
-      mq.globalCompositeOperation = 'destination-in'; mq.fillStyle = '#fff'; mq.beginPath(); mq.rect(0, 0, W, R.y); mq.ellipse(R.x, R.y, rr, rry, 0, 0, Math.PI); mq.fill();
+      mq.globalCompositeOperation = 'destination-out'; mq.fillStyle = '#fff'; mq.beginPath(); mq.ellipse(R.x, R.y, rr, rry, 0, 0, 2 * Math.PI); mq.fill(); mq.fillRect(0, R.y, W, H);
       // cabeça inteira: tudo acima da linha queixo → ângulo da mandíbula (seguindo para trás) e, na frente do queixo, na altura dele.
       // Rosto, bochecha do outro lado, orelha e cabelo ficam; ombro e alça ficam de fora.
       mq.globalCompositeOperation = 'source-over'; const lo = o.faceH * .03, big = 4 * W, ux = dx / wl, uy = dy / wl;
@@ -1395,7 +1396,7 @@ cv.addEventListener('pointerdown', e => {
       const now = Date.now();
       if (now - lupaTap < 320) { const l = { ...(opts.neckCut || {}) }; delete l[rh.side]; opts.neckCut = l; lupaTap = 0; render(); return; }   // dois toques no anel: corte automático de novo
       lupaTap = now; const it = items[rh.side][sel[rh.side]], f = it && faceOf(it);
-      let base = opts.neckCut?.[rh.side]; if (base == null && it.pyr && it.pyr.oval) base = .3; if (base == null && f) { const n = neckOf(it); base = n ? (n.cut / it.h - f.chin[1]) / Math.abs(f.chin[1] - f.top[1]) : .16; }
+      let base = opts.neckCut?.[rh.side]; if (base == null && it.pyr && it.pyr.oval) base = .12; if (base == null && f) { const n = neckOf(it); base = n ? (n.cut / it.h - f.chin[1]) / Math.abs(f.chin[1] - f.top[1]) : .16; }
       neckDrag = { side: rh.side, p, base: base ?? .16, fh: rh.fh }; g0 = null; return;
     }
     const r = lupaRects.find(r => r && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h);
