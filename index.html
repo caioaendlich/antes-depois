@@ -605,6 +605,7 @@ function shapeOf(it) {
   const fx = face ? face.chin[0] * w0 : best.x;
   return it._shape = { c: it.cut, top: Math.max(0, top) * k, neckY: Math.max(chin + d * .1, Math.min(best.y, chin + d * .22)) * k, neckX: (best.x * .4 + fx * .6) * k, neckW: Math.max(best.w, w0 * .08) * k, faceH: d * k };
 }
+let clipCanvasCache = null; const clipCv = () => { if (!clipCanvasCache) { clipCanvasCache = document.createElement('canvas'); clipCanvasCache.width = W; clipCanvasCache.height = H; } return clipCanvasCache; };
 let maskCanvasCache = null; const maskCv = () => { if (!maskCanvasCache) { maskCanvasCache = document.createElement('canvas'); maskCanvasCache.width = W; maskCanvasCache.height = H; } return maskCanvasCache; };
 const layerCv = [], layerOf = i => { if (!layerCv[i]) { layerCv[i] = document.createElement('canvas'); layerCv[i].width = W; layerCv[i].height = H; } return layerCv[i]; };
 function drawPortal(g, x, y, r, tone, half) {
@@ -740,11 +741,14 @@ function drawDisplay(g) {
       mq.setTransform(1, 0, 0, 1, 0, 0); mq.clearRect(0, 0, W, H);
       // pescoço, com a gola em degradê sumindo dentro do anel
       // Caio 09/11 01:50/01:57: transição curta; o pescoço termina logo antes do arco de baixo do anel (corte em U)
-      const fd = o.faceH * .035, gr = mq.createLinearGradient(R.x + ax[0] * (rry * .9 - fd), R.y + ax[1] * (rry * .9 - fd), R.x + ax[0] * rry * .9, R.y + ax[1] * rry * .9);
-      gr.addColorStop(0, '#fff'); gr.addColorStop(1, 'rgba(255,255,255,0)'); mq.fillStyle = gr;
+      const fd = o.faceH * .035; mq.fillStyle = '#fff';
       mq.beginPath(); mq.moveTo(C2.x, C2.y); mq.lineTo(G2.x, G2.y); mq.lineTo(Gb.x, Gb.y); mq.lineTo(Cb.x, Cb.y); mq.closePath(); mq.fill();
       // só passa o que está acima do anel ou dentro da boca dele
-      mq.globalCompositeOperation = 'destination-in'; mq.fillStyle = '#fff'; mq.beginPath(); mq.rect(0, 0, W, R.y); mq.ellipse(R.x, R.y, rr * .94, rry * .9, 0, 0, Math.PI); mq.fill();
+      // Caio 09/11 02:00: a borda do corte acompanha a curva do anel; o degradê curto corre ao longo do próprio arco
+      const ck = clipCv(), cq = ck.getContext('2d'); cq.setTransform(1, 0, 0, 1, 0, 0); cq.clearRect(0, 0, W, H); cq.save();
+      cq.shadowColor = '#fff'; cq.shadowBlur = fastDraw ? 0 : fd; cq.shadowOffsetX = 4 * W; cq.translate(-4 * W, 0); cq.fillStyle = '#fff'; cq.beginPath();
+      cq.rect(0, -H, W, H + R.y - rry * .2); cq.ellipse(R.x, R.y - rry * .2, rr * .92, rry * .95, 0, 0, Math.PI); cq.fill(); cq.restore();
+      mq.globalCompositeOperation = 'destination-in'; mq.drawImage(ck, 0, 0);
       // cabeça inteira: tudo acima da linha queixo → ângulo da mandíbula (seguindo para trás) e, na frente do queixo, na altura dele.
       // Rosto, bochecha do outro lado, orelha e cabelo ficam; ombro e alça ficam de fora.
       mq.globalCompositeOperation = 'source-over'; const lo = o.faceH * .03, big = 4 * W, ux = dx / wl, uy = dy / wl;
