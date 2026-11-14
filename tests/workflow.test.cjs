@@ -30,7 +30,7 @@ test('failed routing restores assignments and allows another attempt',async()=>{
 test('angle selection ignores old automatic drafts and preserves deliberate selections',async()=>{
   for(const manual of [false,true]) {
     const comp={angle:'Frente',drafts:{'45° direita':{selA:'wrong',manual}},angles:[]};
-    const {ctx}=context({curComp:comp,rememberDraft(){},linked:false,cloneValue:v=>v,saveComp:async()=>{},openPick(){}});
+    const {ctx}=context({curComp:comp,rememberDraft(){},linked:false,cloneValue:v=>v,withAutoBase:t=>t,saveComp:async()=>{},openPick(){}});
     const start=source.indexOf('async function selectAngle(');
     vm.runInContext(source.slice(start,source.indexOf("$('workflow').querySelectorAll",start)),ctx);
     await ctx.selectAngle('45° direita');

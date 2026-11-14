@@ -675,6 +675,13 @@ function drawPortal(g, x, y, r, tone, half) {
   }
   g.restore();
 }
+// Caio 14/11 03:39: a posição automática (aproximar as duas cabeças, olhos a 912 px) vale só para a montagem clássica.
+// Espectral, Galeria e Detalhe têm o próprio lugar de cada cabeça e usam só o ajuste que a pessoa fez por cima dela (b = base automática).
+function displayTf(T) { const b = T && T.b; return b ? { s: T.s / (b.s || 1), dx: T.dx - b.dx, dy: T.dy - b.dy, r: T.r } : T; }
+function withAutoBase(t, auto) {
+  if (t && auto) for (const k of ['A', 'D']) if (t[k] && !t[k].b) t[k].b = { s: t[k].s, dx: t[k].dx, dy: t[k].dy };
+  return t;
+}
 function drawDisplay(g) {
   const t = animT, rise = (1 - Math.min(1, t / .72)) ** 2, show = Math.min(1, t / .3), lupa = Math.max(0, (t - .72) / .28);
   const S = [items.A[sel.A], items.D[sel.D]]; if (!S.every(it => it && it.cut && it.src)) return false;
@@ -691,7 +698,7 @@ function drawDisplay(g) {
   }
   // geometria de cada lado
   const L = S.map((item, i) => {
-    const side = i ? 'D' : 'A', P = place(item), T = tf[side], face = faceOf(item), sh = shapeOf(item);
+    const side = i ? 'D' : 'A', P = place(item), T = displayTf(tf[side]), face = faceOf(item), sh = shapeOf(item);
     const cx = gallery ? (i ? 716 : 355) : (i ? 793 : 287), eyeY = gallery ? (i ? 1070 : 465) : (spectral ? 585 : 415);
     let targetY = eyeY + (P.oy - 825) * .8; const k0 = P.k0 * T.s * (gallery ? 1.22 : spectral ? .99 : .86);
     const at = ty => new DOMMatrix().translate(cx + T.dx, ty + T.dy).rotate(T.r + P.r0).scale(k0).translate(-P.ax, -P.ay);
@@ -2828,7 +2835,7 @@ async function autoCompare(zoom = 1) {
       } catch (e) { console.error(e); failed.push(angle); continue; }
       const ga = sideGeom(a, 'A'), gd = sideGeom(d, 'D'), lay = ga && gd ? PairMatch.autoLayout(ga, gd) : null;
       c.angle = angle; c.selA = a.id; c.selD = d.id;
-      c.tf = lay ? { A: lay.A, D: lay.D, front: lay.front } : { A: T0(), D: T0(), front: defaultFront(a) };
+      c.tf = lay ? withAutoBase({ A: lay.A, D: lay.D, front: lay.front }, true) : { A: T0(), D: T0(), front: defaultFront(a) };
       c.edit = { opts: { ...look, layout: 'classico' }, backgroundRemoved: true };
       closePick(); openEditor(a, d);
       const IA = items.A[sel.A], ID = items.D[sel.D]; if (!IA || !ID) { failed.push(angle); continue; }
@@ -2935,7 +2942,7 @@ function renderFolder() {
   add.onclick = () => {
     c.angle = ['Frente', ...ANGLES].find(name => !angles.some(a => a.name === name)) || 'Frente';
     const draft = c.drafts?.[c.angle];
-    c.selA = draft?.selA || null; c.selD = draft?.selD || null; c.tf = cloneValue(draft?.tf); c.edit = cloneValue(draft?.edit);
+    c.selA = draft?.selA || null; c.selD = draft?.selD || null; c.tf = withAutoBase(cloneValue(draft?.tf), draft?.auto); c.edit = cloneValue(draft?.edit);
     openPick(c);
   };
   const tile = document.createElement('div'); tile.className = 'angleTile'; tile.append(add); box.append(tile);
@@ -2947,7 +2954,7 @@ function editSavedAngle(c, a) {
       ['Salvar na galeria', () => deliverImages([angleFile(c, a)])], ['Fechar', closeOut]]);
     return;
   }
-  curComp = c; c.angle = a.name; c.selA = a.selA; c.selD = a.selD; c.tf = cloneValue(a.tf); c.edit = cloneValue(a.edit);
+  curComp = c; c.angle = a.name; c.selA = a.selA; c.selD = a.selD; c.tf = withAutoBase(cloneValue(a.tf), a.auto); c.edit = cloneValue(a.edit);
   closePick(); openEditor(before, after);
 }
 $('folderSelect').onclick = () => openExplorer('angles', curComp);
@@ -2986,7 +2993,7 @@ async function generateModes(c, layouts, look) {
       const output = makeFile();
       const data = await new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = () => reject(r.error); r.readAsDataURL(output.blob); });
       const edit = cloneValue(a.edit) || {}; edit.opts = { ...(edit.opts || {}), layout: ly, look };
-      made.push({ id: newId('angle'), name, t: Date.now(), selA: a.selA, selD: a.selD, tf: cloneValue(a.tf), edit, out: data });
+      made.push({ id: newId('angle'), name, t: Date.now(), selA: a.selA, selD: a.selD, tf: withAutoBase(cloneValue(a.tf), a.auto), edit, out: data });
       await new Promise(r => setTimeout(r, 0));
     }
     Object.assign(opts, keep); A._shape = D._shape = null; release(A); release(D);
@@ -3045,7 +3052,7 @@ async function selectAngle(name) {
   curComp.selectionTouched = !!draft;
   // Clear the editor before loading the next angle so savePair cannot overwrite it.
   if (linked) { clearItems(); linked = false; }
-  curComp.selA = draft ? draft.selA : null; curComp.selD = draft ? draft.selD : null; curComp.tf = draft ? cloneValue(draft.tf) : null;
+  curComp.selA = draft ? draft.selA : null; curComp.selD = draft ? draft.selD : null; curComp.tf = draft ? withAutoBase(cloneValue(draft.tf), draft.auto) : null;
   curComp.edit = cloneValue(draft?.edit);
   await saveComp(); openPick(curComp);
 }
