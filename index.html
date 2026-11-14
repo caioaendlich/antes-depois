@@ -574,16 +574,60 @@ function neckGeo(it, man) {
       const poly = [TF, TB, BB, BF].map(q => [q[0] / k, q[1] / k]);
       const out = q.createImageData(cw, ch), od = out.data, back = Math.sign(G[0] - C[0]) || 1, fw = Math.max(2, fhi * .1 / k);   // lado da nuca some suave, sem degrau
       const y0 = Math.max(0, Math.floor(Math.min(...poly.map(q => q[1])))), y1 = Math.min(ch - 1, Math.ceil(Math.max(...poly.map(q => q[1]))));
-      for (let Y = y0; Y <= y1; Y++) {
-        const xs = []; for (let e = 0; e < 4; e++) { const a = poly[e], b = poly[(e + 1) % 4]; if ((a[1] <= Y && b[1] > Y) || (b[1] <= Y && a[1] > Y)) xs.push(a[0] + (Y - a[1]) / (b[1] - a[1]) * (b[0] - a[0])); }
-        if (xs.length < 2) continue; const xa = Math.max(0, Math.floor(Math.min(...xs))), xb = Math.min(cw - 1, Math.ceil(Math.max(...xs)));
-        let f = -1, l = -1; for (let X = xa; X <= xb; X++) if (isSkin(X, Y)) { if (f < 0) f = X; l = X; }
-        if (f < 0) continue; for (let X = f; X <= l; X++) { const i = (Y * cw + X) * 4, db = back > 0 ? xb - X : X - xa, fa = Math.min(1, Math.max(0, db / fw)); od[i] = od[i + 1] = od[i + 2] = 255; od[i + 3] = al[i + 3] * fa; }
+      // Caio 14/11 11:37 (4ª vez): o pescoço vinha só da cor de pele, linha por linha; barba não é cor de pele, então as linhas
+      // da barba sumiam e sobravam blocos soltos. Agora cada linha usa o contorno do recorte em volta do eixo do pescoço
+      // (barba e pescoço entram), com a largura limitada (da mandíbula, em cima, até o pescoço, embaixo); a pele só decide
+      // quando o contorno abre para ombro ou camiseta. As bordas são suavizadas de uma linha para a outra.
+      // Caio 14/11 11:37: o pescoço é a parte mais estreita do contorno do recorte logo abaixo do rosto/barba (sem depender
+      // de cor de pele, que some na barba). Da mandíbula até ali vale o contorno inteiro; dali para baixo, uma coluna com a
+      // largura e o centro desse ponto mais estreito, até o anel.
+      const yJ = Math.min(jaw0[4][1], jaw0[16][1]), yTop = yJ / k, wTop = Math.abs(jaw0[4][0] - jaw0[16][0]) * 1.12 / k;
+      const A = (X, Y) => al[(Y * cw + X) * 4 + 3];
+      const rows = new Array(ch).fill(null), bounds = new Array(ch).fill(null), exr = new Array(ch).fill(null), wd = new Array(ch).fill(null), ctr = new Array(ch).fill(null);
+      let cx = Math.round(C[0] / k);
+      const Y0 = Math.max(0, Math.floor(yTop)), Yend = Math.min(ch - 1, Math.ceil(y1));
+      for (let Y = Y0; Y <= Yend; Y++) {
+        cx = Math.max(0, Math.min(cw - 1, cx)); let c0 = cx;
+        if (A(c0, Y) < 128) { let found = -1; for (let r = 1; r < wTop; r++) { if (c0 + r < cw && A(c0 + r, Y) >= 128) { found = c0 + r; break; } if (c0 - r >= 0 && A(c0 - r, Y) >= 128) { found = c0 - r; break; } } if (found < 0) continue; c0 = found; }
+        let sl = c0, sr = c0; while (sl - 1 >= 0 && A(sl - 1, Y) >= 128) sl--; while (sr + 1 < cw && A(sr + 1, Y) >= 128) sr++;
+        bounds[Y] = [sl, sr];
+        // com pele suficiente na linha, vale a pele (cabelo solto ao lado do pescoço não entra); sem pele (barba), o contorno
+        let f = -1, g = -1; for (let X = sl; X <= sr; X++) if (isSkin(X, Y)) { if (f < 0) f = X; g = X; }
+        const ex = f >= 0 && g - f >= (sr - sl) * .25 ? [f, g] : [sl, sr]; exr[Y] = ex; wd[Y] = ex[1] - ex[0]; ctr[Y] = (ex[0] + ex[1]) / 2;
+        if (sr - sl <= wTop) cx = Math.round((sl + sr) / 2);   // o centro acompanha o contorno enquanto ele é rosto/pescoço
+      }
+      // ponto mais estreito: do queixo para baixo, até o contorno voltar a abrir (gola, ombro)
+      let yN = -1, wN = Infinity; const yChin = Math.max(Y0, Math.round(C[1] / k));
+      for (let Y = yChin; Y <= Yend; Y++) { if (wd[Y] == null) continue; if (wd[Y] < wN) { wN = wd[Y]; yN = Y; } else if (wd[Y] > wN * 1.35 && Y - yN > 3) break; }
+      if (yN < 0) { yN = yChin; wN = neckW / k; }
+      wN = Math.max(wN, neckW * .6 / k); const nC = ctr[yN] != null ? ctr[yN] : C[0] / k;
+      for (let Y = Y0; Y <= Yend; Y++) {
+        const b = bounds[Y]; if (!b) continue;
+        if (Y < yChin) { const L = wTop, m = (b[0] + b[1]) / 2; rows[Y] = b[1] - b[0] <= L ? [b[0], b[1]] : [Math.max(b[0], m - L / 2), Math.min(b[1], m + L / 2)]; }   // rosto e barba: o contorno
+        else if (Y <= yN) rows[Y] = exr[Y];
+        else { const t = Math.min(1, (Y - yN) / Math.max(2, fhi * .06 / k)), hw = wN / 2 * (1 - .18 * t); rows[Y] = [Math.max(b[0], nC - hw), Math.min(b[1], nC + hw)]; }   // abaixo do ponto estreito afina um pouco: a gola não aparece nas laterais
+      }
+      // o anel acompanha esse pescoço
+      R = [nC * k, Math.max(R[1], (yN + 2) * k)]; neckW = wN * k;
+      const golaH = Math.max(3, fhi * .14 / k), gola = Y => Y <= yN ? 1 : Math.max(0, 1 - (Y - yN) / golaH);   // gola em degradê: some rápido abaixo do ponto mais estreito
+      const turned = Math.abs(noseX - (p.pts[0].x + p.pts[1].x) / 2 * it.w) > fhi * .08;   // nuca suave só quando o rosto está virado
+      // linhas sem nada no meio: interpola entre as vizinhas; depois mediana e média para tirar degraus
+      const idx = []; for (let Y = 0; Y < ch; Y++) if (rows[Y]) idx.push(Y);
+      for (let n = 1; n < idx.length; n++) { const a = idx[n - 1], b = idx[n]; for (let Y = a + 1; Y < b; Y++) { const t = (Y - a) / (b - a); rows[Y] = [rows[a][0] + (rows[b][0] - rows[a][0]) * t, rows[a][1] + (rows[b][1] - rows[a][1]) * t]; } }
+      const win = Math.max(2, Math.round(fhi * .025 / k)), smooth = (sel, med) => { const v = rows.map(r => r && r[sel]), o = v.slice();
+        for (let Y = 0; Y < ch; Y++) { if (v[Y] == null) continue; const w = []; for (let d = -win; d <= win; d++) if (v[Y + d] != null) w.push(v[Y + d]);
+          if (med) { w.sort((a, b) => a - b); o[Y] = w[w.length >> 1]; } else o[Y] = w.reduce((a, b) => a + b, 0) / w.length; } return o; };
+      for (const med of [true, false]) { const F = smooth(0, med), Lr = smooth(1, med); for (let Y = 0; Y < ch; Y++) if (rows[Y]) rows[Y] = [F[Y], Lr[Y]]; }
+      for (let Y = 0; Y < ch; Y++) {
+        const r = rows[Y], bd = bounds[Y]; if (!r || !bd) continue; const [xa, xb] = bd, f = Math.max(0, Math.floor(r[0])), l = Math.min(cw - 1, Math.ceil(r[1]));
+        for (let X = f; X <= l; X++) { const i = (Y * cw + X) * 4, db = back > 0 ? r[1] - X : X - r[0], fa = (turned ? Math.min(1, Math.max(0, db / fw)) : 1) * gola(Y), ed = Math.min(1, X - r[0] + .5, r[1] - X + .5);
+          od[i] = od[i + 1] = od[i + 2] = 255; od[i + 3] = al[i + 3] * fa * Math.max(0, ed); }
       }
       q.clearRect(0, 0, cw, ch); q.putImageData(out, 0, 0); skin = c;
     } } } catch (e) { skin = null; }
   const Z = [(F[0] + C[0]) / 2, (F[1] + C[1]) / 2], jaw = jaw0.map(q => { const dx = q[0] - Z[0], dy = q[1] - Z[1], l = Math.hypot(dx, dy) || 1; return [q[0] + dx / l * fhi * .025, q[1] + dy / l * fhi * .025]; });
-  const v = { C, G, gi, R, axis: [ax, ay], neckW, half, jaw, fhi, skin, sk };
+  const yCut = Math.min(jaw0[4][1], jaw0[16][1]);
+  const v = { C, G, gi, R, axis: [ax, ay], neckW, half, jaw, fhi, skin, sk, cutC: [C[0], Math.min(C[1], yCut)], cutG: [G[0], Math.min(G[1], yCut)] };
   it._geo = { k: key, v }; return v;
 }
 function neckOf(it) {
@@ -602,15 +646,21 @@ function neckOf(it) {
       const R = sr / n, G = sg / n, B = sb / n, S = R + G + B, cr = R / S, cg = G / S;
       const skin = (x, y) => { if (x < 0 || x >= w0 || y < 0 || y >= h0) return false; const i = (y * w0 + x) * 4; if (al[i + 3] < 128) return false; const r = rgb[i], g = rgb[i + 1], b = rgb[i + 2], t = r + g + b + 1; return Math.abs(r / t - cr) < .05 && Math.abs(g / t - cg) < .04 && t > S * .3 && t < S * 1.7; };
       const dir = Math.sign(ex - nose[0]) || 0; let cx = chin[0] + dir * fh * .12; const rows = [];
+      // Caio 14/11 11:37: barba não é cor de pele; antes a linha da barba parava o pescoço e o corte saía em blocos.
+      const inside = (x, y) => x >= 0 && x < w0 && y >= 0 && y < h0 && al[(y * w0 + x) * 4 + 3] >= 128;
       for (let y = Math.round(chin[1] + fh * .02); y < Math.min(h0 - 1, chin[1] + fh * 1.3); y++) {
         let x = Math.round(cx);
-        if (!skin(x, y)) { let f = -1; for (let r = 1; r < fh * .2; r++) { if (skin(x + r, y)) { f = x + r; break; } if (skin(x - r, y)) { f = x - r; break; } } if (f < 0) break; x = f; }
-        let l = x, r = x; while (skin(l - 1, y) || skin(l - 2, y) || skin(l - 3, y)) l -= skin(l - 1, y) ? 1 : skin(l - 2, y) ? 2 : 3;
-        while (skin(r + 1, y) || skin(r + 2, y) || skin(r + 3, y)) r += skin(r + 1, y) ? 1 : skin(r + 2, y) ? 2 : 3;
+        if (!inside(x, y)) { let f = -1; for (let r = 1; r < fh * .2; r++) { if (inside(x + r, y)) { f = x + r; break; } if (inside(x - r, y)) { f = x - r; break; } } if (f < 0) break; x = f; }
+        let sl = x, sr = x; while (inside(sl - 1, y)) sl--; while (inside(sr + 1, y)) sr++;
+        let f = -1, g = -1; for (let X = sl; X <= sr; X++) if (skin(X, y)) { if (f < 0) f = X; g = X; }
+        const useSkin = f >= 0 && g - f >= (sr - sl) * .25;
+        const l = useSkin ? f : sl, r = useSkin ? g : sr;
         rows.push([y, l, r]); cx = (l + r) / 2;
       }
       if (rows.length > fh * .12) {
         const win = rows.filter(r => r[0] < chin[1] + fh * .5); let mi = 0; win.forEach((r, i) => { if (r[2] - r[1] < win[mi][2] - win[mi][1]) mi = i; });
+        // do queixo até o ponto mais estreito o contorno só afina: gola e ombro não abrem abas dos lados
+        for (let i = 1; i <= mi; i++) { const pw = rows[i - 1][2] - rows[i - 1][1], w = rows[i][2] - rows[i][1]; if (w > pw) { const m = (rows[i][1] + rows[i][2]) / 2; rows[i] = [rows[i][0], m - pw / 2, m + pw / 2]; } }
         const wmin = Math.max(3, rows[mi][2] - rows[mi][1]); let end = mi;
         // Caio 08/11 02:41: no antes a pele do colo continuava e o corte descia até o peito; no depois as bordas pulavam.
         // Agora o pescoço tem limite de comprimento (até 0,4 rosto abaixo do queixo), só pode alargar 20% e as bordas
@@ -730,7 +780,7 @@ function drawDisplay(g) {
       const dip = Math.hypot(Bp.x - A.x, Bp.y - A.y) * .22; cut = Math.min(A.y, Bp.y); fadeEnd = Math.max(A.y, Bp.y) + dip * uy; ringX = (A.x + Bp.x) / 2 + dip * ux * .5; ringW = Math.hypot(Bp.x - A.x, Bp.y - A.y); axis = [ux, uy]; }
     else if (man != null) { cut = chinY + man * fh; fadeEnd = cut + fh * .1; }
     const sink = 65 * rise;   // na entrada, tudo desce junto com a cabeça
-    const geo = spectral && face ? neckGeo(item, man) : null;
+    const geo = face ? neckGeo(item, man) : null;   // Caio 14/11: o mesmo corte de pescoço (contorno, sem blocos) nos três modos
     if (spectral && face && item.prev && !(item.pyr && item.pyr.oval) && !item._ovalTry) {   // fotos antigas: busca o contorno da mandíbula uma vez
       item._ovalTry = 1; detectOn(item.prev).then(p => { if (p && p.oval) { item.pyr = { ...(item.pyr || { pts: [...p], w: item.w, h: item.h }), oval: p.oval, fore: p.fore }; render(); } }).catch(() => {}); }
     if (geo) { const Rm = m.transformPoint({ x: geo.R[0], y: geo.R[1] }), Cm = m.transformPoint({ x: geo.C[0], y: geo.C[1] }), Am = m.transformPoint({ x: geo.R[0] + geo.axis[0] * 100, y: geo.R[1] + geo.axis[1] * 100 }), sc = Math.hypot(m.a, m.b);
@@ -741,7 +791,12 @@ function drawDisplay(g) {
   const ringR = Math.max(90, Math.min(200, Math.max(...L.map(o => o.ringW ? o.ringW * .5 * 1.55 : o.faceH * .34))));   // anel proporcional ao rosto, não ao cabelo
   // quem fica na frente: galeria pelo lado para onde os rostos olham; lado a lado pela escolha "Na frente"
   let order = [0, 1];
-  if (gallery) { if (L[0].facingRight && L[1].facingRight) order = [1, 0]; }
+  // Caio 14/11 11:37: de frente, quem fica na frente é a escolha "Na frente" (padrão: depois), também na Galeria.
+  // Só com os dois rostos virados para o mesmo lado a Galeria decide pelo lado para onde olham.
+  const turnedOf = it => { const q = it.pyr && it.pyr.pts; if (!q || q.length < 4) return 0; const ex = (q[0].x + q[1].x) / 2 * it.w, ey = (q[0].y + q[1].y) / 2 * it.h, d = Math.hypot(q[3].x * it.w - ex, q[3].y * it.h - ey) || 1; return (q[2].x * it.w - ex) / d; };
+  const tA = turnedOf(L[0].item), tD = turnedOf(L[1].item), bothTurned = Math.abs(tA) > .15 && Math.abs(tD) > .15 && Math.sign(tA) === Math.sign(tD);
+  if (gallery && bothTurned) { if (tA > 0) order = [1, 0]; }
+  else if (gallery) { if (opts.front === 'A') order = [1, 0]; }
   else if (opts.front === 'A') order = [1, 0];
   for (const i of order) {
     const o = L[i], lay = layerOf(i), q = lay.getContext('2d');
@@ -799,12 +854,18 @@ function drawDisplay(g) {
       // cabeça inteira: tudo acima da linha queixo → ângulo da mandíbula (seguindo para trás) e, na frente do queixo, na altura dele.
       // Rosto, bochecha do outro lado, orelha e cabelo ficam; ombro e alça ficam de fora.
       mq.globalCompositeOperation = 'source-over'; const lo = o.faceH * .03, big = 4 * W, ux = dx / wl, uy = dy / wl;
-      const Cl = { x: C.x, y: C.y + lo }, Gl = { x: Gp.x, y: Gp.y + lo }, front = { x: C.x - Math.sign(ux || 1) * big, y: C.y - big * .6 }, back = { x: Gl.x + ux * big, y: Gl.y + uy * big };
+      // Caio 14/11: com a pele do pescoço vindo do contorno, a cabeça é cortada na altura dos ângulos da mandíbula (reta),
+      // não na linha queixo → mandíbula (diagonal, que cortava a barba); queixo e barba abaixo disso vêm da máscara do pescoço.
+      const Ck = G.skin && G.cutC ? T(G.cutC) : C, Gk = G.skin && G.cutG ? T(G.cutG) : Gp;
+      const Cl = { x: Ck.x, y: Ck.y + lo }, Gl = { x: Gk.x, y: Gk.y + lo }, front = { x: Ck.x - Math.sign(ux || 1) * big, y: Ck.y - big * .6 }, back = { x: Gl.x + ux * big, y: Gl.y + uy * big };
       mq.save(); mq.shadowColor = '#fff'; mq.shadowBlur = fastDraw || G.skin ? 0 : 10; mq.shadowOffsetX = 4 * W; mq.translate(-4 * W, 0); mq.fillStyle = '#fff'; mq.beginPath();
-      mq.moveTo(front.x, front.y); mq.lineTo(C.x, C.y + lo * .3); mq.lineTo(Cl.x, Cl.y); mq.lineTo(Gl.x, Gl.y); mq.lineTo(back.x, back.y); mq.lineTo(back.x, -big); mq.lineTo(front.x, -big); mq.closePath(); mq.fill(); mq.restore();
+      if (G.skin && G.cutC) { const ya = Cl.y, yb = Gl.y, xa = Cl.x, xb = Gl.x, sl = (yb - ya) / ((xb - xa) || 1), yAt = x => ya + (x - xa) * sl;   // tudo acima da reta dos ângulos da mandíbula
+        mq.moveTo(-big, -big); mq.lineTo(big, -big); mq.lineTo(big, yAt(big)); mq.lineTo(-big, yAt(-big)); mq.closePath(); }
+      else { mq.moveTo(front.x, front.y); mq.lineTo(Ck.x, Ck.y + lo * .3); mq.lineTo(Cl.x, Cl.y); mq.lineTo(Gl.x, Gl.y); mq.lineTo(back.x, back.y); mq.lineTo(back.x, -big); mq.lineTo(front.x, -big); mq.closePath(); }
+      mq.fill(); mq.restore();
       // nuca: curva suave entre a linha de trás da cabeça e a borda do pescoço, sem degrau
       const f = o.faceH * .1, edx = Gb.x - G2.x, edy = Gb.y - G2.y, el = Math.hypot(edx, edy) || 1;
-      if (G.skin && !fastDraw) { mq.save(); mq.shadowColor = '#fff'; mq.shadowBlur = 14; mq.shadowOffsetX = 4 * W; mq.translate(-4 * W, 0); mq.fillStyle = '#fff'; mq.beginPath();   // atrás da orelha: cabelo some suave
+      if (G.skin && !G.cutC && !fastDraw) { mq.save(); mq.shadowColor = '#fff'; mq.shadowBlur = 14; mq.shadowOffsetX = 4 * W; mq.translate(-4 * W, 0); mq.fillStyle = '#fff'; mq.beginPath();   // atrás da orelha: cabelo some suave
         mq.moveTo(Gl.x, Gl.y); mq.lineTo(back.x, back.y); mq.lineTo(back.x, -big); mq.lineTo(Gl.x, -big); mq.closePath(); mq.fill(); mq.restore(); }
       if (!G.skin) { mq.save(); mq.shadowColor = '#fff'; mq.shadowBlur = fastDraw ? 0 : 6; mq.shadowOffsetX = 4 * W; mq.translate(-4 * W, 0); mq.beginPath();
       mq.moveTo(Gl.x + ux * f, Gl.y + uy * f); mq.quadraticCurveTo(G2.x, G2.y + lo, G2.x + edx / el * f, G2.y + edy / el * f); mq.lineTo(G2.x - ux * f * .5, G2.y); mq.closePath(); mq.fill(); mq.restore(); }
