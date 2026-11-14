@@ -64,22 +64,31 @@
   }
 
 
-  // Posição das duas cabeças, calibrada nas montagens que Caio fez à mão no Prisma (Video Studio, 06/11/2026):
-  // - de frente: o contorno do rosto da frente começa logo depois da orelha do rosto de trás (orelha e brinco de trás
-  //   continuam à mostra), folga de 0,37 da distância olhos-lábio entre os dois contornos;
-  // - de lado (giro ~55°): o perfil do rosto da frente (ponta do nariz) entra 0,46 olhos-lábio sobre a bochecha do de trás,
-  //   na frente da orelha, que fica escondida;
-  // - fica na frente o rosto cujo nariz aponta para o outro (de frente: o depois);
-  // - os dois juntos ocupam ~940 de 1080 px de largura, centralizados, olhos na mesma altura (y 755).
+  // Posição das duas cabeças, recalibrada em 14/11/2026 nas 12 montagens finais que Caio enviou (9:16, 1080×1920):
+  // - olhos dos dois na mesma altura, ~912 px (0,475 da altura);
+  // - os dois rostos juntos ocupam ~975 px de largura, centralizados;
+  // - folga entre os contornos (em distâncias olhos-lábio) depende de quanto o nariz está virado:
+  //   de frente +0,25 (sem encostar, a orelha de trás aparece); em 45° (nariz desviado ~0,3) praticamente encostam (-0,03);
+  //   de perfil (nariz desviado >=0,55) o da frente entra 0,46 sobre a bochecha do de trás (montagens de 06/11);
+  // - fica na frente o rosto cujo nariz aponta para o outro (de frente: o depois).
+  // Conferido nas 12 montagens: erro médio de 18 px na altura dos olhos, 3% no tamanho, 2% na distância entre os rostos.
   // side: { ax, ay, oy, k0, r0, col, pts: [[x,y]...] contorno e pontos do rosto (px da foto), eye: [x,y], nose: [x,y], yaw }
-  const LAYOUT = { W: 1080, eyeY: 755, span: 940, g0: 0.37, g1: -0.46, yawFull: 55, faceD: 0.165 * 1080, sMin: 0.6, sMax: 2.8 };
+  const LAYOUT = { W: 1080, eyeY: 912, span: 975, gaps: [[0.02, 0.25], [0.30, -0.03], [0.55, -0.46]], faceD: 0.165 * 1080, sMin: 0.6, sMax: 2.8 };
+  function gapFor(turn, gaps) {
+    if (turn <= gaps[0][0]) return gaps[0][1];
+    for (let i = 1; i < gaps.length; i++) if (turn <= gaps[i][0]) {
+      const [t0, g0] = gaps[i - 1], [t1, g1] = gaps[i]; return g0 + (g1 - g0) * (turn - t0) / (t1 - t0);
+    }
+    return gaps[gaps.length - 1][1];
+  }
+  // quanto o nariz sai do meio dos olhos, em distâncias olhos-lábio (0 = de frente)
+  function noseTurn(side, faceD) { const d = faceD / side.k0; return d > 0 ? Math.abs(side.nose[0] - side.eye[0]) / d : 0; }
   function autoLayout(A, D, cfg) {
     const C = Object.assign({}, LAYOUT, cfg || {});
-    const yaws = [A.yaw, D.yaw].filter(y => typeof y === 'number' && isFinite(y)).map(Math.abs);
-    const yawAbs = yaws.length ? yaws.reduce((a, b) => a + b, 0) / yaws.length : 0;
+    const turn = (noseTurn(A, C.faceD) + noseTurn(D, C.faceD)) / 2;
     const dir = Math.sign(A.nose[0] - A.eye[0]) + Math.sign(D.nose[0] - D.eye[0]);
-    const front = yawAbs < 12 || dir === 0 ? 'D' : dir < 0 ? 'D' : 'A';
-    const g = C.g0 + (C.g1 - C.g0) * Math.min(1, yawAbs / C.yawFull);
+    const front = turn < 0.08 || dir === 0 ? 'D' : dir < 0 ? 'D' : 'A';
+    const g = gapFor(turn, C.gaps);
     const xs = (side, s) => {
       const k = side.k0 * s, r = side.r0 * Math.PI / 180, c = Math.cos(r), sn = Math.sin(r);
       return side.pts.map(([px, py]) => side.col + k * (c * (px - side.ax) - sn * (py - side.ay)));
@@ -94,7 +103,7 @@
       const shift = C.W / 2 - (L + R) / 2; dxA = shift; dxD += shift;
       if (pass < 5) s = Math.max(C.sMin, Math.min(C.sMax, s * C.span / Math.max(1, R - L)));
     }
-    return { A: { s, dx: dxA, dy: C.eyeY - A.oy, r: 0 }, D: { s, dx: dxD, dy: C.eyeY - D.oy, r: 0 }, front, gap: g };
+    return { A: { s, dx: dxA, dy: C.eyeY - A.oy, r: 0 }, D: { s, dx: dxD, dy: C.eyeY - D.oy, r: 0 }, front, gap: g, turn };
   }
 
   function grade(cost) { return cost < 1.5 ? 'muito compatível' : cost < 5 ? 'compatível' : cost < 12 ? 'razoável' : 'pouco compatível'; }

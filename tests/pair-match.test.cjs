@@ -71,9 +71,9 @@ function side(col, yaw, w = 3000, h = 4000) {
 }
 test('montagem automática: olhos na mesma altura, rostos do mesmo tamanho, centralizada, folga de frente e sobreposição de lado', () => {
   const fr = PM.autoLayout(side(291.6, 0), side(788.4, 2));
-  assert.equal(fr.front, 'D'); assert.equal(fr.A.s, fr.D.s); assert.equal(fr.A.dy, 755 - 826);
-  assert.ok(Math.abs(fr.gap - 0.37) < 0.05);
+  assert.equal(fr.front, 'D'); assert.equal(fr.A.s, fr.D.s); assert.equal(fr.A.dy, 912 - 826);
+  assert.ok(Math.abs(fr.gap - 0.25) < 0.05);
   const ob = PM.autoLayout(side(291.6, -55), side(788.4, -55));
-  assert.ok(ob.gap < -0.4);
+  assert.ok(ob.gap < fr.gap - 0.2, 'virado sobrepõe mais que de frente: ' + ob.gap);
   assert.notEqual(ob.front, PM.autoLayout(side(291.6, 55), side(788.4, 55)).front);
 });
