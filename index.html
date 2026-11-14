@@ -1635,32 +1635,93 @@ let lastTap = 0; document.addEventListener('touchend', e => { const n = Date.now
 render();
 // ---------- banco local (IndexedDB): projetos e fotos ficam só no aparelho ----------
 const DB = (() => {
+  // Safari (14/11/2026): regravar o registro de uma foto usando a foto (Blob) que veio do próprio IndexedDB trava a gravação
+  // ou deixa a foto guardada ilegível ("Formato de foto não suportado", "Error preparing Blob/File data").
+  // Por isso a foto original mora no depósito 'blobs', gravada uma única vez; 'shots' guarda só os dados que mudam (bs: 1).
+  // Fotos antigas (com a foto dentro de 'shots') migram na primeira gravação, copiando os bytes.
   let op = null;
+  const fromDb = new WeakSet(); // fotos que vieram do banco: nunca regravar o mesmo objeto
   const open = () => op || (op = new Promise((res, rej) => {
-    const r = indexedDB.open('prisma', 1);
-    r.onupgradeneeded = () => { const d = r.result; d.createObjectStore('projects', { keyPath: 'id' }); d.createObjectStore('shots', { keyPath: 'id' }).createIndex('pid', 'pid'); };
-    r.onsuccess = () => res(r.result); r.onerror = () => { op = null; rej(r.error); };
+    const r = indexedDB.open('prisma', 2);
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      if (!d.objectStoreNames.contains('projects')) d.createObjectStore('projects', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('shots')) d.createObjectStore('shots', { keyPath: 'id' }).createIndex('pid', 'pid');
+      if (!d.objectStoreNames.contains('blobs')) d.createObjectStore('blobs', { keyPath: 'id' });
+    };
+    r.onsuccess = () => { const d = r.result; d.onversionchange = () => { d.close(); op = null; }; res(d); };
+    r.onerror = () => { op = null; rej(r.error); };
   }));
-  const tx = (st, mode, fn) => open().then(d => new Promise((res, rej) => {
-    const t = d.transaction(st, mode), q = fn(t.objectStore(st));
-    t.oncomplete = () => res(q ? q.result : undefined); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error || new Error('Sem espaço no aparelho'));
+  // transação em várias lojas; fn(t, set) pode devolver um pedido (resultado padrão) ou chamar set(valor)
+  const run = (stores, mode, fn) => open().then(d => new Promise((res, rej) => {
+    const t = d.transaction(stores, mode); let out, has = false; const set = v => { out = v; has = true; };
+    const q = fn(t, set);
+    t.oncomplete = () => res(has ? out : q && q.result);
+    t.onerror = () => rej(t.error || (q && q.error) || new Error('Falha ao gravar no aparelho'));
+    t.onabort = () => rej(t.error || new Error('Sem espaço no aparelho'));
   }));
+  // junta a foto do depósito aos registros lidos
+  const attach = (t, rows, done) => {
+    const b = t.objectStore('blobs'); let n = rows.length;
+    const one = () => { if (--n <= 0) done(rows); };
+    if (!n) return done(rows);
+    rows.forEach(r => {
+      if (!r) return one();
+      if (r.blob) { fromDb.add(r.blob); return one(); }
+      if (!r.bs) return one();
+      const g = b.get(r.id); g.onsuccess = () => { if (g.result && g.result.blob) { r.blob = g.result.blob; fromDb.add(r.blob); } one(); }; g.onerror = one;
+    });
+  };
+  const readShots = (fn) => run(['shots', 'blobs'], 'readonly', (t, set) => { const q = fn(t.objectStore('shots')); q.onsuccess = () => { const v = q.result; attach(t, Array.isArray(v) ? v : [v], rows => set(Array.isArray(v) ? rows : rows[0])); }; });
+  const copyBytes = async b => new Blob([await b.arrayBuffer()], { type: b.type || 'image/jpeg' });
+  // separa o registro (sem foto) da foto a guardar no depósito, quando ela ainda não está lá
+  async function split(v) {
+    const meta = { ...v }; delete meta.blob;
+    if (v.bs || !(v.blob instanceof Blob)) return { meta: v.bs ? meta : v };
+    let photo = v.blob;
+    if (fromDb.has(photo)) {
+      photo = await copyBytes(v.blob).catch(() => null);
+      if (!photo) { // a foto em memória ficou velha: relê a guardada
+        const old = await run('shots', 'readonly', t => t.objectStore('shots').get(v.id)).catch(() => null);
+        if (old && old.blob instanceof Blob) photo = await copyBytes(old.blob).catch(() => null);
+      }
+      if (!photo) throw new Error('A foto original não abriu. Importe esta foto de novo.');
+    }
+    meta.bs = 1;
+    return { meta, blob: { id: v.id, blob: photo } };
+  }
+  // depois de guardar, a foto em memória passa a ser a do depósito (não ocupa memória)
+  async function refresh(list) {
+    const ids = list.filter(v => v && v.bs).map(v => v.id); if (!ids.length) return;
+    const got = await run('blobs', 'readonly', (t, set) => { const s = t.objectStore('blobs'), m = {}; let n = ids.length;
+      ids.forEach(id => { const g = s.get(id); g.onsuccess = () => { if (g.result) m[id] = g.result.blob; if (!--n) set(m); }; }); }).catch(() => ({}));
+    list.forEach(v => { if (v && got[v.id]) { v.blob = got[v.id]; fromDb.add(v.blob); } });
+  }
+  async function putShots(list, extra) {
+    const parts = []; for (const v of list) parts.push(await split(v));
+    await run(['projects', 'shots', 'blobs'], 'readwrite', t => {
+      const S = t.objectStore('shots'), B = t.objectStore('blobs');
+      parts.forEach(p => { S.put(p.meta); if (p.blob) B.put(p.blob); });
+      if (extra) extra(t);
+    });
+    parts.forEach((p, i) => { if (p.blob) list[i].bs = 1; });
+    await refresh(list.filter((v, i) => parts[i].blob));
+  }
   return {
-    put: (st, v) => tx(st, 'readwrite', s => s.put(v)), get: (st, k) => tx(st, 'readonly', s => s.get(k)),
-    del: (st, k) => tx(st, 'readwrite', s => s.delete(k)), all: st => tx(st, 'readonly', s => s.getAll()),
-    byP: pid => tx('shots', 'readonly', s => s.index('pid').getAll(pid)),
-    commitProject: (rec, shots, removed = []) => open().then(d => new Promise((res, rej) => {
-      const t = d.transaction(['projects','shots'], 'readwrite');
-      t.objectStore('projects').put(rec); shots.forEach(s => t.objectStore('shots').put(s)); removed.forEach(id => t.objectStore('shots').delete(id));
-      t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
-    })),
-    removePatient: pid => open().then(d => new Promise((res, rej) => {
-      const t = d.transaction(['projects','shots'], 'readwrite');
+    put: (st, v) => st === 'shots' ? putShots([v]) : run(st, 'readwrite', t => t.objectStore(st).put(v)),
+    get: (st, k) => st === 'shots' ? readShots(s => s.get(k)) : run(st, 'readonly', t => t.objectStore(st).get(k)),
+    del: (st, k) => run(st === 'shots' ? ['shots', 'blobs'] : st, 'readwrite', t => { t.objectStore(st).delete(k); if (st === 'shots') t.objectStore('blobs').delete(k); }),
+    all: st => st === 'shots' ? readShots(s => s.getAll()) : run(st, 'readonly', t => t.objectStore(st).getAll()),
+    byP: pid => readShots(s => s.index('pid').getAll(pid)),
+    commitProject: (rec, shots, removed = []) => putShots(shots, t => {
+      t.objectStore('projects').put(rec);
+      removed.forEach(id => { t.objectStore('shots').delete(id); t.objectStore('blobs').delete(id); });
+    }),
+    removePatient: pid => run(['projects', 'shots', 'blobs'], 'readwrite', t => {
       t.objectStore('projects').delete(pid);
-      const q = t.objectStore('shots').index('pid').openCursor(IDBKeyRange.only(pid));
-      q.onsuccess = () => { const c = q.result; if (c) { c.delete(); c.continue(); } };
-      t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
-    }))
+      const B = t.objectStore('blobs'), q = t.objectStore('shots').index('pid').openCursor(IDBKeyRange.only(pid));
+      q.onsuccess = () => { const c = q.result; if (c) { B.delete(c.value.id); c.delete(); c.continue(); } };
+    })
   };
 })();
 const newId = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -2752,8 +2813,10 @@ async function autoCompare() {
     const look = { ...(c.edit && c.edit.opts || {}) }, made = [], failed = [];
     for (const { angle, a, d } of plan) {
       setStatus('Montando ' + angle, true);
-      const old = depOf(a); if (old && old !== d) { old.of = null; await DB.put('shots', old); }
-      d.of = a.id; await DB.put('shots', d);
+      try {
+        const old = depOf(a); if (old && old !== d) { old.of = null; await DB.put('shots', old); }
+        d.of = a.id; await DB.put('shots', d);
+      } catch (e) { console.error(e); failed.push(angle); continue; }
       const ga = sideGeom(a, 'A'), gd = sideGeom(d, 'D'), lay = ga && gd ? PairMatch.autoLayout(ga, gd) : null;
       c.angle = angle; c.selA = a.id; c.selD = d.id;
       c.tf = lay ? { A: lay.A, D: lay.D, front: lay.front } : { A: T0(), D: T0(), front: defaultFront(a) };
@@ -2782,7 +2845,7 @@ async function autoCompare() {
     openFolder(c);
     autoNote = '';
     setStatus((made.length ? made.length + (made.length === 1 ? ' ângulo montado' : ' ângulos montados') + ' · toque em um para ajustar' : 'Não consegui montar nenhum ângulo') + (failed.length ? ' · não recortou: ' + failed.join(', ') : ''), false);
-  } finally { autoBusy = false; if (picking) pkLabels(); }
+  } catch (e) { console.error(e); setStatus('A montagem automática parou: ' + ((e && e.message) || 'erro') + '. Toque de novo para continuar.', false); } finally { autoBusy = false; if (picking) pkLabels(); }
 }
 $('pkAuto').onclick = autoCompare;
 $('pkOriginal').onclick = () => startEditing(false);
