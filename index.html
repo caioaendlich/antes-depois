@@ -126,6 +126,7 @@ input.wide{width:100%}
 .cell.empty{border:1.5px dashed #3a3c40;background:transparent;display:flex;align-items:center;justify-content:center;font-size:13px;text-align:center;padding:10px}
 .cell .tag{position:absolute;left:6px;top:6px;font-size:11.5px;font-weight:600;background:rgba(0,0,0,.6);color:#eee;padding:2px 8px;border-radius:999px}
 .tools{display:flex;gap:8px;flex-wrap:wrap}
+.ptools{align-items:center;justify-content:space-between}.psort{flex:0 0 auto}.psort button{flex:0 0 auto;padding:5px 12px;font-size:12.5px}
 #app.proj .pair .row-head .flex,#app.proj .th .x{display:none!important}
 #saveAll{display:none}#app.proj #saveAll{display:block;flex:1;min-width:180px}
 .camtop{flex-wrap:wrap}
@@ -183,6 +184,7 @@ input.wide{width:100%}
 .half .plus{pointer-events:auto;width:76px;height:76px;border-radius:50%;border:1.5px solid rgba(255,255,255,.55);background:rgba(0,0,0,.35);color:#fff;font-size:40px;font-weight:300;line-height:1;cursor:pointer}
 .half .hcam{pointer-events:auto;position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font:inherit;font-size:12px;font-weight:600;color:#eee;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:5px 12px;cursor:pointer}
 #pickBox{display:grid;gap:12px}
+.pkauto{border-color:#5a4d38;color:var(--accent)}
 .scrubs{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .scrub{display:flex;gap:1px;height:46px;padding:3px;background:var(--panel);border-radius:8px;touch-action:none;overflow:hidden;align-items:stretch}
 .scrub .sc{flex:1 1 0;min-width:0;border:0;padding:0;border-radius:3px;overflow:hidden;opacity:.45;position:relative}
@@ -252,11 +254,11 @@ html,body{overflow-x:clip}
     <div class="flex"><button class="btn primary" id="newGo" type="button">Criar paciente</button><button class="btn" id="newCancel" type="button">Cancelar</button></div>
   </div>
   <input type="search" class="wide psearch" id="pSearch" placeholder="🔍  Buscar paciente" autocomplete="off" aria-label="Buscar paciente">
-  <div class="tools"><button class="btn small" id="managePatients">Selecionar pacientes</button></div><div class="plist" id="projList"></div>
+  <div class="tools ptools"><div class="seg psort" id="pSort" role="group" aria-label="Ordenar pacientes"><button type="button" data-o="u" aria-pressed="true">Recentes</button><button type="button" data-o="az" aria-pressed="false">A–Z</button></div><button class="btn small" id="managePatients">Selecionar pacientes</button></div><div class="plist" id="projList"></div>
   <p class="note" id="storeNote" style="text-align:center;margin-top:14px"></p>
   <div class="tools"><button class="btn small" id="freeMode" type="button">Montagem avulsa</button><button class="btn small" id="restore" type="button">Restaurar backup</button></div>
   <p class="note">As fotos ficam guardadas só neste aparelho, dentro do app. Ao fechar cada paciente, toque em Backup e guarde o arquivo no Drive ou em Arquivos.</p>
-  <p class="note" style="opacity:.6">Versão 34</p>
+  <p class="note" style="opacity:.6">Versão 35</p>
 </section>
 
 <section id="proj" class="scr" hidden>
@@ -322,6 +324,7 @@ html,body{overflow-x:clip}
     <div id="pickBox" hidden>
       <div class="scrubs"><div class="scrub" id="scrA"></div><div class="scrub" id="scrD"></div></div>
       <div class="sclabels"><span id="pkLl"></span><span id="pkRl"></span></div>
+      <button class="btn big pkauto" id="pkAuto" type="button">✦ Gerar comparação automaticamente</button>
       <button class="btn primary big" id="pkGo" type="button">Remover fundo e editar</button>
       <button class="btn big" id="pkOriginal" type="button" hidden>Editar com fundo original</button>
       <p class="note" id="pickHelp" aria-live="polite" hidden></p>
@@ -460,6 +463,7 @@ html,body{overflow-x:clip}
 <script src="import-tools.js"></script>
 <script src="editor-actions.js"></script>
 <script src="mask-refinement.js"></script>
+<script src="pair-match.js"></script>
 <script>
 (() => {
 const W = 1080, H = 1920;
@@ -484,6 +488,7 @@ function photoContext(canvas) {
 const cv = $('cv'), ctx = photoContext(cv);
 
 const items = { A: [], D: [] };
+let autoBusy = false, autoNote = ''; // comparação automática
 const sel = { A: 0, D: 0 };
 const tf = { A: { s: 1, dx: 0, dy: 0, r: 0 }, D: { s: 1, dx: 0, dy: 0, r: 0 } };
 const DEFAULT_OPTS = { fade: 0.80, hand: true, handTxt: '@caioendlich.md', labels: true, front: 'D', title: true, titleTxt: 'DR. CAIO ENDLICH', look: 'classico', layout: 'classico', lupa: null, neckCut: null, ltTitle: 'Light Touch', ltLine: 'a beleza é reflexo da saúde', ltFont: 'Instrument Serif' };
@@ -925,6 +930,25 @@ function runModel(inp) {
 }
 
 // ---------- carregar fotos ----------
+// iOS invalida o File do seletor de fotos depois de um tempo (ou quando o app vai para segundo plano):
+// guardamos uma cópia dos bytes em memória, e se mesmo assim falhar relemos a foto do IndexedDB.
+async function durableBlob(f) {
+  if (!f || typeof f.arrayBuffer !== 'function') return f;
+  try { return new Blob([await f.arrayBuffer()], { type: f.type || 'image/jpeg' }); } catch (e) { return f; }
+}
+async function itemCanvas(it) {
+  try { return await fileToCanvas(it.file); }
+  catch (first) {
+    if (it.shot && it.shot.id) {
+      try {
+        const fresh = await DB.get('shots', it.shot.id);
+        if (fresh && fresh.blob) { const b = await durableBlob(fresh.blob), c = await fileToCanvas(b); it.file = b; it.shot.blob = b; return c; }
+      } catch (e) {}
+    }
+    try { const b = await durableBlob(it.file); if (b !== it.file) { const c = await fileToCanvas(b); it.file = b; return c; } } catch (e) {}
+    throw new Error('A foto original não abriu. Feche e reabra o paciente; se continuar, importe esta foto de novo.');
+  }
+}
 function fileToCanvas(file) {
   return new Promise((res, rej) => {
     const url = URL.createObjectURL(file); const img = new Image();
@@ -947,14 +971,15 @@ async function addFiles(side, files) {
   const startLen = items[side].length;
   for (const f of list) {
     try {
-      const src = await fileToCanvas(f);
+      const keep = await durableBlob(f);
+      const src = await fileToCanvas(keep);
       const thumb = document.createElement('canvas'); const tk = 136 / Math.min(src.width, src.height);
       thumb.width = Math.round(src.width * tk); thumb.height = Math.round(src.height * tk);
       thumb.getContext('2d').drawImage(src, 0, 0, thumb.width, thumb.height);
       const prev = document.createElement('canvas'); const pk = Math.min(1, 540 / Math.max(src.width, src.height));
       prev.width = Math.round(src.width * pk); prev.height = Math.round(src.height * pk);
       prev.getContext('2d').drawImage(src, 0, 0, prev.width, prev.height);
-      const it = { id: ++uid, file: f, w: src.width, h: src.height, prev, src: null, thumbUrl: thumb.toDataURL('image/jpeg', .8), cut: null, meta: null, status: 'fila' };
+      const it = { id: ++uid, file: keep, w: src.width, h: src.height, prev, src: null, thumbUrl: thumb.toDataURL('image/jpeg', .8), cut: null, meta: null, status: 'fila' };
       src.width = src.height = 0;
       items[side].push(it); queue.push({ side, it });
     } catch (e) { setStatus(e.message, false); }
@@ -993,14 +1018,14 @@ async function pump() {
       markThumb(it); render();
       await new Promise(r => setTimeout(r, 0));
     }
-    if (!queue.length) { const failed = ['A','D'].flatMap(s => items[s]).find(it => it.status === 'erro'); setStatus(failed ? 'Não recortou: ' + (failed.cutError || 'tente novamente') : 'Pronto', false); } else if (!$('cam').hidden) setStatus('Recorte em pausa', false);
+    if (!queue.length) { const failed = ['A','D'].flatMap(s => items[s]).find(it => it.status === 'erro'); setStatus(failed ? 'Não recortou: ' + (failed.cutError || 'tente novamente') : (autoNote || 'Pronto'), false); autoNote = ''; } else if (!$('cam').hidden) setStatus('Recorte em pausa', false);
   } catch (e) { for (const {it} of queue) { it.status = 'erro'; it.cutError = e.message; } setStatus(e.message || 'Erro no recorte', false); }
   working = false; updateSave();
 }
 
 async function cutout(it) {
   // Own this canvas: changing selection can release the editor's live canvas.
-  const src = await fileToCanvas(it.file);
+  const src = await itemCanvas(it);
   try {
   mg.clearRect(0, 0, RES, RES);
   mg.drawImage(src, 0, 0, RES, RES);
@@ -1028,7 +1053,7 @@ function release(it) {
 async function ensureLive(it) {
   if (it._live) return it._live;
   it._live = (async () => {
-    if (!it.src) it.src = await fileToCanvas(it.file);
+    if (!it.src) it.src = await itemCanvas(it);
     if (it.raw && (!it.cut || !it.fin)) { it.cut = null; buildBase(it); await restorePaint(it); composeCut(it); }
   })();
   try { await it._live; } catch (e) { console.error(e); it._liveErr = (it._liveErr || 0) + 1; if (it._liveErr > 2) it.status = 'erro'; } finally { it._live = null; }
@@ -2098,7 +2123,7 @@ async function importToProject(files, kind, startA) {
     const p = null; // pontos do rosto ficam para depois (em segundo plano): as fotos aparecem na hora
     freeCanvas(pv.canvas);
     const {file:unusedFile,name:unusedName,...capture} = entry;
-    const blob = f; // Preserve original bytes and embedded profile, without re-encoding.
+    const blob = await durableBlob(f); // Same original bytes (profile and EXIF kept), detached from the picker File iOS later invalidates.
     const rec = { id: newId('s'), pid: Pj.rec.id, kind, blob, w, h, ...capture, originalName: f.name, prev: pv.prev, thumb: pv.thumb, t: Date.now() + n, yaw: null };
     if (kind === 'A') rec.pose = poseOf(rec.yaw);
     else if (pool) { rec.pose = poseOf(rec.yaw); rec.of = null; }
@@ -2151,8 +2176,12 @@ function show(s) {
   angleUI();
   $('statusChip').style.visibility = s === 'edit' && /^(Recortando|Preparando recorte|Pronto)/.test($('status').textContent) ? 'hidden' : '';
 }
+let pSortMem = null;
+function pSortGet() { if (pSortMem) return pSortMem; try { pSortMem = localStorage.getItem('prisma.pSort'); } catch (_) {} return pSortMem = pSortMem === 'az' ? 'az' : 'u'; }
 async function renderHome() {
-  let ps = []; try { ps = (await DB.all('projects')).sort((a, b) => (b.u || 0) - (a.u || 0)); } catch (e) { setStatus('Armazenamento indisponível', false); }
+  const order = pSortGet(); $('pSort').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.o === order)));
+  const az = new Intl.Collator('pt-BR', { sensitivity: 'base', numeric: true });
+  let ps = []; try { ps = (await DB.all('projects')).sort(order === 'az' ? (a, b) => az.compare((a.name || '').trim(), (b.name || '').trim()) : (a, b) => (b.u || 0) - (a.u || 0)); } catch (e) { setStatus('Armazenamento indisponível', false); }
   const box = $('projList'); box.innerHTML = '';
   if (!ps.length) { box.innerHTML = '<p class="note">Nenhum paciente ainda. Toque em Novo paciente para começar.</p>'; return; }
   const raw = ($('pSearch').value || '').trim(), q = raw ? slug(raw).replace(/-/g, ' ').trim() : ''; // slug('') devolve 'paciente': sem esta checagem a lista ficava vazia
@@ -2584,6 +2613,7 @@ function pkLabels() {
   const lab = (L, i) => L[i] ? (i + 1) + ' de ' + L.length + (L[i].pose && L[i].pose !== '—' ? ' · ' + L[i].pose : '') : L.length ? 'Escolha uma foto deste ângulo' : '';
   $('pkLl').textContent = lab(pickA, pickL); $('pkRl').textContent = lab(pickD, pickR);
   const ok = !!(pickA[pickL] && pickD[pickR]);
+  $('pkAuto').disabled = autoBusy || !(pickA.length && pickD.length);
   $('pkGo').disabled = $('pkOriginal').disabled = !ok; $('pkGo').textContent = 'Remover fundo e editar';
   $('pickHelp').textContent = ok ? 'Deslize as miniaturas ou toque em uma foto. Depois escolha como editar.' : (curComp?.U?.length ? 'Há fotos para classificar. Toque em Organizar fotos e defina Antes e Depois.' : 'Importe fotos ou fotografe para preencher Antes e Depois.');
   $('pickHelp').hidden = !curComp?.U?.length;
@@ -2650,6 +2680,53 @@ async function startEditing(removeBackground) {
   closePick(); openEditor(a, d);
 }
 $('pkGo').onclick = () => startEditing(true);
+// ---------- comparação automática (Caio, 14/11/2026) ----------
+// Entre todas as fotos de antes e de depois deste ângulo, escolhe o par com o mesmo giro, a mesma inclinação,
+// enquadramento e luz parecidos; depois recorta e monta como o botão Remover fundo e editar
+// (olhos na mesma altura, rosto do mesmo tamanho, cabeças sobrepostas).
+const ANGLE_POSE = {'Perfil esquerdo':'Perfil E','45° esquerda':'45° E','Frente':'Frente','45° direita':'45° D','Perfil direito':'Perfil D'};
+async function faceLum(s) {
+  try {
+    const im = await loadImg(s.prev), p = s.pyr.pts, iw = im.naturalWidth, ih = im.naturalHeight;
+    const xs = p.map(q => q.x), ys = p.map(q => q.y);
+    let x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const pw = (x1 - x0) * 0.2, ph = (y1 - y0) * 0.25;
+    x0 = Math.max(0, x0 - pw); x1 = Math.min(1, x1 + pw); y0 = Math.max(0, y0 - ph * 2); y1 = Math.min(1, y1 + ph);
+    if (x1 - x0 < 0.01 || y1 - y0 < 0.01) return null;
+    const c = mkCanvas(24, 24), g = c.getContext('2d', { willReadFrequently: true });
+    g.drawImage(im, x0 * iw, y0 * ih, (x1 - x0) * iw, (y1 - y0) * ih, 0, 0, 24, 24);
+    const d = g.getImageData(0, 0, 24, 24).data; let t = 0;
+    for (let i = 0; i < d.length; i += 4) t += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+    return t / (576 * 255);
+  } catch (e) { return null; }
+}
+async function autoCompare() {
+  if (!curComp || !picking || autoBusy || !pickA.length || !pickD.length) return;
+  autoBusy = true; pkLabels();
+  try {
+    const all = pickA.concat(pickD), todo = all.filter(s => !s.pyr);
+    for (let n = 0; n < todo.length; n++) {
+      const s = todo[n]; setStatus('Analisando rostos ' + (n + 1) + ' de ' + todo.length, true);
+      try {
+        const im = await loadImg(s.prev), p = await detectOn(im);
+        s.pyr = p ? { pts: [...p], oval: p.oval, fore: p.fore, w: s.w, h: s.h, hid: p.hid } : null; s.yaw = p ? p.yaw : null;
+        if (!s.poseManual && (s.kind === 'A' || !s.pose || s.pose === '—')) s.pose = poseOf(s.yaw);
+        DB.put('shots', s).catch(() => {});
+      } catch (e) {}
+    }
+    setStatus('Comparando ângulo e luz', true);
+    for (const s of all) if (s.pyr && typeof s._lum !== 'number') { const v = await faceLum(s); if (v != null) s._lum = v; }
+    const r = PairMatch.bestPair(pickA, pickD, ANGLE_POSE[curComp.angle]);
+    if (!r.best) { setStatus('Não encontrei rosto nas fotos para comparar. Escolha o par nas miniaturas.', false); return; }
+    pickL = r.best.i; pickR = r.best.j; tf.A = T0(); tf.D = T0();
+    curComp.selectionTouched = true; curComp.tf = null;
+    scMark(); pkLabels(); render(); pkSave();
+    autoNote = 'Par automático: antes ' + (r.best.i + 1) + ' e depois ' + (r.best.j + 1) + ' · ' + PairMatch.grade(r.best.cost) + (r.best.yawDiff != null ? ' (giro ' + Math.round(r.best.yawDiff) + '°)' : '');
+    setStatus(autoNote, false);
+    await startEditing(true);
+  } finally { autoBusy = false; if (picking) pkLabels(); }
+}
+$('pkAuto').onclick = autoCompare;
 $('pkOriginal').onclick = () => startEditing(false);
 $('refineCut').onclick = () => { if (working || !linked || picking) return; const it = items[active][sel[active]]; if (!it) return; it.raw = null; it.cleanedRaw = null; it.cutError = null; it.status = 'fila'; queueIt(it,active); pump(); };
 $('retryCut').onclick = () => { if (working) return; resetModel(new Error('Reiniciando recorte')); for (const side of ['A','D']) { const it = items[side][sel[side]]; if (it) { it.status = 'fila'; it._liveErr = 0; it.cutError = null; it.raw = null; it.cleanedRaw = null; queueIt(it,side); } } pump(); };
@@ -2668,6 +2745,7 @@ $('pDel').onclick = async () => {
 };
 $('freeMode').onclick = openFree;
 $('pSearch').addEventListener('input', renderHome);
+$('pSort').addEventListener('click', e => { const b = e.target.closest('button[data-o]'); if (!b) return; try { localStorage.setItem('prisma.pSort', b.dataset.o); } catch (_) {} pSortMem = b.dataset.o; renderHome(); });
 $('back').onclick = () => {
   if (screen === 'edit') {
     if (picking || linked) {
