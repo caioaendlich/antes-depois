@@ -60,3 +60,20 @@ test('recorte relê a foto do armazenamento quando o arquivo original expirou', 
   await assert.rejects(ctx.itemCanvas({ file: stale }), /não abriu/);
   const copy = await ctx.durableBlob(good); assert.notEqual(copy, good); assert.equal(await copy.text(), 'ok'); assert.equal(copy.type, 'image/jpeg');
 });
+
+// geometria de um lado já como o Prisma desenha: âncora nos olhos, escala que deixa olhos-lábio = FACE_D
+function side(col, yaw, w = 3000, h = 4000) {
+  const sh = shot('x', yaw); const p = sh.pyr.pts.map(q => [q.x * w, q.y * h]);
+  const eye = [(p[0][0] + p[1][0]) / 2, (p[0][1] + p[1][1]) / 2], d = Math.hypot(p[3][0] - eye[0], p[3][1] - eye[1]);
+  // contorno: as bochechas ficam 1,1 olhos-lábio para cada lado em frontal; de lado, a orelha fica atrás do olho
+  const r = yaw * Math.PI / 180, cheek = (sgn) => [eye[0] + (sgn * 1.1 * Math.cos(r) + 0.9 * Math.sin(r) * 0) * d, eye[1] + 0.3 * d];
+  return { ax: eye[0], ay: eye[1], oy: 826, k0: 178.2 / d, r0: 0, col, pts: [...p, cheek(-1), cheek(1)], eye, nose: p[2], yaw };
+}
+test('montagem automática: olhos na mesma altura, rostos do mesmo tamanho, centralizada, folga de frente e sobreposição de lado', () => {
+  const fr = PM.autoLayout(side(291.6, 0), side(788.4, 2));
+  assert.equal(fr.front, 'D'); assert.equal(fr.A.s, fr.D.s); assert.equal(fr.A.dy, 755 - 826);
+  assert.ok(Math.abs(fr.gap - 0.37) < 0.05);
+  const ob = PM.autoLayout(side(291.6, -55), side(788.4, -55));
+  assert.ok(ob.gap < -0.4);
+  assert.notEqual(ob.front, PM.autoLayout(side(291.6, 55), side(788.4, 55)).front);
+});

@@ -258,7 +258,7 @@ html,body{overflow-x:clip}
   <p class="note" id="storeNote" style="text-align:center;margin-top:14px"></p>
   <div class="tools"><button class="btn small" id="freeMode" type="button">Montagem avulsa</button><button class="btn small" id="restore" type="button">Restaurar backup</button></div>
   <p class="note">As fotos ficam guardadas só neste aparelho, dentro do app. Ao fechar cada paciente, toque em Backup e guarde o arquivo no Drive ou em Arquivos.</p>
-  <p class="note" style="opacity:.6">Versão 35</p>
+  <p class="note" style="opacity:.6">Versão 36</p>
 </section>
 
 <section id="proj" class="scr" hidden>
@@ -324,7 +324,7 @@ html,body{overflow-x:clip}
     <div id="pickBox" hidden>
       <div class="scrubs"><div class="scrub" id="scrA"></div><div class="scrub" id="scrD"></div></div>
       <div class="sclabels"><span id="pkLl"></span><span id="pkRl"></span></div>
-      <button class="btn big pkauto" id="pkAuto" type="button">✦ Gerar comparação automaticamente</button>
+      <button class="btn big pkauto" id="pkAuto" type="button">✦ Gerar comparações automaticamente</button>
       <button class="btn primary big" id="pkGo" type="button">Remover fundo e editar</button>
       <button class="btn big" id="pkOriginal" type="button" hidden>Editar com fundo original</button>
       <p class="note" id="pickHelp" aria-live="polite" hidden></p>
@@ -2700,30 +2700,88 @@ async function faceLum(s) {
     return t / (576 * 255);
   } catch (e) { return null; }
 }
+function shotPose(s) { return s.poseManual ? s.pose : (s.yaw != null && !isNaN(s.yaw) ? poseOf(s.yaw) : s.pose); }
+// geometria do rosto como o Prisma desenha (âncora nos olhos, olhos-lábio = FACE_D), para a montagem automática
+function sideGeom(s, side) {
+  const p = s.pyr && s.pyr.pts; if (!p || p.length !== 4) return null;
+  const P = place({ w: s.w, h: s.h, pyr: s.pyr, meta: null }); if (P.oy !== EYE_Y) return null;
+  const px = q => [q.x * s.w, q.y * s.h];
+  const pts = [...p, ...(s.pyr.oval || []), s.pyr.fore].filter(Boolean).map(px);
+  const eye = [(p[0].x + p[1].x) / 2 * s.w, (p[0].y + p[1].y) / 2 * s.h];
+  return { ...P, col: COL[side], pts, eye, nose: px(p[2]), yaw: s.yaw };
+}
+async function ensureFaces(list) {
+  const todo = list.filter(s => !s.pyr);
+  for (let n = 0; n < todo.length; n++) {
+    const s = todo[n]; setStatus('Analisando rostos ' + (n + 1) + ' de ' + todo.length, true);
+    try {
+      const im = await loadImg(s.prev), p = await detectOn(im);
+      s.pyr = p ? { pts: [...p], oval: p.oval, fore: p.fore, w: s.w, h: s.h, hid: p.hid } : null; s.yaw = p ? p.yaw : null;
+      if (!s.poseManual && (s.kind === 'A' || !s.pose || s.pose === '—')) s.pose = poseOf(s.yaw);
+      DB.put('shots', s).catch(() => {});
+    } catch (e) {}
+  }
+  setStatus('Comparando ângulo e luz', true);
+  for (const s of list) if (s.pyr && typeof s._lum !== 'number') { const v = await faceLum(s); if (v != null) s._lum = v; }
+}
+// Caio 14/11 01:49: um toque gera os 5 ângulos (os que tiverem foto de antes e de depois), cada um salvo na pasta
+// do projeto para abrir e ajustar depois. Posição das cabeças: PairMatch.autoLayout (calibrada nas montagens dele).
 async function autoCompare() {
-  if (!curComp || !picking || autoBusy || !pickA.length || !pickD.length) return;
+  const c = curComp;
+  if (!c || !Pj || autoBusy) return;
+  const A = compList(c, 'A'), D = compList(c, 'D'); if (!A.length || !D.length) return;
   autoBusy = true; pkLabels();
   try {
-    const all = pickA.concat(pickD), todo = all.filter(s => !s.pyr);
-    for (let n = 0; n < todo.length; n++) {
-      const s = todo[n]; setStatus('Analisando rostos ' + (n + 1) + ' de ' + todo.length, true);
-      try {
-        const im = await loadImg(s.prev), p = await detectOn(im);
-        s.pyr = p ? { pts: [...p], oval: p.oval, fore: p.fore, w: s.w, h: s.h, hid: p.hid } : null; s.yaw = p ? p.yaw : null;
-        if (!s.poseManual && (s.kind === 'A' || !s.pose || s.pose === '—')) s.pose = poseOf(s.yaw);
-        DB.put('shots', s).catch(() => {});
-      } catch (e) {}
+    await ensureFaces(A.concat(D));
+    let plan = [];
+    for (const angle of ANGLES) {
+      const pose = ANGLE_POSE[angle], As = A.filter(s => shotPose(s) === pose), Ds = D.filter(s => shotPose(s) === pose);
+      if (!As.length || !Ds.length) continue;
+      const r = PairMatch.bestPair(As, Ds, pose); if (r.best) plan.push({ angle, a: r.best.a, d: r.best.d, r: r.best });
     }
-    setStatus('Comparando ângulo e luz', true);
-    for (const s of all) if (s.pyr && typeof s._lum !== 'number') { const v = await faceLum(s); if (v != null) s._lum = v; }
-    const r = PairMatch.bestPair(pickA, pickD, ANGLE_POSE[curComp.angle]);
-    if (!r.best) { setStatus('Não encontrei rosto nas fotos para comparar. Escolha o par nas miniaturas.', false); return; }
-    pickL = r.best.i; pickR = r.best.j; tf.A = T0(); tf.D = T0();
-    curComp.selectionTouched = true; curComp.tf = null;
-    scMark(); pkLabels(); render(); pkSave();
-    autoNote = 'Par automático: antes ' + (r.best.i + 1) + ' e depois ' + (r.best.j + 1) + ' · ' + PairMatch.grade(r.best.cost) + (r.best.yawDiff != null ? ' (giro ' + Math.round(r.best.yawDiff) + '°)' : '');
-    setStatus(autoNote, false);
-    await startEditing(true);
+    if (!plan.length) { setStatus('Não encontrei antes e depois do mesmo ângulo com rosto visível. Escolha o par nas miniaturas.', false); return; }
+    const saved = new Set((c.angles || []).map(x => x.name)), already = plan.filter(p => saved.has(p.angle));
+    if (already.length) {
+      const choice = await new Promise(res => overlay(null, already.map(p => p.angle).join(', ') + (already.length === 1 ? ' já tem montagem salva.' : ' já têm montagem salva.'), [
+        ['Gerar só os que faltam', () => res('missing'), 'primary'], ['Refazer todos', () => res('all')], ['Cancelar', () => res(null)]]));
+      closeOut();
+      if (!choice) { setStatus('Pronto', false); return; }
+      if (choice === 'missing') plan = plan.filter(p => !saved.has(p.angle));
+      if (!plan.length) { setStatus('Todos os ângulos com foto já estão montados', false); return; }
+    }
+    const look = { ...(c.edit && c.edit.opts || {}) }, made = [], failed = [];
+    for (const { angle, a, d } of plan) {
+      setStatus('Montando ' + angle, true);
+      const old = depOf(a); if (old && old !== d) { old.of = null; await DB.put('shots', old); }
+      d.of = a.id; await DB.put('shots', d);
+      const ga = sideGeom(a, 'A'), gd = sideGeom(d, 'D'), lay = ga && gd ? PairMatch.autoLayout(ga, gd) : null;
+      c.angle = angle; c.selA = a.id; c.selD = d.id;
+      c.tf = lay ? { A: lay.A, D: lay.D, front: lay.front } : { A: T0(), D: T0(), front: defaultFront(a) };
+      c.edit = { opts: { ...look, layout: 'classico' }, backgroundRemoved: true };
+      closePick(); openEditor(a, d);
+      const IA = items.A[sel.A], ID = items.D[sel.D]; if (!IA || !ID) { failed.push(angle); continue; }
+      queueIt(IA, 'A'); queueIt(ID, 'D'); pump();
+      const tried = new Set();
+      for (let k = 0; k < 480 && !(IA.cut && ID.cut) && IA.status !== 'erro' && ID.status !== 'erro'; k++) {
+        setStatus('Recortando ' + angle + ' · ' + (made.length + 1) + ' de ' + plan.length, true);
+        for (const it of [IA, ID]) if (it.raw && !it.cut && !tried.has(it)) { tried.add(it); await ensureLive(it); }
+        if (!(IA.cut && ID.cut)) await new Promise(r => setTimeout(r, 250));
+      }
+      if (!(IA.cut && ID.cut)) { failed.push(angle); release(IA); release(ID); continue; }
+      savePair();
+      const output = makeFile();
+      const data = await new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = () => reject(r.error); r.readAsDataURL(output.blob); });
+      const prev = (c.angles || []).find(x => x.name === angle);
+      const rec = { id: prev ? prev.id : newId('angle'), name: angle, t: Date.now(), selA: a.id, selD: d.id, tf: cloneValue(c.tf), edit: cloneValue(c.edit), out: data, auto: true };
+      c.angles = [...(c.angles || []).filter(x => x.name !== angle), rec]; c.out = data;
+      await saveComp(); made.push(angle);
+      IA._shape = ID._shape = null; release(IA); release(ID);
+      await new Promise(r => setTimeout(r, 0));
+    }
+    await touchProj();
+    openFolder(c);
+    autoNote = '';
+    setStatus((made.length ? made.length + (made.length === 1 ? ' ângulo montado' : ' ângulos montados') + ' · toque em um para ajustar' : 'Não consegui montar nenhum ângulo') + (failed.length ? ' · não recortou: ' + failed.join(', ') : ''), false);
   } finally { autoBusy = false; if (picking) pkLabels(); }
 }
 $('pkAuto').onclick = autoCompare;

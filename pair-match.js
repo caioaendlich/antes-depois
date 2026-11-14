@@ -63,8 +63,42 @@
     return { best: ranked[0] || null, ranked, missing: { A: fa.filter(f => !f).length, D: fd.filter(f => !f).length } };
   }
 
+
+  // Posição das duas cabeças, calibrada nas montagens que Caio fez à mão no Prisma (Video Studio, 06/11/2026):
+  // - de frente: o contorno do rosto da frente começa logo depois da orelha do rosto de trás (orelha e brinco de trás
+  //   continuam à mostra), folga de 0,37 da distância olhos-lábio entre os dois contornos;
+  // - de lado (giro ~55°): o perfil do rosto da frente (ponta do nariz) entra 0,46 olhos-lábio sobre a bochecha do de trás,
+  //   na frente da orelha, que fica escondida;
+  // - fica na frente o rosto cujo nariz aponta para o outro (de frente: o depois);
+  // - os dois juntos ocupam ~940 de 1080 px de largura, centralizados, olhos na mesma altura (y 755).
+  // side: { ax, ay, oy, k0, r0, col, pts: [[x,y]...] contorno e pontos do rosto (px da foto), eye: [x,y], nose: [x,y], yaw }
+  const LAYOUT = { W: 1080, eyeY: 755, span: 940, g0: 0.37, g1: -0.46, yawFull: 55, faceD: 0.165 * 1080, sMin: 0.6, sMax: 2.8 };
+  function autoLayout(A, D, cfg) {
+    const C = Object.assign({}, LAYOUT, cfg || {});
+    const yaws = [A.yaw, D.yaw].filter(y => typeof y === 'number' && isFinite(y)).map(Math.abs);
+    const yawAbs = yaws.length ? yaws.reduce((a, b) => a + b, 0) / yaws.length : 0;
+    const dir = Math.sign(A.nose[0] - A.eye[0]) + Math.sign(D.nose[0] - D.eye[0]);
+    const front = yawAbs < 12 || dir === 0 ? 'D' : dir < 0 ? 'D' : 'A';
+    const g = C.g0 + (C.g1 - C.g0) * Math.min(1, yawAbs / C.yawFull);
+    const xs = (side, s) => {
+      const k = side.k0 * s, r = side.r0 * Math.PI / 180, c = Math.cos(r), sn = Math.sin(r);
+      return side.pts.map(([px, py]) => side.col + k * (c * (px - side.ax) - sn * (py - side.ay)));
+    };
+    const min = a => Math.min.apply(null, a), max = a => Math.max.apply(null, a);
+    let s = 1, dxA = 0, dxD = 0;
+    for (let pass = 0; pass < 6; pass++) {
+      const d = C.faceD * s, xa = xs(A, s), xd = xs(D, s);
+      // borda esquerda do depois = borda direita do antes + folga (negativa = sobreposição); vale para qualquer lado na frente
+      dxD = max(xa) + g * d - min(xd);
+      const L = Math.min(min(xa), min(xd) + dxD), R = Math.max(max(xa), max(xd) + dxD);
+      const shift = C.W / 2 - (L + R) / 2; dxA = shift; dxD += shift;
+      if (pass < 5) s = Math.max(C.sMin, Math.min(C.sMax, s * C.span / Math.max(1, R - L)));
+    }
+    return { A: { s, dx: dxA, dy: C.eyeY - A.oy, r: 0 }, D: { s, dx: dxD, dy: C.eyeY - D.oy, r: 0 }, front, gap: g };
+  }
+
   function grade(cost) { return cost < 1.5 ? 'muito compatível' : cost < 5 ? 'compatível' : cost < 12 ? 'razoável' : 'pouco compatível'; }
 
-  const api = { features, cost, bestPair, grade, POSE_YAW };
+  const api = { features, cost, bestPair, grade, autoLayout, LAYOUT, POSE_YAW };
   if (typeof module === 'object' && module.exports) module.exports = api; else root.PairMatch = api;
 })(typeof self !== 'undefined' ? self : this);
