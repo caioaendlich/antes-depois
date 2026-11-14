@@ -185,6 +185,7 @@ input.wide{width:100%}
 .half .hcam{pointer-events:auto;position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font:inherit;font-size:12px;font-weight:600;color:#eee;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:5px 12px;cursor:pointer}
 #pickBox{display:grid;gap:12px}
 .pkauto{border-color:#5a4d38;color:var(--accent)}
+.pkautos{display:grid;grid-template-columns:1fr 1fr;gap:10px}.pkautos .btn{width:100%;min-width:0}
 .scrubs{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .scrub{display:flex;gap:1px;height:46px;padding:3px;background:var(--panel);border-radius:8px;touch-action:none;overflow:hidden;align-items:stretch}
 .scrub .sc{flex:1 1 0;min-width:0;border:0;padding:0;border-radius:3px;overflow:hidden;opacity:.45;position:relative}
@@ -324,7 +325,7 @@ html,body{overflow-x:clip}
     <div id="pickBox" hidden>
       <div class="scrubs"><div class="scrub" id="scrA"></div><div class="scrub" id="scrD"></div></div>
       <div class="sclabels"><span id="pkLl"></span><span id="pkRl"></span></div>
-      <button class="btn big pkauto" id="pkAuto" type="button">✦ Gerar comparações automaticamente</button>
+      <div class="pkautos"><button class="btn big pkauto" id="pkAuto" type="button">✦ Automático 1x</button><button class="btn big pkauto" id="pkAuto2" type="button">✦ Automático 2x</button></div>
       <button class="btn primary big" id="pkGo" type="button">Remover fundo e editar</button>
       <button class="btn big" id="pkOriginal" type="button" hidden>Editar com fundo original</button>
       <p class="note" id="pickHelp" aria-live="polite" hidden></p>
@@ -2213,7 +2214,7 @@ async function runDet() {
       if (Pj && Pj.shots.includes(r)) DB.put('shots', r).catch(() => {});
       if (picking) {
         if (curComp && !curComp.selectionTouched) {
-          const pose = ({'Perfil esquerdo':'Perfil E','45° esquerda':'45° E','Frente':'Frente','45° direita':'45° D','Perfil direito':'Perfil D'})[curComp.angle];
+          const pose = ({'Perfil esquerdo':'Perfil E','45° esquerda':'45° E','Frente':'Frente','45° direita':'45° D','Perfil direito':'Perfil D'})[baseAngle(curComp.angle)];
           const a = pickA.findIndex(s=>s.pose===pose), d = pickD.findIndex(s=>s.pose===pose);
           if (a >= 0 && pickA[pickL]?.pose !== pose) pickL = a;
           if (d >= 0 && pickD[pickR]?.pose !== pose) pickR = d;
@@ -2674,7 +2675,9 @@ function pkLabels() {
   const lab = (L, i) => L[i] ? (i + 1) + ' de ' + L.length + (L[i].pose && L[i].pose !== '—' ? ' · ' + L[i].pose : '') : L.length ? 'Escolha uma foto deste ângulo' : '';
   $('pkLl').textContent = lab(pickA, pickL); $('pkRl').textContent = lab(pickD, pickR);
   const ok = !!(pickA[pickL] && pickD[pickR]);
-  $('pkAuto').disabled = autoBusy || !(pickA.length && pickD.length);
+  const hasZ = (L, z) => L.some(s => zoomOf(s) === z);
+  $('pkAuto').disabled = autoBusy || !(hasZ(pickA, 1) && hasZ(pickD, 1));
+  $('pkAuto2').disabled = autoBusy || !(hasZ(pickA, 2) && hasZ(pickD, 2));
   $('pkGo').disabled = $('pkOriginal').disabled = !ok; $('pkGo').textContent = 'Remover fundo e editar';
   $('pickHelp').textContent = ok ? 'Deslize as miniaturas ou toque em uma foto. Depois escolha como editar.' : (curComp?.U?.length ? 'Há fotos para classificar. Toque em Organizar fotos e defina Antes e Depois.' : 'Importe fotos ou fotografe para preencher Antes e Depois.');
   $('pickHelp').hidden = !curComp?.U?.length;
@@ -2692,7 +2695,7 @@ function openPick(c) {
   if (linked) { savePair(); clearItems(); linked = false; }
   curComp = c; c.angle ||= 'Frente'; c.U ||= []; c.angles ||= [];
   pickA = compList(c, 'A'); pickD = compList(c, 'D');
-  const pose = ({'Perfil esquerdo':'Perfil E','45° esquerda':'45° E','Frente':'Frente','45° direita':'45° D','Perfil direito':'Perfil D'})[c.angle];
+  const pose = ({'Perfil esquerdo':'Perfil E','45° esquerda':'45° E','Frente':'Frente','45° direita':'45° D','Perfil direito':'Perfil D'})[baseAngle(c.angle)];
   pickL = pickIndexForAngle(pickA,c.selA,pose); pickR = pickIndexForAngle(pickD,c.selD,pose);
   const t0 = c.tf; tf.A = t0 ? { ...t0.A } : T0(); tf.D = t0 ? { ...t0.D } : T0();
   picking = true; setActive('A');
@@ -2787,16 +2790,22 @@ async function ensureFaces(list) {
 }
 // Caio 14/11 01:49: um toque gera os 5 ângulos (os que tiverem foto de antes e de depois), cada um salvo na pasta
 // do projeto para abrir e ajustar depois. Posição das cabeças: PairMatch.autoLayout (calibrada nas montagens dele).
-async function autoCompare() {
+// Caio 14/11 03:23: montar com as fotos de 1x ou de 2x (zoom da câmera lido do EXIF; foto sem essa informação conta como 1x).
+function zoomOf(s) { const g = PhotoDates.zoomGroup(s); return g === 9 ? 1 : g; }
+function baseAngle(n) { return (n || '').replace(/ · \d+x$/, ''); }
+async function autoCompare(zoom = 1) {
   const c = curComp;
   if (!c || !Pj || autoBusy) return;
-  const A = compList(c, 'A'), D = compList(c, 'D'); if (!A.length || !D.length) return;
   autoBusy = true; pkLabels();
   try {
+    setStatus('Lendo o zoom das fotos', true); await hydrateZoom(c);
+    for (let k = 0; k < 100 && projectPhotos(c).some(s => zoomReads.has(s)); k++) await new Promise(r => setTimeout(r, 100));
+    const A = compList(c, 'A').filter(s => zoomOf(s) === zoom), D = compList(c, 'D').filter(s => zoomOf(s) === zoom);
+    if (!A.length || !D.length) { setStatus('Não há antes e depois em ' + zoom + 'x neste projeto', false); return; }
     await ensureFaces(A.concat(D));
     let plan = [];
-    for (const angle of ANGLES) {
-      const pose = ANGLE_POSE[angle], As = A.filter(s => shotPose(s) === pose), Ds = D.filter(s => shotPose(s) === pose);
+    for (const base of ANGLES) {
+      const angle = base + ' · ' + zoom + 'x', pose = ANGLE_POSE[base], As = A.filter(s => shotPose(s) === pose), Ds = D.filter(s => shotPose(s) === pose);
       if (!As.length || !Ds.length) continue;
       const r = PairMatch.bestPair(As, Ds, pose); if (r.best) plan.push({ angle, a: r.best.a, d: r.best.d, r: r.best });
     }
@@ -2847,7 +2856,7 @@ async function autoCompare() {
     setStatus((made.length ? made.length + (made.length === 1 ? ' ângulo montado' : ' ângulos montados') + ' · toque em um para ajustar' : 'Não consegui montar nenhum ângulo') + (failed.length ? ' · não recortou: ' + failed.join(', ') : ''), false);
   } catch (e) { console.error(e); setStatus('A montagem automática parou: ' + ((e && e.message) || 'erro') + '. Toque de novo para continuar.', false); } finally { autoBusy = false; if (picking) pkLabels(); }
 }
-$('pkAuto').onclick = autoCompare;
+$('pkAuto').onclick = () => autoCompare(1); $('pkAuto2').onclick = () => autoCompare(2);
 $('pkOriginal').onclick = () => startEditing(false);
 $('refineCut').onclick = () => { if (working || !linked || picking) return; const it = items[active][sel[active]]; if (!it) return; it.raw = null; it.cleanedRaw = null; it.cutError = null; it.status = 'fila'; queueIt(it,active); pump(); };
 $('retryCut').onclick = () => { if (working) return; resetModel(new Error('Reiniciando recorte')); for (const side of ['A','D']) { const it = items[side][sel[side]]; if (it) { it.status = 'fila'; it._liveErr = 0; it.cutError = null; it.raw = null; it.cleanedRaw = null; queueIt(it,side); } } pump(); };
