@@ -25,7 +25,7 @@
 html,body{height:100%}
 body{background:var(--bg);color:var(--fg);font-family:var(--ui);font-size:15px;margin:0}
 *{box-sizing:border-box}
-#app{max-width:1100px;margin:0 auto;padding-block:12px 28px;padding-inline:16px;display:grid;gap:14px;grid-template-columns:1fr}
+#app{max-width:1100px;margin:0 auto;padding-block:12px 28px;padding-inline:16px;display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
 @media (min-width:900px){#app{grid-template-columns:minmax(0,420px) minmax(0,1fr);align-items:start}}
 header{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 h1{font-size:15px;font-weight:700;letter-spacing:.06em;margin:0;line-height:1}
@@ -46,9 +46,9 @@ body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area
 .vbtn{position:absolute;top:8px;right:8px;z-index:2;font:inherit;font-size:12px;font-weight:600;color:#eee;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:4px 10px;cursor:pointer}
 @media (max-width:899px){.stage{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:2px 6px;margin-inline:-10px}.view{border-radius:6px}}
 .side-hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:12px;color:#d6d6d6;background:rgba(0,0,0,.55);padding:4px 10px;border-radius:999px;pointer-events:none;white-space:nowrap}
-.controls{display:grid;gap:14px;min-width:0}
+.controls{display:grid;gap:14px;min-width:0;grid-template-columns:minmax(0,1fr)}
 .row{display:grid;gap:8px;min-width:0}
-.row-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.row-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .lbl{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
 .btn{font:inherit;font-size:14px;font-weight:600;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:10px;padding:9px 14px;cursor:pointer}
 .btn:focus-visible,.seg button:focus-visible,.th:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -81,7 +81,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .check input{accent-color:var(--accent);width:18px;height:18px}
 input[type=text]{font:inherit;font-size:14px;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0;width:170px}
 .pair{display:grid;gap:6px;min-width:0}.pair .row,.strip-wrap{min-width:0;max-width:100%}html,body{overflow-x:hidden;overscroll-behavior-x:none}body{touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}input[type=text]{-webkit-user-select:text;user-select:text}#app{max-width:min(1100px,100vw)}.pair .row{gap:3px}.pair .btn.small{padding:4px 10px;font-size:12.5px}.pair .row-head .flex{flex-wrap:nowrap}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:12px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}
 .save-row{display:flex;gap:10px;flex-wrap:wrap}
 .save-row .btn.primary{flex:1;min-width:180px;font-size:15px;padding:12px}
 .note{font-size:12.5px;color:var(--muted);line-height:1.45;margin:0}
@@ -242,7 +242,7 @@ html,body{overflow-x:clip}
   <p class="note" id="storeNote" style="text-align:center;margin-top:14px"></p>
   <div class="tools"><button class="btn small" id="freeMode" type="button">Montagem avulsa</button><button class="btn small" id="restore" type="button">Restaurar backup</button></div>
   <p class="note">As fotos ficam guardadas só neste aparelho, dentro do app. Ao fechar cada paciente, toque em Backup e guarde o arquivo no Drive ou em Arquivos.</p>
-  <p class="note" style="opacity:.6">Versão 36</p>
+  <p class="note" id="appVer" style="opacity:.6"></p>
 </section>
 
 <section id="proj" class="scr" hidden>
@@ -383,7 +383,7 @@ html,body{overflow-x:clip}
       <button class="btn" id="saveFile" disabled>Baixar arquivo</button>
       <button class="btn" id="saveAnim" hidden disabled>Baixar animação</button>
     </div>
-    <p class="note">As fotos não saem do aparelho: o recorte é feito aqui mesmo. Na primeira vez o recorte baixa cerca de 55 MB e pode levar alguns segundos por foto.</p>
+    <p class="note">As fotos não saem do aparelho: o recorte é feito aqui mesmo. Na primeira vez o app baixa cerca de 40 MB de modelos e o recorte pode levar alguns segundos por foto.</p>
   </div>
 </div>
 
@@ -1596,6 +1596,8 @@ let savingAngle = false;
 // Estado dos botões de salvar: atualizado quando algo muda (desenho, recorte, status, seleção), não por relógio.
 let saveQ = false;
 function saveTick() { if (saveQ) return; saveQ = true; queueMicrotask(() => { saveQ = false; updateSave(); }); }
+// Versão mostrada na tela inicial: vem do nome do cache do service worker (sw.js), único lugar onde ela muda.
+(async () => { try { const v = (await caches.keys()).map(k => /^ad-app-v(\d+)$/.exec(k)).find(Boolean); if (v) $('appVer').textContent = 'Versão ' + v[1]; } catch {} })();
 function updateSave() {
   const ok = ['A', 'D'].every(s => items[s][sel[s]]?.cut && !items[s][sel[s]]._live && !items[s][sel[s]].savedPaint);
   $('save').disabled = !ok; $('saveFile').disabled = !ok; $('saveAngle').disabled = !ok || savingAngle;
