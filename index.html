@@ -152,19 +152,6 @@ input.wide{width:100%}
 .peekBtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .cell.empty{flex-direction:column;gap:8px}
 .cell.empty .btn{width:100%}
-.pprev{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.pp{position:relative;aspect-ratio:4/5;border-radius:10px;overflow:hidden;background:#1d1e21}
-.pp img{width:100%;height:100%;object-fit:cover;display:block}
-.pp .tag{position:absolute;left:8px;top:8px;font-size:12px;font-weight:600;background:rgba(0,0,0,.6);color:#eee;padding:2px 8px;border-radius:999px}
-.ppempty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px}
-.swrap{position:relative}
-.swrap::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:64px;transform:translateX(-50%);border:2px solid var(--accent);border-radius:10px;pointer-events:none}
-.sstrip{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px calc(50% - 30px);scrollbar-width:none;touch-action:pan-x;background:var(--panel);border-radius:12px}
-.sstrip::-webkit-scrollbar{display:none}
-.st2{flex:0 0 60px;height:80px;border-radius:8px;overflow:hidden;position:relative;border:0;padding:0;background:#222;scroll-snap-align:center;cursor:pointer}
-.st2 img{width:100%;height:100%;object-fit:cover;display:block}
-.st2 .ok{position:absolute;right:3px;bottom:3px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:#5fc27e;color:#fff;font-size:9.5px;line-height:15px;text-align:center;font-weight:700}
-.st2.add{background:transparent;border:1.5px dashed #3a3c40;color:var(--muted);font:inherit;font-size:12px;line-height:1.2}
 #app.picking .controls>:not(#pickBox){display:none!important}
 #app.picking .stage{margin-inline:-16px;padding-top:0}
 #app.picking .view{border-radius:0;box-shadow:none}
@@ -209,11 +196,7 @@ input.wide{width:100%}
 .pchips{display:flex;gap:6px;flex-wrap:wrap}
 .pchips button{font:inherit;font-size:12.5px;padding:5px 11px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer}
 .pchips button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-.st2.on{box-shadow:inset 0 0 0 2px var(--accent)}
 #pickAgain{display:none}#app.proj #pickAgain{display:block}
-.swrap.mini::after{width:36px;border-radius:7px}
-.sstrip.mini{gap:4px;padding:3px calc(50% - 15px)}
-.sstrip.mini .st2{flex:0 0 30px;height:40px;border-radius:5px}
 #outBtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 
 #top{position:sticky;top:0;background:var(--bg);z-index:15;min-height:58px}
@@ -283,15 +266,6 @@ html,body{overflow-x:clip}
   <div class="tools" id="folderAlbum"><button class="btn small" id="folderPhotos">Álbum do projeto</button><span class="note" id="folderPoolCount"></span></div>
 </section>
 
-<section id="pairScr" class="scr" hidden>
-  <div class="pprev"><div class="pp"><img id="ppA" alt=""><span class="tag">Antes</span></div><div class="pp"><img id="ppD" alt=""><span class="tag">Depois</span><span class="ppempty" id="ppDe">Escolha o depois</span></div></div>
-  <div class="row-head"><span class="lbl">Antes</span><span class="note" id="psAl"></span></div>
-  <div class="swrap"><div class="sstrip" id="ssA"></div></div>
-  <div class="row-head"><span class="lbl">Depois</span><span class="note" id="psDl"></span></div>
-  <div class="swrap"><div class="sstrip" id="ssD"></div></div>
-  <button class="btn primary big" id="pairGo" type="button">Montar este par</button>
-  <p class="note">Role as faixas com o dedo para escolher. O fundo só é removido depois que você tocar em Montar.</p>
-</section>
 
 <div id="app" hidden>
   <div class="stage">
@@ -417,7 +391,6 @@ html,body{overflow-x:clip}
 <input type="file" id="fileD" accept="image/*" multiple hidden>
 <input type="file" id="fileCam" accept="image/*" multiple hidden>
 <input type="file" id="fileProj" accept="image/*" multiple hidden>
-<input type="file" id="filePair" accept="image/*" multiple hidden>
 <input type="file" id="fileAlbum" accept="image/*" multiple hidden>
 <input type="file" id="fileZip" accept=".zip,application/zip" hidden>
 <input type="file" id="filePool" accept="image/*" multiple hidden>
@@ -940,7 +913,7 @@ let session = null, sessionP = null;
 const queue = []; let working = false;
 let uid = 0;
 
-function setStatus(t, busy) { $('status').textContent = t; $('statusChip').classList.toggle('busy', !!busy); $('statusChip').style.visibility = !$('app').hidden && /^(Recortando|Preparando recorte|Pronto)/.test(t) ? 'hidden' : ''; if (busy) spin(); }
+function setStatus(t, busy) { saveTick(); $('status').textContent = t; $('statusChip').classList.toggle('busy', !!busy); $('statusChip').style.visibility = !$('app').hidden && /^(Recortando|Preparando recorte|Pronto)/.test(t) ? 'hidden' : ''; if (busy) spin(); }
 // quatro pontos nos vértices de um tetraedro girando em 3D, como pontos de carregamento
 let spinOn = false;
 function spin() {
@@ -1306,6 +1279,7 @@ function spaced(g, txt, cx, y, sp) {
   g.textAlign = al;
 }
 function render() {
+  saveTick();
   const g = ctx;
   g.setTransform(1, 0, 0, 1, 0, 0);
   if (!picking && tool === 'move' && opts.layout && opts.layout !== 'classico' && drawDisplay(g)) { $('hint').hidden = true; $('etools').hidden = false; drawLoupe(); syncHistory(); return; }
@@ -1370,7 +1344,6 @@ function render() {
 }
 
 // ---------- miniaturas ----------
-const STEP = 58; // 50 de miniatura + 8 de espaço
 function buildStrip(side) {
   const strip = $('strip' + side), wrap = $('wrap' + side);
   strip.innerHTML = '';
@@ -1393,6 +1366,7 @@ function buildStrip(side) {
   });
 }
 function markThumb(it) {
+  saveTick();
   const b = document.querySelector('.th[data-id="' + it.id + '"] .st'); if (!b) return;
   b.className = 'st' + (it.status === 'pronto' ? ' ok' : it.status === 'erro' ? ' err' : '');
 }
@@ -1425,6 +1399,7 @@ function removeItem(side, i) {
 
 // ---------- ajustes ----------
 function setActive(side) {
+  saveTick();
   if(brushing) { finishStroke(); brushing=false; ring=null; }
   active = side;
   $('segA').setAttribute('aria-pressed', side === 'A'); $('segD').setAttribute('aria-pressed', side === 'D');
@@ -1618,6 +1593,9 @@ cv.addEventListener('wheel', e => { e.preventDefault(); const t = tf[active]; t.
 
 // ---------- salvar ----------
 let savingAngle = false;
+// Estado dos botões de salvar: atualizado quando algo muda (desenho, recorte, status, seleção), não por relógio.
+let saveQ = false;
+function saveTick() { if (saveQ) return; saveQ = true; queueMicrotask(() => { saveQ = false; updateSave(); }); }
 function updateSave() {
   const ok = ['A', 'D'].every(s => items[s][sel[s]]?.cut && !items[s][sel[s]]._live && !items[s][sel[s]].savedPaint);
   $('save').disabled = !ok; $('saveFile').disabled = !ok; $('saveAngle').disabled = !ok || savingAngle;
@@ -1696,7 +1674,6 @@ $('saveAnim').onclick = async () => {
 $('vtog').onclick = () => { const v = $('view'), full = v.classList.toggle('full'); $('vtog').textContent = full ? 'Ver ampliado 4:5' : 'Ver 9:16 inteiro'; };
 
 
-setInterval(updateSave, 800);
 document.addEventListener('gesturestart', e => { if (!(e.target.closest && e.target.closest('#view'))) e.preventDefault(); }, { passive: false });
 document.addEventListener('touchmove', e => { if (e.touches.length > 1 && !(e.target.closest && e.target.closest('#view'))) e.preventDefault(); }, { passive: false });
 let lastTap = 0; document.addEventListener('touchend', e => { const n = Date.now(); if (n - lastTap < 300 && !(e.target.closest && e.target.closest('#view, input, textarea, button, label, .strip'))) e.preventDefault(); lastTap = n; }, { passive: false });
@@ -2119,11 +2096,6 @@ function camUI() {
   }
   camGhost(); camTargetPyr(); camDraw();
 }
-function advance() {
-  const L = camA(), n = L.length;
-  for (let k = 1; k <= n; k++) { const j = (curA + k) % n; if (!depOf(L[j]) && !pendingDone.has(L[j].id)) { curA = j; return true; } }
-  return false;
-}
 function camOpenCommon() { $('cam').hidden = false; live = null; trk = null; camStart().then(camLoop); }
 function camOpen(t) { camMode = 'free'; tmpl = null; camSetTarget(t); camOpenCommon(); }
 function camOpenProj(kind, idx) {
@@ -2297,7 +2269,7 @@ async function runDet() {
 }
 function show(s) {
   screen = s;
-  $('home').hidden = s !== 'home'; $('proj').hidden = s !== 'proj'; $('app').hidden = s !== 'edit'; $('pairScr').hidden = s !== 'pair';
+  $('home').hidden = s !== 'home'; $('proj').hidden = s !== 'proj'; $('app').hidden = s !== 'edit';
   $('projectFolder').hidden = s !== 'folder';
   $('back').hidden = s === 'home';
   $('back').textContent = s === 'proj' ? '‹ Pacientes' : s === 'folder' && Pj ? '‹ ' + Pj.rec.name : s === 'edit' && curComp ? '‹ Projeto ' + dateLabel(curComp) : s === 'pair' && Pj ? '‹ ' + Pj.rec.name : '‹ Início';
@@ -2349,7 +2321,6 @@ async function newComp() {
   const c = { id: newId('c'), t: Date.now(), A: [], D: [], selA: null, selD: null, tf: null, U: [], angles: [], angle: 'Frente', date: localDay(Date.now()) };
   Pj.rec.comps.push(c); await saveComp(); openFolder(c);
 }
-const fmtFull = t => { const d = new Date(t); return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear() + ' · ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()); };
 function renderProj() {
   if (!Pj) return;
   $('pName').value = Pj.rec.name;
@@ -2375,31 +2346,12 @@ function fileName(s) {
   if (i < 0) return slug(Pj.rec.name) + '_depois-sem-par_' + pad2(depList().indexOf(s) + 1) + '.jpg';
   return slug(Pj.rec.name) + '_' + pad2(i + 1) + '_' + (s.kind === 'A' ? 'antes' : 'depois') + (s.pose && s.pose !== '—' ? '_' + slug(s.pose) : '') + '.jpg';
 }
-function arm(b, fn) {
-  if (b.dataset.arm) { fn(); return; }
-  b.dataset.arm = 1; const t = b.textContent; b.textContent = 'Toque de novo para apagar';
-  setTimeout(() => { if (b.isConnected) { delete b.dataset.arm; b.textContent = t; } }, 3000);
-}
 async function shareFiles(files) {
   try { if (navigator.canShare && navigator.share && navigator.canShare({ files })) { await navigator.share({ files }); return true; } }
   catch (e) { if (e && e.name === 'AbortError') return null; }
   return false;
 }
 function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
-function viewShot(s) {
-  const L = antesList(), a = s.kind === 'A' ? s : L.find(x => x.id === s.of), i = L.indexOf(a), name = fileName(s);
-  const btns = [['Compartilhar', async () => { if (await shareFiles([new File([s.blob], name, { type: 'image/jpeg' })]) === false) download(s.blob, name); }]];
-  if (i >= 0) btns.push([s.kind === 'D' ? 'Refazer depois' : depOf(s) ? 'Refazer depois' : 'Fotografar depois', () => { closeOut(); camOpenProj('D', i); }]);
-  btns.push(['Apagar', b => arm(b, async () => { closeOut(); await removeShot(s); await touchProj(); renderProj(); })]);
-  btns.push(['Fechar', closeOut, 'primary']);
-  overlay(URL.createObjectURL(s.blob), (s.kind === 'A' ? 'Antes ' : 'Depois ') + (i + 1) + (s.pose && s.pose !== '—' ? ' · ' + s.pose : '') + ' · ' + fmtDT(s.t) + (s.kind === 'A' && depOf(s) ? ' · apagar o antes deixa o depois guardado, sem par' : ''), btns);
-}
-// recorte em segundo plano das fotos do projeto, para a montagem já abrir pronta
-function bgCut() {
-  return; // recorte só depois de escolher o par (pedido do Caio)
-  for (const s of Pj.shots) if (!s.mask && !queue.some(q => q.it.shot === s)) itemFromShot(s, 'P');
-  pump();
-}
 function stopBg() { for (let i = queue.length - 1; i >= 0; i--) if (queue[i].side === 'P') queue.splice(i, 1); }
 function itemFromShot(s, side, noQueue) {
   const k = Math.min(1, MAX_SRC / Math.max(s.w, s.h)), img = new Image(); img.onload = () => { if (screen === 'edit') render(); }; img.src = s.prev;
@@ -2610,85 +2562,6 @@ $('newGo').onclick = createProj;
 $('newName').addEventListener('keydown', e => { if (e.key === 'Enter') createProj(); });
 $('pName').addEventListener('change', () => { const v = $('pName').value.trim(); if (!Pj || !v) { $('pName').value = Pj ? Pj.rec.name : ''; return; } Pj.rec.name = v; touchProj(); });
 
-// ---------- escolha do par: duas faixas roláveis, prévia lado a lado, sem recorte ----------
-let psA = 0, psD = -1, ssQuiet = 0, ssGal = null;
-function ssBuild(el, list, kind) {
-  el.innerHTML = '';
-  list.forEach((s, i) => {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'st2'; b.dataset.i = i;
-    let badge = '';
-    if (kind === 'A' && depOf(s)) badge = '<span class="ok">✓</span>';
-    if (kind === 'D' && s.of) { const j = antesList().findIndex(a => a.id === s.of); if (j >= 0) badge = '<span class="ok">' + (j + 1) + '</span>'; }
-    b.innerHTML = '<img alt="" src="' + s.thumb + '">' + badge;
-    b.onclick = () => ssGo(el, i, true);
-    el.appendChild(b);
-  });
-  const add = document.createElement('button'); add.type = 'button'; add.className = 'st2 add'; add.innerHTML = '+<br>Galeria';
-  add.onclick = () => { ssGal = kind; $('filePair').click(); };
-  el.appendChild(add);
-}
-function ssGo(el, i, smooth) {
-  const t = el.querySelectorAll('.st2')[i]; if (!t) return;
-  ssQuiet = Date.now() + (smooth ? 600 : 120);
-  el.scrollTo({ left: t.offsetLeft + t.offsetWidth / 2 - el.clientWidth / 2, behavior: smooth ? 'smooth' : 'auto' });
-  if (el.id === 'ssA') setPsA(i); else setPsD(i);
-}
-function ssCenter(el) {
-  const c = el.scrollLeft + el.clientWidth / 2, ts = [...el.querySelectorAll('.st2:not(.add)')]; let best = 0, bd = 1e9;
-  ts.forEach((t, i) => { const d = Math.abs(t.offsetLeft + t.offsetWidth / 2 - c); if (d < bd) { bd = d; best = i; } });
-  return ts.length ? best : -1;
-}
-function setPsA(i) {
-  if (i === psA && $('ppA').getAttribute('src')) return;
-  psA = i; const A = antesList(), a = A[i];
-  const d = depOf(a), D = depList();
-  if (d) { const j = D.indexOf(d); if (j >= 0 && j !== psD) ssGo($('ssD'), j, true); }
-  pairPrev();
-}
-function setPsD(i) { psD = i; pairPrev(); }
-function pairPrev() {
-  const A = antesList(), D = depList(), a = A[psA], d = D[psD];
-  $('ppA').src = a ? a.prev : ''; $('ppA').hidden = !a;
-  $('ppD').hidden = !d; if (d) $('ppD').src = d.prev; $('ppDe').hidden = !!d;
-  $('psAl').textContent = a ? (psA + 1) + ' de ' + A.length + (a.pose && a.pose !== '—' ? ' · ' + a.pose : '') : '';
-  $('psDl').textContent = d ? (d.of && d.of === (a && a.id) ? 'par deste antes' : d.of ? 'hoje é par do antes ' + (A.findIndex(x => x.id === d.of) + 1) : 'sem par') : (D.length ? '' : 'nenhum depois ainda');
-  $('pairGo').disabled = !(a && d);
-  $('pairGo').textContent = a && d && d.of === a.id ? 'Montar este par' : 'Parear e montar';
-}
-['ssA', 'ssD'].forEach(id => {
-  let tm = 0;
-  $(id).addEventListener('scroll', () => {
-    clearTimeout(tm);
-    tm = setTimeout(() => { if (Date.now() < ssQuiet) return; const i = ssCenter($(id)); if (i < 0) return; if (id === 'ssA') { if (i !== psA) setPsA(i); } else if (i !== psD) setPsD(i); }, 110);
-  }, { passive: true });
-});
-function openPair(focusA) {
-  if (!Pj) return;
-  show('pair');
-  const A = antesList(), D = depList();
-  ssBuild($('ssA'), A, 'A'); ssBuild($('ssD'), D, 'D');
-  let ia = focusA ? A.indexOf(focusA) : A.findIndex(a => !depOf(a));
-  if (ia < 0) ia = 0;
-  const d = depOf(A[ia]); let id = d ? D.indexOf(d) : D.findIndex(x => !x.of);
-  if (id < 0) id = D.length ? 0 : -1;
-  psA = -1; psD = id;
-  requestAnimationFrame(() => { ssGo($('ssA'), ia, false); if (id >= 0) ssGo($('ssD'), id, false); pairPrev(); });
-}
-$('pairGo').onclick = async () => {
-  const A = antesList(), D = depList(), a = A[psA], d = D[psD]; if (!a || !d) return;
-  if (d.of !== a.id) {
-    const old = depOf(a); if (old && old !== d) { old.of = null; await DB.put('shots', old); }
-    d.of = a.id; if (!d.pose || d.pose === '—') d.pose = a.pose; await DB.put('shots', d); await touchProj();
-  }
-  openEditor(a);
-};
-$('filePair').onchange = async e => {
-  const fs = [...e.target.files]; e.target.value = ''; const k = ssGal; ssGal = null; if (!fs.length || !Pj) return;
-  await importToProject(fs, k === 'A' ? 'A' : 'D', null);
-  const A = antesList(), D = depList();
-  ssBuild($('ssA'), A, 'A'); ssBuild($('ssD'), D, 'D');
-  requestAnimationFrame(() => { if (k === 'A') ssGo($('ssA'), A.length - 1, true); else { ssGo($('ssD'), D.length - 1, true); ssGo($('ssA'), Math.max(0, psA), false); } });
-};
 // ---------- tela de seleção da comparação ----------
 // Quadro 4:5 de ponta a ponta dividido ao meio. Cada lado tem um + (álbum) e Câmera; as fotos escolhidas viram miniaturas
 // bem pequenas logo abaixo do seu lado, e passar o dedo por cima troca a foto daquele lado na hora. Sem recorte até Remover fundo.
@@ -2792,7 +2665,7 @@ async function hydrateZoom(c) {
     finally { zoomReads.delete(s); }
   }
 }
-function closePick() { picking = false; $('app').classList.remove('picking'); $('pickBox').hidden = true; $('halves').hidden = true; }
+function closePick() { picking = false; saveTick(); $('app').classList.remove('picking'); $('pickBox').hidden = true; $('halves').hidden = true; }
 function pkAlbum(side) { pkSide = side; $('fileAlbum').click(); }
 $('plusA').onclick = () => pkAlbum('A'); $('plusD').onclick = () => pkAlbum('D');
 $('camHA').onclick = () => { if (!curComp) return; pkSave(); closePick(); camOpenProj('A'); };
@@ -2950,7 +2823,7 @@ $('back').onclick = () => {
       openFolder(curComp);
     }
     else { show('home'); renderHome(); }
-  } else if (screen === 'folder' || screen === 'pair') { curComp = null; show('proj'); renderProj(); }
+  } else if (screen === 'folder') { curComp = null; show('proj'); renderProj(); }
   else if (screen === 'proj') { stopBg(); Pj = null; curComp = null; show('home'); renderHome(); }
 };
 // ---------- projeto por data, ângulos e seleção em lote ----------
@@ -3261,7 +3134,6 @@ function renderSessions(ex) {
   groups.forEach((group,i) => {
     const card = document.createElement('div'); card.className = 'sessionCard';
     const title = document.createElement('b');
-    const format = t => new Date(t).toLocaleString('pt-BR');
     title.textContent = Number.isFinite(group[0].capturedAt) ? `Grupo ${i+1} · ${new Date(group[0].capturedAt).toLocaleDateString('pt-BR')}` : 'Fotos sem data';
     const sides = new Set(group.map(s => ex.comp.A.includes(s.id) ? 'Antes' : ex.comp.D.includes(s.id) ? 'Depois' : 'Para classificar'));
     const note = document.createElement('p'); note.textContent = `${group.length} foto${group.length === 1 ? '' : 's'} · ${[...sides].join(' / ')}`;
