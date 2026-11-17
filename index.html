@@ -626,6 +626,7 @@ function neckGeo(it, man) {
       if (!isFinite(xTip)) xTip = (C[0] - bk * fhi * .02) / k;
       // Caio 17/11 03:04: abaixo do ponto estreito, atrás da nuca só cabelo (ombro e trapézio não; roupão claro não)
       const xNape = exr[yN] ? (bk > 0 ? exr[yN][1] + fhi * .03 / k : exr[yN][0] - fhi * .03 / k) : (bk > 0 ? Infinity : -Infinity);
+      const halfU = wN * .26;
       const xNuca = bk > 0 ? Math.max(nC + wN * 1.15, G[0] / k + fhi * .04 / k) : Math.min(nC - wN * 1.15, G[0] / k - fhi * .04 / k);   // na borda do anel: só corta cabelo que passa dele
       for (let Y = Y0; Y <= Yend; Y++) {
         const b = bounds[Y]; if (!b) continue;
@@ -662,12 +663,17 @@ function neckGeo(it, man) {
         gola = Y => { if (Y <= yFd) return 1; const t = Math.min(1, (Y - yFd) / fL); return 1 - t * t * (3 - 2 * t); };
       // Caio 17/11 02:11: as laterais seguem a borda anterior do ECM: retas sob o ângulo da mandíbula até o queixo e, dali, descem
       // em diagonal para dentro (como os dois ECM convergindo para a fúrcula) até a metade da largura na base, no anel
-      if (uShape && yRing > yChin + 4) { let yF = yChin;   // no 45° a frente só fecha depois que o queixo acaba (o queixo não é cortado)
-        if (semi) { yF = yRing; for (let Y = yChin; Y < yRing; Y++) { const r = rows[Y]; if (r && (bk > 0 ? r[0] >= nC - wN / 2 : r[1] <= nC + wN / 2)) { yF = Y; break; } } }
-        for (let Y = yChin; Y < ch; Y++) { const r = rows[Y]; if (!r) continue;
-          const t = Math.min(1, (Y - yChin) / (yRing - yChin)), hw = wN / 2 * (1 - .48 * t), tF = Y < yF ? -1 : Math.min(1, (Y - yF) / Math.max(4, yRing - yF)), hwF = wN / 2 * (1 - .48 * tF);
-          const lo = semi && bk > 0 && tF < 0 ? r[0] : nC - (semi && bk > 0 ? hwF : hw), hi = semi && bk < 0 && tF < 0 ? r[1] : nC + (semi && bk < 0 ? hwF : hw);
-          rows[Y] = [Math.max(r[0], lo), Math.min(r[1], hi)]; } }
+      // Caio 17/11 04:01: de frente e no 45° as laterais são um U contínuo, do ângulo da mandíbula até a base (começam retas e vão
+      // fechando), sem abrir nas laterais; o rosto (oval da mandíbula, com o queixo) fica por cima do corte, inteiro e nítido
+      // abaixo do ponto do queixo, a borda de baixo do queixo desce numa curva até a frente do U (sem degrau reto no queixo)
+      let chF = null; const dC = Math.max(3, fhi * .07 / k);
+      if (uShape && yRing > Y0 + 4) for (let Y = Y0; Y < ch; Y++) { const b = bounds[Y]; if (!b) { rows[Y] = null; continue; }
+        const t = Math.min(1, (Y - Y0) / (yRing - Y0)), hw = halfU + (wN / 2 - halfU) * (1 - t * t); let r = [Math.max(b[0], nC - hw), Math.min(b[1], nC + hw)];
+        const sp = ovalSpan(Y); if (sp) { const o0 = semi && bk > 0 ? b[0] : Math.max(b[0], sp[0] - mOv), o1 = semi && bk < 0 ? b[1] : Math.min(b[1], sp[1] + mOv);   // no 45°, a ponta do queixo que passa do oval entra
+        r = r[1] > r[0] ? [Math.min(r[0], o0), Math.max(r[1], o1)] : [o0, o1]; }
+        if (Y < yChin && sp && r[1] > r[0]) chF = r.slice();
+        else if (Y >= yChin && chF && Y < yChin + dC && r[1] > r[0]) { const e = (Y - yChin) / dC, q2 = Math.sqrt(Math.max(0, 1 - e * e)); const f0 = semi && bk > 0 ? b[0] : chF[0], f1 = semi && bk < 0 ? b[1] : chF[1]; r = [Math.min(r[0], r[0] + (f0 - r[0]) * q2), Math.max(r[1], r[1] + (f1 - r[1]) * q2)]; /* no 45° o queixo continua pelo contorno abaixo do ponto do queixo */ r = [Math.max(b[0], r[0]), Math.min(b[1], r[1])]; }
+        rows[Y] = r[1] - r[0] > 2 ? r : null; }
       const turned = Math.abs(noseX - (p.pts[0].x + p.pts[1].x) / 2 * it.w) > fhi * .08;   // nuca suave só quando o rosto está virado
       // linhas sem nada no meio: interpola entre as vizinhas; depois mediana e média para tirar degraus
       const idx = []; for (let Y = 0; Y < ch; Y++) if (rows[Y]) idx.push(Y);
@@ -679,31 +685,35 @@ function neckGeo(it, man) {
       for (const med of [true, false]) { const F = smooth(0, med), Lr = smooth(1, med); for (let Y = 0; Y < ch; Y++) if (rows[Y]) rows[Y] = [F[Y], Lr[Y]]; }
       // Caio 17/11 02:33: de perfil e 45°, o pescoço some num corte perpendicular ao próprio pescoço (da cartilagem cricoide, na
       // frente, até a nuca, atrás), não numa linha horizontal; subindo ou descendo o anel, o mesmo corte sobe ou desce
-      let ux0 = 0, uy0 = 1; if (turnedF) { let n = 0, sx = 0, sy = 0, sxy = 0, syy = 0;
+      let ux0 = 0, uy0 = 1; if (turnedF && !uShape) { let n = 0, sx = 0, sy = 0, sxy = 0, syy = 0;
         for (let Y = yN; Y <= Math.min(ch - 1, Math.round(yRing)); Y++) { const r = rows[Y]; if (!r) continue; const xf = bk > 0 ? r[0] : r[1]; n++; sx += xf; sy += Y; sxy += xf * Y; syy += Y * Y; }
         if (n > 4) { const sl = (n * sxy - sx * sy) / Math.max(1e-6, n * syy - sy * sy), cl = Math.max(-.6, Math.min(.6, sl)), l = Math.hypot(cl, 1); ux0 = cl / l; uy0 = 1 / l; } }
       // Caio 17/11 03:56: o borrão segue o contorno anatômico em todos os ângulos (laterais do ECM, garganta, nuca e base em U),
       // nunca uma base reta: monta-se a forma do pescoço (com a base em U no eixo do próprio pescoço) e a borda dela some em
       // degradê para dentro; o contorno natural do recorte (queixo, garganta contra o fundo) continua nítido
-      const halfB = uShape ? wN * .26 : wN * .5, hcU = Math.max(halfB * 1.3, fhi * .06 / k), Rb = Math.max(2, Math.round(fhi * .055 / k));
+      const halfB = uShape ? halfU : wN * .5, hcU = Math.max(halfB * 1.3, fhi * .06 / k), Rb = Math.max(2, Math.round(fhi * .055 / k));
       // base em U: no último trecho antes do anel (medido no eixo do pescoço) cada linha fecha numa curva elíptica até o centro
-      const inU = (X, Y, r) => { if (Y < yChin) return true; const sA = (X - nC) * ux0 + (Y - yRing) * uy0; if (sA >= 0) return false; if (sA <= -hcU) return true;
+      const inOv = (X, Y) => { const sp = ovalSpan(Y); return !!sp && (semi && bk > 0 || X >= sp[0] - mOv) && (semi && bk < 0 || X <= sp[1] + mOv); };
+      const inU = (X, Y, r) => { if (Y < yChin || inOv(X, Y)) return true; const sA = (X - nC) * ux0 + (Y - yRing) * uy0; if (sA >= 0) return false; if (sA <= -hcU) return true;
         const e = (sA + hcU) / hcU, c = (r[0] + r[1]) / 2, h = (r[1] - r[0]) / 2 * Math.sqrt(Math.max(0, 1 - e * e)); return Math.abs(X - c) <= h; };
-      const yA = Math.max(0, yChin - 3 * Rb), inM = new Float32Array(cw * ch), aa = new Float32Array(cw * ch);
+      const yS = uShape ? Y0 : yChin, yA = Math.max(0, yS - Rb), flt = new Uint8Array(cw * ch), inM = new Float32Array(cw * ch), aa = new Float32Array(cw * ch);
       for (let Y = 0; Y < ch; Y++) {
         const r = rows[Y], bd = bounds[Y]; if (!r || !bd) continue; const f = Math.max(0, Math.floor(r[0])), l = Math.min(cw - 1, Math.ceil(r[1]));
         const pxF = turnedF, pxU = Y < yChin, yBeard = yChin + fhi * .1 / k, yRim = yChin + fhi * .06 / k, ex0 = exr[Y]; let keep = null;   // barba só dentro da faixa do pescoço; roupa escura na frente fica de fora
         if (pxF) { keep = new Uint8Array(l - f + 1); let last = -1; const gapF = Math.max(3, Math.round(fhi * .012 / k));   // brinco e fio de cabelo entre pele: ficam
           for (let X = f; X <= l; X++) { const i = (Y * cw + X) * 4; const pastNape = Y > yN && (back > 0 ? X > xNape : X < xNape); if ((pxU && hairPx(i)) || (!pxU && !pastNape && (Y < yRim ? isSkinD(X, Y) : isSkin(X, Y))) || (pastNape && hairPx(i) && !isSkin(X, Y) && rgb[i] + rgb[i + 1] + rgb[i + 2] < S0 * 1.05) || (!pastNape && ex0 && (back > 0 ? X > ex0[1] : X < ex0[0]) && hairPx(i)) || (Y < yBeard && ex0 && X >= ex0[0] && X <= ex0[1] && al[i + 3] >= 128 && rgb[i] + rgb[i + 1] + rgb[i + 2] < S0 * .35)) { if (last >= 0 && X - last <= gapF) for (let x = last + 1; x < X; x++) keep[x - f] = 1; keep[X - f] = 1; last = X; } } }
-        for (let X = f; X <= l; X++) { if (keep && !keep[X - f]) continue; if (!inU(X, Y, r)) continue; const ed = Math.min(1, X - r[0] + .5, r[1] - X + .5); if (ed <= 0) continue; inM[Y * cw + X] = 1; aa[Y * cw + X] = ed; }
+        for (let X = f; X <= l; X++) { if (keep && !keep[X - f]) { if (inU(X, Y, r)) flt[Y * cw + X] = 1; continue; } if (!inU(X, Y, r)) continue; const ed = Math.min(1, X - r[0] + .5, r[1] - X + .5); if (ed <= 0) continue; inM[Y * cw + X] = 1; aa[Y * cw + X] = ed; }
       }
       // degradê: média em caixa (duas passadas, horizontal e vertical) da forma, só da altura do queixo para baixo
       const bl = new Float32Array(cw * ch), tmp = new Float32Array(cw * ch);
-      for (let pass = 0; pass < 2; pass++) { const src = pass ? bl : inM;
+      // fundo transparente e pano/roupão retirados contam como "dentro": contorno natural (queixo contra o fundo ou o roupão) não ganha
+      // degradê; só o corte do pescoço (laterais e base em U)
+      const inB = new Float32Array(cw * ch); for (let j = yA * cw; j < cw * ch; j++) inB[j] = inM[j] || flt[j] || al[j * 4 + 3] < 64 ? 1 : 0;
+      for (let pass = 0; pass < 2; pass++) { const src = pass ? bl : inB;
         for (let Y = yA; Y < ch; Y++) { let acc = 0; const o = Y * cw; for (let X = -Rb; X < cw; X++) { if (X + Rb < cw) acc += src[o + X + Rb]; if (X - Rb - 1 >= 0) acc -= src[o + X - Rb - 1]; if (X >= 0) tmp[o + X] = acc / (2 * Rb + 1); } }
         for (let X = 0; X < cw; X++) { let acc = 0; for (let Y = yA - Rb; Y < ch; Y++) { if (Y + Rb < ch && Y + Rb >= yA) acc += tmp[(Y + Rb) * cw + X]; if (Y - Rb - 1 >= yA) acc -= tmp[(Y - Rb - 1) * cw + X]; if (Y >= yA) bl[Y * cw + X] = acc / (2 * Rb + 1); } } }
       for (let Y = 0; Y < ch; Y++) for (let X = 0; X < cw; X++) { const j = Y * cw + X; if (!inM[j]) continue; const i = j * 4;
-        let F = 1; if (Y >= yChin) { const t = Math.max(0, Math.min(1, (bl[j] - .5) * 2)), tY = Math.min(1, (Y - yChin) / Rb); F = 1 - (1 - t * t * (3 - 2 * t)) * tY; }
+        let F = 1; if (Y >= yS && !inOv(X, Y)) { const t = Math.max(0, Math.min(1, (bl[j] - .5) * 2)), tY = Math.min(1, (Y - yS) / (uShape ? 2 * Rb : Rb)); F = 1 - (1 - t * t * (3 - 2 * t)) * tY; }
         od[i] = od[i + 1] = od[i + 2] = 255; od[i + 3] = al[i + 3] * aa[j] * F; }
       q.clearRect(0, 0, cw, ch); q.putImageData(out, 0, 0); skin = c;
     } } } catch (e) { skin = null; }
