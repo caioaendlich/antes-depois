@@ -1031,7 +1031,7 @@ async function restorePaint(it) {
 }
 let active = 'A', picking = false;
 let session = null, sessionP = null;
-const queue = []; let working = false;
+const queue = []; let working = false, importing = false;
 let uid = 0;
 
 function setStatus(t, busy) { saveTick(); $('status').textContent = t; $('statusChip').classList.toggle('busy', !!busy); $('statusChip').style.visibility = !$('app').hidden && /^(Recortando|Preparando recorte|Pronto)/.test(t) ? 'hidden' : ''; if (busy) spin(); }
@@ -1159,13 +1159,21 @@ const mc = document.createElement('canvas'); mc.width = RES; mc.height = RES;
 const mg = mc.getContext('2d', { willReadFrequently: true });
 
 let paused = false;
+// Caio 17/11 05:02: o iPhone congela o app minimizado (não há como importar ou recortar em segundo plano num app web).
+// Enquanto importa ou recorta, a tela não apaga sozinha; ao voltar, o trabalho continua de onde parou.
+let wake = null;
+async function keepAwake(on) { try {
+  if (on) { if (!wake && navigator.wakeLock && !document.hidden) { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => { wake = null; }); } }
+  else if (wake) { const w = wake; wake = null; await w.release(); }
+} catch (e) {} }
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { paused = true; return; }
+  if (working || queue.length || importing) keepAwake(true);
   // volta: primeiro desenha a tela, depois retoma o recorte
   requestAnimationFrame(() => requestAnimationFrame(() => { render(); setTimeout(() => { paused = false; pump(); }, 350); }));
 });
 async function pump() {
-  if (working || paused || !queue.length) return; working = true;
+  if (working || paused || !queue.length) return; working = true; keepAwake(true);
   try {
     await loadModel();
     // prioriza a foto selecionada de cada lado
@@ -1183,7 +1191,7 @@ async function pump() {
     }
     if (!queue.length) { const failed = ['A','D'].flatMap(s => items[s]).find(it => it.status === 'erro'); setStatus(failed ? 'Não recortou: ' + (failed.cutError || 'tente novamente') : (autoNote || 'Pronto'), false); autoNote = ''; } else if (!$('cam').hidden) setStatus('Recorte em pausa', false);
   } catch (e) { for (const {it} of queue) { it.status = 'erro'; it.cutError = e.message; } setStatus(e.message || 'Erro no recorte', false); }
-  working = false; updateSave();
+  working = false; updateSave(); if (!queue.length && !importing) keepAwake(false);
 }
 
 async function cutout(it) {
@@ -3137,7 +3145,7 @@ $('filePool').onchange = async e => {
   if (!$('importProgress').open) $('importProgress').showModal();
   $('importPool').disabled = $('importMore').disabled = true; $('app').inert = $('top').inert = true;
   await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
-  const files = [...e.target.files]; e.target.value = '';
+  const files = [...e.target.files]; e.target.value = ''; importing = true; keepAwake(true);
   try {
     rememberDraft();
     const hadPhotos = projectPhotos(c).length > 0;
@@ -3159,7 +3167,7 @@ $('filePool').onchange = async e => {
       await renderExplorer();
     }
   } catch (err) { setStatus('Não foi possível concluir a importação: ' + err.message, false); }
-  finally { $('importProgress').close(); $('importPool').disabled = $('importMore').disabled = false; $('app').inert = $('top').inert = !!explorer; }
+  finally { importing = false; if (!working && !queue.length) keepAwake(false); $('importProgress').close(); $('importPool').disabled = $('importMore').disabled = false; $('app').inert = $('top').inert = !!explorer; }
 };
 $('usePatient').onclick = () => { if (!curComp || !Pj) return; rememberDraft(); openExplorer('photos', null, { useFor: curComp }); };
 $('exUse').onclick = async () => {
