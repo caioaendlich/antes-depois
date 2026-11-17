@@ -647,6 +647,11 @@ function neckGeo(it, man) {
       let ySk = Yend; for (let Y = yN + 1; Y <= Yend; Y++) if (!skn[Y] || wd[Y] < wN * .45) { ySk = Y; break; }
       R = [nC * k, man == null ? Math.min(Math.max(yN * k + fhi * .05, C[1] + fhi * .22), Math.max(yN * k + fhi * .03, ySk * k)) : Math.max(R[1], (yN + 2) * k)]; neckW = wN * k;
       const yRing = R[1] / k, golaH = Math.max(3, fhi * .1 / k), gola = Y => Y <= yRing ? 1 : Math.max(0, 1 - (Y - yRing) / golaH);
+      // Caio 17/11 02:07: de frente, a base do pescoço é curva (cantos de baixo arredondados, em U), não quadrada seguindo o disco
+      if (!turnedF) { const hc = wN * .38, rc = wN * .2, y0c = yRing - hc;
+        for (let Y = Math.max(0, Math.floor(y0c)); Y < ch; Y++) { const r = rows[Y]; if (!r) continue; const t = (Y - y0c) / hc;
+          const ins = t <= 1 ? rc * (1 - Math.sqrt(Math.max(0, 1 - t * t))) : rc + (Y - yRing) * 3; const L = r[0] + ins, Rr = r[1] - ins;
+          rows[Y] = Rr - L > 2 ? [L, Rr] : null; } }
       const turned = Math.abs(noseX - (p.pts[0].x + p.pts[1].x) / 2 * it.w) > fhi * .08;   // nuca suave só quando o rosto está virado
       // linhas sem nada no meio: interpola entre as vizinhas; depois mediana e média para tirar degraus
       const idx = []; for (let Y = 0; Y < ch; Y++) if (rows[Y]) idx.push(Y);
