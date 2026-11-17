@@ -3354,7 +3354,11 @@ async function generateModes(c, layouts, look) {
   closeOut();
   const angles = (c.angles || []).filter(a => shotById(a.selA) && shotById(a.selD) && !/ · (Espectral|Galeria|Detalhe)/.test(a.name)), made = [];
   if (!angles.length) { setStatus('Nenhum ângulo salvo com as duas fotos', false); return; }
-  for (const a of angles) {
+  // Caio 17/11 19:48: os modos saem com a cor trocada e a faixa/touca mesmo que o ângulo não tenha sido salvo de novo depois da mudança
+  const live = a => { const same = e => e && e.selA === a.selA && e.selD === a.selD; if (c.angle === a.name && same(c) && c.edit) return c.edit; const d = (c.drafts || {})[a.name]; return same(d) ? d.edit : null; };
+  for (const a0 of angles) {
+    const a = { ...a0, edit: cloneValue(a0.edit) || {} }, L = live(a0);
+    if (L) for (const sd of ['A', 'D']) if (L[sd] && a.edit[sd] && L[sd].id === a.edit[sd].id) { a.edit[sd].rc = L[sd].rc || a.edit[sd].rc || null; a.edit[sd].hw = L[sd].hw || a.edit[sd].hw || null; } else if (L[sd] && !a.edit[sd]) a.edit[sd] = cloneValue(L[sd]);
     editSavedAngle(c, a);
     const A = items.A[sel.A], D = items.D[sel.D]; if (!A || !D) continue;
     queueIt(A, 'A'); queueIt(D, 'D'); pump();
@@ -3367,6 +3371,10 @@ async function generateModes(c, layouts, look) {
       if (!(A.cut && D.cut)) await new Promise(r => setTimeout(r, 250));
     }
     if (!(A.cut && D.cut)) { release(A); release(D); continue; }
+    // Caio 17/11 19:48: a cor trocada e a faixa/touca do ângulo salvo entram nos modos; a touca é feita em segundo plano, então espera ela ficar pronta
+    for (const it of [A, D]) { if (it.recolor) { applyRecolor(it); if (it.fin) composeCut(it); }
+      if (it.headwear) { if (!it._hwLayer && !it._hwBusy) applyHeadwear(it); for (let k = 0; k < 120 && (it._hwBusy || !it._hwLayer) && !it._hwFail; k++) await new Promise(r => setTimeout(r, 150)); if (it.fin) composeCut(it); } }
+    render();
     const keep = { layout: opts.layout, look: opts.look };
     for (const ly of layouts) {
       opts.layout = ly; opts.look = look; setStatus('Criando ' + a.name + ' · ' + MODE_NAMES[ly], true);
