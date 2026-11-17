@@ -211,6 +211,7 @@ input.wide{width:100%}
 #poolInfo{margin:0}#saveAngle{width:100%}.explorer{position:fixed;inset:0;z-index:80;background:var(--bg);overflow:auto;padding:max(16px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom))}
 .exContent{max-width:900px;margin:auto}.exHead,.exActions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.exHead h2{flex:1;margin:0;font-size:20px}.exActions{padding:10px 0}.exActions.sticky{position:sticky;top:-16px;background:var(--bg);z-index:2}.exGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:10px;margin-top:10px}.exCard{display:flex;position:relative;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;padding:8px;gap:6px;background:var(--panel)}.exCard:has(input:checked){border:2px solid var(--accent);padding:7px}.exCard input{width:24px;height:24px;accent-color:var(--accent)}.exCard img{width:100%;height:135px;object-fit:contain}.exCard b,.exCard small{display:block;overflow-wrap:anywhere}.exCard small{color:var(--muted);margin-top:4px}.danger{color:#ffb6ab!important}#exCount{flex:1;min-width:120px}
 @media(max-width:899px){.stage{position:relative;top:auto}#workflow{position:relative}#top h1{font-size:13px}#statusChip{max-width:45%;font-size:11px}.exGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+#usePatient{position:absolute;z-index:6;left:50%;top:calc(50% + 70px);transform:translateX(-50%);white-space:nowrap}
 #importPool{position:absolute;z-index:6;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;width:94px;height:94px;padding:10px;font-size:14px;background:var(--panel);border:1px solid var(--accent)}
 #plusA,#plusD{display:none!important}.sessionCard{border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0}.sessionThumbs{display:flex;overflow:auto;gap:4px;margin:10px 0}.sessionThumbs img{height:80px;width:60px;object-fit:cover}.sessionCard .flex{margin-top:8px}
 /* Keep the comparison visible while the angle row scrolls behind the header. */
@@ -278,6 +279,7 @@ html,body{overflow-x:clip}
     </div>
     <div class="view" id="view">
       <button class="btn" id="importPool" type="button" hidden>Importar fotos</button>
+      <button class="btn small" id="usePatient" type="button" hidden>Usar fotos do paciente</button>
       <canvas id="cv" width="1080" height="1920" aria-label="Prévia da imagem (mostrando o miolo 4:5; salva em 9:16)"></canvas>
       <button class="vbtn" id="vtog" type="button">Ver 9:16 inteiro</button>
       <div class="side-hint" id="hint">Arraste para mover · pinça para zoom e giro</div>
@@ -430,7 +432,7 @@ html,body{overflow-x:clip}
 <section id="explorer" class="explorer" role="dialog" aria-modal="true" aria-labelledby="exTitle" hidden>
 <div class="exContent"><div class="exHead"><h2 id="exTitle"></h2><button class="btn" id="exClose">‹ Voltar</button></div>
 <p class="note" id="exDescription"></p><select id="exFilter" aria-label="Filtrar fotos por data ou grupo"></select>
-<div class="exActions sticky" id="exBulk"><span id="exCount" aria-live="polite"></span><button class="btn small" id="exAll">Selecionar todos</button><button class="btn small" id="exClear">Limpar seleção</button><button class="btn small" id="exDownload">Baixar selecionados</button><button class="btn small danger" id="exDelete">Deletar selecionados</button></div>
+<div class="exActions sticky" id="exBulk"><span id="exCount" aria-live="polite"></span><button class="btn small" id="exAll">Selecionar todos</button><button class="btn small" id="exClear">Limpar seleção</button><button class="btn small primary" id="exUse" hidden>Usar neste projeto</button><button class="btn small" id="exDownload">Baixar selecionados</button><button class="btn small danger" id="exDelete">Deletar selecionados</button></div>
 <div class="exActions" id="exClassify"><span>Marcar seleção como:</span><button class="btn" id="exBefore">Antes</button><button class="btn" id="exAfter">Depois</button><button class="btn" id="exUnknown">Para classificar</button></div><div id="exSessions"></div><div class="exGrid" id="exGrid"></div></div></section>
 <canvas id="brushLoupe" width="240" height="240" aria-label="Lupa de precisão" hidden style="position:fixed;width:120px;height:120px;border:2px solid #d8c3a0;border-radius:50%;z-index:60;pointer-events:none;background:#222;box-shadow:0 2px 12px #0008"></canvas>
 <script src="photo-dates.js"></script>
@@ -2957,6 +2959,8 @@ function angleUI() {
   const hasPhotos = !!curComp && projectPhotos(curComp).length > 0;
   $('importPool').hidden = !curComp || screen !== 'edit' || hasPhotos;
   $('importMore').hidden = !curComp || screen !== 'edit' || !hasPhotos;
+  // Caio 17/11 04:34: projeto novo pode começar com as fotos que o paciente já tem (de outros projetos), sem importar de novo
+  $('usePatient').hidden = $('importPool').hidden || !Pj || !Pj.shots.length;
   $('workflow').hidden = !curComp || screen !== 'edit';
   $('projectActions').hidden = !curComp || screen !== 'edit';
   if (!curComp) return;
@@ -3157,6 +3161,18 @@ $('filePool').onchange = async e => {
   } catch (err) { setStatus('Não foi possível concluir a importação: ' + err.message, false); }
   finally { $('importProgress').close(); $('importPool').disabled = $('importMore').disabled = false; $('app').inert = $('top').inert = !!explorer; }
 };
+$('usePatient').onclick = () => { if (!curComp || !Pj) return; rememberDraft(); openExplorer('photos', null, { useFor: curComp }); };
+$('exUse').onclick = async () => {
+  const ex = explorer; if (!ex || !ex.useFor || !ex.selected.size) return; const c = ex.useFor, have = new Set(projectPhotos(c).map(s => s.id));
+  const pick = Pj.shots.filter(s => ex.selected.has(s.id) && !have.has(s.id)); if (!pick.length) { closeExplorer(); return; }
+  const assignments = have.size ? pick.map(s => ({ id: s.id, side: 'U' })) : PhotoDates.split(pick);
+  c.U ||= []; for (const a of assignments) if (!c[a.side].includes(a.id)) c[a.side].push(a.id);
+  await touchProj(); await saveComp(); closeExplorer(); openPick(c); angleUI();
+  const missing = assignments.filter(x => x.side === 'U').length;
+  setStatus(pick.length + (pick.length === 1 ? ' foto do paciente' : ' fotos do paciente') + ' no projeto' + (missing ? ' · ' + missing + ' para classificar' : ' · separadas pela data de captura'), false);
+  if (missing) { const ids = assignments.filter(x => x.side === 'U').map(x => x.id); await openExplorer('photos', c, { sessionMode: true, onlyIds: ids });
+    explorer.notice = 'Escolha Antes ou Depois para estes grupos. Depois toque em Continuar montagem. Você pode deixar fotos pendentes para organizar mais tarde.'; await renderExplorer(); }
+};
 $('poolManage').onclick = () => { rememberDraft(); if (linked) openPick(curComp); openExplorer('photos', curComp); };
 $('savedAngles').onclick = () => openFolder(curComp);
 $('saveAngle').onclick = async () => {
@@ -3211,6 +3227,8 @@ async function renderExplorer() {
   $('exDescription').textContent = ex.kind === 'photos' ? 'Selecione fotos para salvar na galeria, deletar ou separar entre antes e depois.' : ex.kind === 'angles' ? 'Selecione as montagens. No iPhone, toque em Salvar na galeria e depois em Salvar imagens.' : 'Marque os itens para baixar backups ou deletar.';
   if (ex.notice) $('exDescription').textContent = ex.notice;
   $('exClassify').hidden = ex.kind !== 'photos' || !ex.comp;
+  $('exUse').hidden = !ex.useFor; $('exDelete').hidden = !!ex.useFor;
+  if (ex.useFor) $('exDescription').textContent = 'Fotos que este paciente já tem. Selecione as que quer usar neste projeto; antes e depois são separados pela data de captura.';
   const filter = $('exFilter'); filter.hidden = ex.kind !== 'photos' || !!ex.sessionMode;
   if (ex.kind === 'photos') {
     filter.replaceChildren(new Option('Todas as datas e grupos', ''));
@@ -3276,7 +3294,7 @@ function renderSessions(ex) {
 function exCounts() {
   if (!explorer) return;
   $('exCount').textContent = `${explorer.selected.size} selecionado${explorer.selected.size === 1 ? '' : 's'}`;
-  ['exDownload','exDelete','exBefore','exAfter','exUnknown'].forEach(id => $(id).disabled = explorerBusy || !explorer.selected.size);
+  ['exDownload','exDelete','exBefore','exAfter','exUnknown','exUse'].forEach(id => $(id).disabled = explorerBusy || !explorer.selected.size);
   $('exAll').disabled = explorerBusy; $('exClear').disabled = explorerBusy; $('exClose').disabled = explorerBusy; $('exFilter').disabled = explorerBusy;
   $('exGrid').inert = explorerBusy; $('exSessions').inert = explorerBusy;
 }
