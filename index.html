@@ -831,9 +831,9 @@ function withAutoBase(t, auto) {
 }
 function drawDisplay(g) {
   // Caio 17/11 13:33: entrada = os rostos sobem de dentro do anel, rápido, suave e fluido (o anel fica parado e a cabeça
-  // passa por ele); o depois sai logo depois do antes. Desaceleração cúbica, sem quique.
+  // passa por ele); os dois juntos. Desaceleração cúbica, sem quique.
   const t = animT, cl01 = v => Math.max(0, Math.min(1, v)), easeO = v => 1 - (1 - v) ** 3;
-  const prog = i => cl01((t - (i ? .17 : .05)) / .5), riseOf = i => 1 - easeO(prog(i)), showOf = i => cl01(prog(i) / (spectral ? .12 : .45));
+  const prog = i => cl01((t - .05) / .55),   /* Caio 17/11 14:30: antes e depois sobem juntos, sincronizados */ riseOf = i => 1 - easeO(prog(i)), showOf = i => cl01(prog(i) / (spectral ? .12 : .45));
   const grow = easeO(cl01(t / .22)), lupa = Math.max(0, (t - .74) / .26);
   const S = [items.A[sel.A], items.D[sel.D]]; if (!S.every(it => it && it.cut && it.src)) return false;
   lupaRects = [];
