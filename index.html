@@ -647,7 +647,9 @@ function neckGeo(it, man) {
       let ySk = Yend; for (let Y = yN + 1; Y <= Yend; Y++) if (!skn[Y] || wd[Y] < wN * .45) { ySk = Y; break; }
       R = [nC * k, man == null ? Math.min(Math.max(yN * k + fhi * .05, C[1] + fhi * .22), Math.max(yN * k + fhi * .03, ySk * k)) : Math.max(R[1], (yN + 2) * k)]; neckW = wN * k;
       // Caio 17/11 02:18: de frente, toda a borda de baixo (laterais do ECM e base) some em degradê, sem borda seca
-      const yRing = R[1] / k, feB = Math.max(3, fhi * .05 / k), yFd = yRing - feB * 1.4, golaH = Math.max(3, fhi * .1 / k), gola = Y => !turnedF ? (Y <= yFd ? 1 : Math.max(0, 1 - (Y - yFd) / (feB * 1.4))) : Y <= yRing ? 1 : Math.max(0, 1 - (Y - yRing) / golaH);
+      const yRing = R[1] / k, feB = Math.max(3, fhi * .05 / k), fL = Math.max(4, fhi * .13 / k), yFd = yRing - fL, golaH = Math.max(3, fhi * .1 / k),
+        // Caio 17/11 02:20: sem corte seco embaixo; o pescoço some aos poucos (curva suave) e já acabou quando chega no anel
+        gola = Y => { if (Y <= yFd) return 1; const t = Math.min(1, (Y - yFd) / fL); return 1 - t * t * (3 - 2 * t); };
       // Caio 17/11 02:07: a base é curva (cantos de baixo arredondados), não quadrada seguindo o disco
       // Caio 17/11 02:11: as laterais seguem a borda anterior do ECM: retas sob o ângulo da mandíbula até o queixo e, dali, descem
       // em diagonal para dentro (como os dois ECM convergindo para a fúrcula) até a metade da largura na base, no anel
@@ -671,7 +673,7 @@ function neckGeo(it, man) {
         const pxF = turnedF, pxU = Y < yChin, yBeard = yChin + fhi * .1 / k, yRim = yChin + fhi * .06 / k, ex0 = exr[Y]; let keep = null;   // barba só dentro da faixa do pescoço; roupa escura na frente fica de fora
         if (pxF) { keep = new Uint8Array(l - f + 1); let last = -1; const gapF = Math.max(3, Math.round(fhi * .03 / k));   // brinco e fio de cabelo entre pele: ficam
           for (let X = f; X <= l; X++) { const i = (Y * cw + X) * 4; if ((pxU && hairPx(i)) || (!pxU && (Y < yRim ? isSkinD(X, Y) : isSkin(X, Y))) || (ex0 && (back > 0 ? X > ex0[1] : X < ex0[0]) && hairPx(i)) || (Y < yBeard && ex0 && X >= ex0[0] && X <= ex0[1] && al[i + 3] >= 128 && rgb[i] + rgb[i + 1] + rgb[i + 2] < S0 * .35)) { if (last >= 0 && X - last <= gapF) for (let x = last + 1; x < X; x++) keep[x - f] = 1; keep[X - f] = 1; last = X; } } }
-        for (let X = f; X <= l; X++) { const i = (Y * cw + X) * 4, db = back > 0 ? r[1] - X : X - r[0], fa = (turned ? Math.min(1, Math.max(0, db / fw)) : 1) * gola(Y), fe = !turnedF && Y > yChin ? Math.max(1, feB * Math.min(1, (Y - yChin) / feB)) : 1, ed = Math.min(1, (X - r[0] + .5) / fe, (r[1] - X + .5) / fe);
+        for (let X = f; X <= l; X++) { const i = (Y * cw + X) * 4, db = back > 0 ? r[1] - X : X - r[0], fa = (turned ? Math.min(1, Math.max(0, db / fw)) : 1) * gola(Y), fe = !turnedF && Y > yChin ? Math.max(1, feB * Math.min(1, (Y - yChin) / feB) * (1 + Math.max(0, Math.min(1, (Y - yFd) / fL)))) : 1, ed = Math.min(1, (X - r[0] + .5) / fe, (r[1] - X + .5) / fe);
           if (keep && !keep[X - f]) continue;
           od[i] = od[i + 1] = od[i + 2] = 255; od[i + 3] = al[i + 3] * fa * Math.max(0, ed); }
       }
