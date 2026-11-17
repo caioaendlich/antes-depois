@@ -1377,7 +1377,7 @@ function regionMask(it) {
   const sx = Math.max(0, Math.min(w - 1, Math.round(R.x * w))), sy = Math.max(0, Math.min(h - 1, Math.round(R.y * h)));
   // cor da semente: média 5×5 em RGB
   let mr = 0, mg2 = 0, mb = 0, n = 0; for (let y = sy - 2; y <= sy + 2; y++) for (let x = sx - 2; x <= sx + 2; x++) if (x >= 0 && y >= 0 && x < w && y < h) { const i = (y * w + x) * 4; mr += d[i]; mg2 += d[i + 1]; mb += d[i + 2]; n++; }
-  mr /= n; mg2 /= n; mb /= n; const [h0, s0, l0] = rgbHsl(mr, mg2, mb), tol = R.tol, gray = s0 < .14;
+  mr /= n; mg2 /= n; mb /= n; const [h0, s0, l0] = rgbHsl(mr, mg2, mb), tol = R.tol, gray = s0 < .14, pinkish = mb - mg2 > 8;   // rosa, lilás, roxo: azul acima do verde, o que a pele quase nunca tem
   const ok = i => { const hh = hsl[i * 3], ss = hsl[i * 3 + 1], ll = hsl[i * 3 + 2];
     if (gray) { const dr = d[i * 4] - mr, dg = d[i * 4 + 1] - mg2, db = d[i * 4 + 2] - mb; return Math.hypot(dr, dg, db) < tol * 2.2 && ss < .14 + tol / 250; }
     let dh = Math.abs(hh - h0); if (dh > 180) dh = 360 - dh; return dh <= tol && ss > Math.max(.05, s0 * .18) && Math.abs(ll - l0) < .34 + tol / 120; };
@@ -1387,14 +1387,21 @@ function regionMask(it) {
   // buracos fechados por dentro da área (brilho claro do tecido, costura) entram também
   { const out = new Uint8Array(w * h), q = []; for (let x = 0; x < w; x++) { q.push(x, (h - 1) * w + x); } for (let y = 0; y < h; y++) { q.push(y * w, y * w + w - 1); }
     while (q.length) { const i = q.pop(); if (out[i] || m[i]) continue; out[i] = 1; const x = i % w, y = (i / w) | 0; if (x > 0) q.push(i - 1); if (x < w - 1) q.push(i + 1); if (y > 0) q.push(i - w); if (y < h - 1) q.push(i + w); }
-    let holes = 0; for (let i = 0; i < w * h; i++) if (!m[i] && !out[i]) holes++;
-    if (holes < Math.max(50, m.reduce((a, v) => a + v, 0) * .25)) for (let i = 0; i < w * h; i++) if (!m[i] && !out[i]) m[i] = 1; }
+    // Caio 17/11 18:38: cada buraco é olhado sozinho (antes era tudo ou nada, e o rosa claro dentro da touca ficava)
+    const area = m.reduce((a, v) => a + v, 0), seen = new Uint8Array(w * h);
+    for (let i0 = 0; i0 < w * h; i0++) { if (m[i0] || out[i0] || seen[i0]) continue; const comp = [], q2 = [i0]; seen[i0] = 1; let hx = 0, hy = 0, bg = 0;
+      while (q2.length) { const i = q2.pop(); comp.push(i); const a2 = hsl[i * 3] * Math.PI / 180; hx += Math.cos(a2); hy += Math.sin(a2); if (d[i * 4 + 2] - d[i * 4 + 1] > 3) bg++; const x = i % w, y = (i / w) | 0;
+        for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]) if (j >= 0 && !m[j] && !out[j] && !seen[j]) { seen[j] = 1; q2.push(j); } }
+      let hh = (Math.atan2(hy, hx) * 180 / Math.PI + 360) % 360, dh = Math.abs(hh - h0); if (dh > 180) dh = 360 - dh;
+      const sameTone = gray ? true : dh <= tol + 30 && (!pinkish || bg > comp.length * .5);
+      if (comp.length < Math.max(50, area * .04) || sameTone) comp.forEach(i => m[i] = 1); } }
   // claros do mesmo tecido encostados na área (reflexo lilás quase branco): entram se o tom bate, mesmo com pouca saturação
   for (let pass = 0; pass < 14; pass++) { const add = [];
     for (let i = 0; i < w * h; i++) { if (m[i]) continue; const x = i % w, y = (i / w) | 0; let nb = 0;
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const X = x + dx, Y = y + dy; if (X >= 0 && Y >= 0 && X < w && Y < h && m[Y * w + X]) nb++; }
       const edge = x === 0 || y === 0 || x === w - 1 || y === h - 1; if (nb < (edge ? 2 : 3)) continue; const hh = hsl[i * 3], ss = hsl[i * 3 + 1], ll = hsl[i * 3 + 2]; let dh = Math.abs(hh - h0); if (dh > 180) dh = 360 - dh;
-      if (!gray && dh <= tol + 10 && ss > .03 && ll > l0 - .05) add.push(i); }
+      if (!gray && dh <= tol + 10 && ss > .03 && ll > l0 - .05) add.push(i);
+      else if (!gray && pinkish && d[i * 4 + 2] - d[i * 4 + 1] > 3 && d[i * 4] > d[i * 4 + 1] && dh <= tol + 35 && ss > .1) add.push(i); }   // borda da touca sobre a pele: o rosa fica mais vermelho, mas o azul continua acima do verde
     if (!add.length) break; add.forEach(i => m[i] = 1); }
   // fecha furinhos (costura, sombra) e suaviza a borda
   const mc = mkCanvas(w, h), mg3 = mc.getContext('2d', { willReadFrequently: true }), md = mg3.createImageData(w, h);
@@ -1411,7 +1418,7 @@ function regionMask(it) {
   let sxh = 0, syh = 0; { const bd = bg.getImageData(0, 0, w, h).data; for (let i = 0; i < w * h; i++) { if (bd[i * 4 + 3] < 20 || m[i]) continue; let dh = Math.abs(hsl[i * 3] - h0); if (dh > 180) dh = 360 - dh; if (dh < tol + 25 || hsl[i * 3 + 1] < .1) continue; const a = hsl[i * 3] * Math.PI / 180; sxh += Math.cos(a); syh += Math.sin(a); } }
   const skinH = sxh || syh ? ((Math.atan2(syh, sxh) * 180 / Math.PI) + 360) % 360 : 22;
   const core = mkCanvas(w, h), cq = core.getContext('2d'), cd = cq.createImageData(w, h); for (let i = 0; i < w * h; i++) if (m[i]) cd.data[i * 4 + 3] = 255; cq.putImageData(cd, 0, 0);   // só o que é da cor tocada, sem a margem do desfoque
-  it._rcMask = { c: mc, b: bc, core, skinH, n: cnt, lm: cnt ? lsum / cnt : l0, seed: [h0, s0, l0], key: R.x + ',' + R.y + ',' + R.tol };
+  it._rcMask = { c: mc, b: bc, core, skinH, pinkish, n: cnt, lm: cnt ? lsum / cnt : l0, seed: [h0, s0, l0], key: R.x + ',' + R.y + ',' + R.tol };
 }
 function applyRecolor(it) {
   const R = it.recolor, base = colorBase(it); it._rcDirty = false; if (!R || !base) { freeCanvas(it.rc); it.rc = null; return; }
@@ -1424,7 +1431,9 @@ function applyRecolor(it) {
   const img = g.getImageData(0, 0, W, H), P = img.data, sat = R.sat / 100, h0 = M.seed[0];
   let S0 = null; if (it.src && it.dsrc) { const sc = mkCanvas(W, H), sg = sc.getContext('2d', { willReadFrequently: true }); sg.drawImage(it.src, 0, 0, W, H); S0 = sg.getImageData(0, 0, W, H).data; freeCanvas(sc); }
   const T = R.to ? rgbHsl(parseInt(R.to.slice(1, 3), 16), parseInt(R.to.slice(3, 5), 16), parseInt(R.to.slice(5, 7), 16)) : null, lm = M.lm;
-  for (let i = 0; i < W * H; i++) { const a = A[i * 4 + 3] / 255, o = i * 4;
+  for (let i = 0; i < W * H; i++) { let a = A[i * 4 + 3] / 255; const o = i * 4;
+    if (M.pinkish && a < .98 && (a > 0 || Bd[o + 3] > 8)) { const r0 = S0 ? S0[o] : P[o], g0 = S0 ? S0[o + 1] : P[o + 1], b0 = S0 ? S0[o + 2] : P[o + 2];   // borda misturada com a pele: se ainda é rosa, muda inteira (sem fantasma)
+      if (b0 - g0 > 3 && r0 > g0) { const [hq, sq] = rgbHsl(r0, g0, b0); let dq = Math.abs(hq - h0); if (dq > 180) dq = 360 - dq; if (dq <= R.tol + 35 && sq > .1) a = Math.max(a, Math.min(1, (b0 - g0) / 14)); } }
     if (a < .98 && Bd[o + 3] > 8) {   // tira o reflexo da cor antiga na pele em volta, sem mudar o tom da pele
       const [h, s, l] = rgbHsl(P[o], P[o + 1], P[o + 2]); let dh = Math.abs(h - h0); if (dh > 180) dh = 360 - dh;
       const wgt = Math.min(1, Bd[o + 3] / 90) * Math.max(0, 1 - Math.max(0, dh - R.tol) / 25) * (1 - a);
@@ -1466,14 +1475,42 @@ async function hwLandmarks(it) {
   const p = await detectOn(it.src); if (!p || !p.lm) return null;
   const W = it.src.width, H = it.src.height, L = p.lm.map(q => [q[0] * W, q[1] * H, q[2] * W]); L.w = W; it._hwLm = L; return L;
 }
-function hwShape(L, kind, off, bw) {
+function hairDir(L, i, u) { const m = L[168], q = L[i], dx = q[0] - m[0], dy = q[1] - m[1], d = Math.hypot(dx, dy) || 1; const v = [dx / d + u[0] * .6, dy / d + u[1] * .6], e = Math.hypot(v[0], v[1]) || 1; return [v[0] / e, v[1] / e]; }
+// linha do cabelo: a partir do alto da malha do rosto, anda para fora até a cor deixar de ser a da pele da testa
+function hairlineOffsets(it, L, sil, k) {
+  const W = Math.round(it.src.width * k), H = Math.round(it.src.height * k), c = mkCanvas(W, H), g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(it.src, 0, 0, W, H);
+  const D = g.getImageData(0, 0, W, H).data; freeCanvas(c); const S = sil ? sil.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, W, H).data : null;
+  const ycc = (x, y) => { x = Math.round(x); y = Math.round(y); if (x < 0 || y < 0 || x >= W || y >= H) return null; const o = (y * W + x) * 4, r = D[o], gg = D[o + 1], b = D[o + 2]; return [.299 * r + .587 * gg + .114 * b, -.169 * r - .331 * gg + .5 * b, .5 * r - .419 * gg - .081 * b, S ? S[o + 3] : 255]; };
+  const top = L[10], chin = L[152], Hf = Math.hypot(top[0] - chin[0], top[1] - chin[1]), u = [(top[0] - chin[0]) / Hf, (top[1] - chin[1]) / Hf];
+  const smp = []; for (const i of [151, 9, 337, 108, 109, 338, 10]) for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) { const q = ycc(L[i][0] * k + a * 2, L[i][1] * k + b * 2); if (q) smp.push(q); }
+  if (smp.length < 20) return null;
+  const mean = [0, 1, 2].map(j => smp.reduce((s, q) => s + q[j], 0) / smp.length), sd = [0, 1, 2].map(j => Math.sqrt(smp.reduce((s, q) => s + (q[j] - mean[j]) ** 2, 0) / smp.length));
+  const notSkin = q => !q || q[3] < 110 || q[0] < mean[0] - Math.max(28, 3 * sd[0]) || Math.abs(q[1] - mean[1]) > Math.max(7, 3 * sd[1]) || Math.abs(q[2] - mean[2]) > Math.max(8, 3 * sd[2]);
+  const st = 1 / (Hf * k), out = HW_LINE.map(i => { const d = hairDir(L, i, u), p0 = [L[i][0] * k, L[i][1] * k];
+    for (let t = -.03; t < .3; t += st) { let n = 0; for (let m = 0; m < 4; m++) { const tt = t + m * st; if (notSkin(ycc(p0[0] + d[0] * tt * Hf * k, p0[1] + d[1] * tt * Hf * k))) n++; } if (n >= 4) return t; }
+    return NaN; });
+  const i10 = HW_LINE.indexOf(10), mid = out.slice(i10 - 3, i10 + 4).filter(isFinite).sort((a, b) => a - b);
+  if (mid.length < 3) return null; const base = mid[mid.length >> 1];
+  for (let j = 0; j < out.length; j++) if (!isFinite(out[j]) || Math.abs(out[j] - base) > .05) out[j] = NaN;   // fora do padrão: segue o centro
+  const ok = out.map(isFinite); if (ok.filter(Boolean).length < 4) return HW_LINE.map(() => base);
+  for (let j = 0; j < out.length; j++) if (!ok[j]) { let a = j - 1, b = j + 1; while (a >= 0 && !ok[a]) a--; while (b < out.length && !ok[b]) b++; out[j] = a < 0 ? out[b] : b >= out.length ? out[a] : out[a] + (out[b] - out[a]) * (j - a) / (b - a); }
+  const med = out.map((v, j) => [out[Math.max(0, j - 1)], v, out[Math.min(out.length - 1, j + 1)]].sort((x, y) => x - y)[1]);
+  let sm = med; for (let r = 0; r < 3; r++) sm = sm.map((v, j) => (sm[Math.max(0, j - 1)] + 2 * v + sm[Math.min(sm.length - 1, j + 1)]) / 4);
+  return sm;
+}
+function hwShape(L, kind, off, bw, hair) {
   const P = i => L[i], add = (a, b, k = 1) => [a[0] + b[0] * k, a[1] + b[1] * k], nz = v => { const d = Math.hypot(v[0], v[1]) || 1; return [v[0] / d, v[1] / d]; };
   const top = P(10), chin = P(152), Hf = Math.hypot(top[0] - chin[0], top[1] - chin[1]), u = nz([top[0] - chin[0], top[1] - chin[1]]);
   const mid = P(168), dz = (P(454)[2] - P(234)[2]) / Hf;   // lado mais longe da câmera fica escondido quando o rosto vira
   const hideA = dz < -.22, hideB = dz > .22;
-  let line = HW_LINE.map(i => add(P(i), u, (.015 + off * .01) * Hf));
+  // Caio 17/11 18:38: a peça começa onde a testa acaba (linha do cabelo achada na foto), sem pele entre ela e o cabelo,
+  // e nunca desce até a sobrancelha. Sem linha achada, usa o alto da malha do rosto.
+  const bT = Math.max(...[105, 334, 66, 296, 107, 336].map(i => P(i)[0] * u[0] + P(i)[1] * u[1])) + .07 * Hf;
+  let line = HW_LINE.map((i, j) => { const d = hairDir(L, i, u), h0 = hair && isFinite(hair[j]) ? hair[j] - .012 : .015; return add(P(i), d, (h0 + off * .01) * Hf); });
+  { let lf = line.map(q => Math.max(0, bT - (q[0] * u[0] + q[1] * u[1]))); for (let r = 0; r < 3; r++) lf = lf.map((v, j) => Math.max(v, (lf[Math.max(0, j - 1)] + 2 * v + lf[Math.min(lf.length - 1, j + 1)]) / 4)); line = line.map((q, j) => add(q, u, lf[j])); }
   const out = (q, w) => nz(add(nz([q[0] - mid[0], q[1] - mid[1]]), u, w));
   let vA = out(P(127), .35), vB = out(P(356), .35);
+  { const n = line.length, tA = nz([line[0][0] - line[2][0], line[0][1] - line[2][1]]), tB = nz([line[n - 1][0] - line[n - 3][0], line[n - 1][1] - line[n - 3][1]]); vA = nz(add(tA, vA, .5)); vB = nz(add(tB, vB, .5)); }
   // com o rosto virado, os pontos do lado escondido descem pela frente da testa: a linha para no ponto mais alto desse lado
   // e segue reta para a frente, até sair da cabeça
   const hU = q => q[0] * u[0] + q[1] * u[1], i10 = HW_LINE.indexOf(10);
@@ -1488,8 +1525,8 @@ function hwShape(L, kind, off, bw) {
     return { Hf, u, poly: [...lo, ...hi.reverse()], kind, line: lo };
   }
   const far = 3.5 * Hf, poly = [];
-  const sideA = hideA ? (() => { const q = add(line[0], vA, 1.5 * Hf); return [add(q, u, far), q]; })() : (() => { const q1 = add(line[0], vA, .2 * Hf), q2 = add(q1, u, -.38 * Hf), q3 = add(q2, vA, 2 * Hf); return [add(q3, u, far), q3, q2, q1]; })();
-  const sideB = hideB ? (() => { const q = add(line[line.length - 1], vB, 1.5 * Hf); return [q, add(q, u, far)]; })() : (() => { const q1 = add(line[line.length - 1], vB, .2 * Hf), q2 = add(q1, u, -.38 * Hf), q3 = add(q2, vB, 2 * Hf); return [q1, q2, q3, add(q3, u, far)]; })();
+  const sideA = hideA ? (() => { const q = add(line[0], vA, 1.5 * Hf); return [add(q, u, far), q]; })() : (() => { const q1 = add(line[0], vA, .18 * Hf), q2 = add(add(q1, u, -.24 * Hf), vA, .22 * Hf), q3 = add(q2, vA, 2 * Hf); return [add(q3, u, far), q3, q2, q1]; })();   // atrás da orelha desce na diagonal, sem degrau
+  const sideB = hideB ? (() => { const q = add(line[line.length - 1], vB, 1.5 * Hf); return [q, add(q, u, far)]; })() : (() => { const q1 = add(line[line.length - 1], vB, .18 * Hf), q2 = add(add(q1, u, -.24 * Hf), vB, .22 * Hf), q3 = add(q2, vB, 2 * Hf); return [q1, q2, q3, add(q3, u, far)]; })();
   poly.push(...sideA, ...line, ...sideB);
   return { Hf, u, poly, kind, line, face: HW_OVAL.map(i => P(i)) };
 }
@@ -1502,7 +1539,7 @@ async function applyHeadwear(it) {
     if (it.headwear !== S) return;
     if (!L) { it._hwFail = 'rosto'; return; } it._hwFail = null;
     const W = it.src.width, H = it.src.height, k = Math.min(1, 900 / Math.max(W, H)), w = Math.round(W * k), h = Math.round(H * k);
-    const G = hwShape(L, S.kind, S.off || 0, S.bw || 14), Hf = G.Hf;
+    const Hf = Math.hypot(L[10][0] - L[152][0], L[10][1] - L[152][1]); let G;
     // contorno da cabeça: a máscara do recorte, alisada (fios soltos não deixam a touca serrilhada)
     const sil = mkCanvas(w, h), sg = sil.getContext('2d', { willReadFrequently: true });
     let useSil = !!it.base; if (useSil) { sg.drawImage(it.base, 0, 0, w, h); const d = sg.getImageData(0, 0, w, h).data; let on = 0; for (let i = 3; i < d.length; i += 16) if (d[i] > 128) on++; if (on / (d.length / 16) > .9) useSil = false; }
@@ -1514,13 +1551,14 @@ async function applyHeadwear(it) {
       pg.drawImage(sil, 0, 0, w, 1, pd, 0, w, pd); pg.drawImage(sil, 0, h - 1, w, 1, pd, h + pd, w, pd); pg.drawImage(sil, 0, 0, 1, h, 0, pd, pd, h); pg.drawImage(sil, w - 1, 0, 1, h, w + pd, pd, pd, h);
       const t = mkCanvas(PW, PH), tg = t.getContext('2d', { willReadFrequently: true }), pass = (rr, thr) => { tg.clearRect(0, 0, PW, PH); tg.filter = 'blur(' + rr + 'px)'; tg.drawImage(pc, 0, 0); tg.filter = 'none'; const a = tg.getImageData(0, 0, PW, PH); for (let i = 3; i < a.data.length; i += 4) a.data[i] = a.data[i] > thr ? 255 : 0; pg.clearRect(0, 0, PW, PH); pg.putImageData(a, 0, 0); };
       pass(r, 40); pass(r, 215); pass(Math.max(2, .015 * Hf * k), 128); sg.clearRect(0, 0, w, h); sg.drawImage(pc, -pd, -pd); freeCanvas(t); freeCanvas(pc); }
+    G = hwShape(L, S.kind, S.off || 0, S.bw || 14, it._hwHair ||= hairlineOffsets(it, L, sil, k));
     // área da peça = forma × cabeça (sem o rosto)
     const reg = mkCanvas(w, h), rg = reg.getContext('2d', { willReadFrequently: true });
     rg.fillStyle = '#fff'; rg.beginPath(); G.poly.forEach((q, i) => i ? rg.lineTo(q[0] * k, q[1] * k) : rg.moveTo(q[0] * k, q[1] * k)); rg.closePath(); rg.fill();
     rg.globalCompositeOperation = 'destination-in'; rg.drawImage(sil, 0, 0);
     if (G.face) { rg.globalCompositeOperation = 'destination-out'; rg.beginPath(); G.face.forEach((q, i) => i ? rg.lineTo(q[0] * k, q[1] * k + 0) : rg.moveTo(q[0] * k, q[1] * k)); rg.closePath(); rg.fill(); }
     rg.globalCompositeOperation = 'source-over'; freeCanvas(sil);
-    if (it.recolor && it._rcMask && it._rcMask.n) rg.drawImage(it._rcMask.core, 0, 0, w, h);   // touca antiga marcada na ferramenta Cor: a peça nova cobre ela inteira
+    if (S.kind === 'touca' && it.recolor && it._rcMask && it._rcMask.n) rg.drawImage(it._rcMask.core, 0, 0, w, h);   // touca antiga marcada na ferramenta Cor: a peça nova cobre ela inteira
     { const t = mkCanvas(w, h), tg = t.getContext('2d'); tg.filter = 'blur(.8px)'; tg.drawImage(reg, 0, 0); tg.filter = 'none'; rg.clearRect(0, 0, w, h); rg.drawImage(t, 0, 0); freeCanvas(t); }
     // volume: mais escuro perto das bordas, como tecido sobre uma cabeça redonda
     const dome = mkCanvas(w, h), dg = dome.getContext('2d', { willReadFrequently: true }); dg.filter = 'blur(' + Math.max(2, (S.kind === 'faixa' ? .028 : .075) * Hf * k) + 'px)'; dg.drawImage(reg, 0, 0); dg.filter = 'none';
