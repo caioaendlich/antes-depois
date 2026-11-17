@@ -596,11 +596,15 @@ function neckGeo(it, man) {
       // Caio 17/11 01:12: de perfil o pescoço tem quase a mesma largura de cima a baixo e o ponto mais estreito varia de foto
       // para foto (antes e depois com anel em alturas diferentes); vale o começo do pescoço: a primeira linha nessa largura
       if (turnedB && yN > yChin) for (let Y = Math.min(yNmax, yChin + Math.round(fhi * .08 / k)); Y < yN; Y++) if (wd[Y] != null && wd[Y] >= fhi * .2 / k && wd[Y] <= wN * 1.08) { yN = Y; wN = wd[Y]; break; }
-      wN = Math.max(wN, neckW * .6 / k); const nC = ctr[yN] != null ? ctr[yN] : C[0] / k;
+      wN = Math.max(wN, neckW * .6 / k); let nC = ctr[yN] != null ? ctr[yN] : C[0] / k;
       // Caio 16/11 23:56 (45° e perfil): com o rosto virado, a janela centrada (largura das duas mandíbulas, estreita de lado)
       // cortava o queixo num degrau. Virado, cada linha vai da borda da frente do recorte (queixo, barba) até uma linha
       // de trás que desce do ângulo da mandíbula até a borda de trás do pescoço; cabelo e nuca atrás dela ficam de fora.
       const turnedF = Math.abs(noseX - (p.pts[0].x + p.pts[1].x) / 2 * it.w) > fhi * .08;
+      // Caio 17/11 01:58: de frente, as laterais do pescoço descem retas dos ângulos da mandíbula (a pele do pescoço continua no
+      // trapézio e no colo, então a largura da pele não serve para medir o pescoço)
+      const jA = Math.min(jaw0[4][0], jaw0[16][0]) / k, jB = Math.max(jaw0[4][0], jaw0[16][0]) / k, jIn = (jB - jA) * .03, cL = jA + jIn, cR = jB - jIn;
+      if (!turnedF && cR - cL > fhi * .15 / k) { nC = (cL + cR) / 2; wN = cR - cL; }
       const bk = Math.sign(G[0] - C[0]) || 1, gY = G[1] / k, nbX = nC + bk * wN / 2, gLim = (G[0] + bk * fhi * .22) / k;
       // começa na borda de trás da cabeça na altura do ângulo da mandíbula (sem degrau sob a orelha) e afina até a nuca
       const bRow = bounds[Math.max(Y0, Math.min(Yend, Math.round(gY)))], gX = bRow ? (bk > 0 ? Math.min(bRow[1], gLim) : Math.max(bRow[0], gLim)) : (G[0] + bk * fhi * .06) / k;
@@ -629,9 +633,12 @@ function neckGeo(it, man) {
           else if (Y <= yN) r = bk > 0 ? [Math.min(Math.max(b[0], xTip), exr[Y][0]), Math.max(b[1], exr[Y][1])] : [Math.min(b[0], exr[Y][0]), Math.max(Math.min(b[1], xTip), exr[Y][1])];   // a frente não passa da ponta do queixo
           else { const e = exr[Y], eN = exr[yN] ? cutBack(exr[yN], yN) : e, sl2 = fhi * .03 / k; r = bk > 0 ? [Math.max(e[0], eN[0] - sl2), Math.max(b[1], e[1])] : [Math.min(b[0], e[0]), Math.min(e[1], eN[1] + sl2)]; }   // abaixo do ponto estreito: na frente a pele (sem peito); atrás, até o fim do cabelo
           rows[Y] = r && r[1] - r[0] >= 2 ? r : null; continue; }
-        if (Y < yChin) { const L = wTop, m = (b[0] + b[1]) / 2, w0 = b[1] - b[0] <= L ? [b[0], b[1]] : [Math.max(b[0], m - L / 2), Math.min(b[1], m + L / 2)]; let La = Math.ceil(w0[0]), Ra = Math.floor(w0[1]); while (La < Ra && !okPx(La, Y)) La++; while (Ra > La && !okPx(Ra, Y)) Ra--; rows[Y] = Ra - La > 2 ? [La, Ra] : w0; }   // rosto e barba: o contorno, sem o pano nas pontas
-        else if (Y <= yN) rows[Y] = exr[Y];
-        else { const t = Math.min(1, (Y - yN) / Math.max(2, fhi * .06 / k)), hw = wN / 2 * (1 - .18 * t); rows[Y] = [Math.max(b[0], nC - hw), Math.min(b[1], nC + hw)]; }   // abaixo do ponto estreito afina um pouco: a gola não aparece nas laterais
+        // Caio 17/11 01:58 (de frente, riscado vermelho): o pescoço é uma coluna reta com a largura da pele no ponto mais estreito,
+        // descendo de logo abaixo da mandíbula até o anel (o arco do anel faz o fundo curvo). Acima do queixo vale o rosto (oval
+        // da mandíbula, com barba); fora da coluna, roupão, ombro e gola não entram, e a borda não ondula seguindo a pele.
+        { let r = [Math.max(b[0], nC - wN / 2), Math.min(b[1], nC + wN / 2)];
+          if (Y < yChin) { const fr = faceRow(b, Y, false); r = r[1] > r[0] ? [Math.min(r[0], fr[0]), Math.max(r[1], fr[1])] : fr; }
+          rows[Y] = r[1] - r[0] > 2 ? r : null; }
       }
       // o anel acompanha esse pescoço
       // Caio 16/11 23:56: o pescoço tem que entrar no anel. Sem ajuste manual, o anel fica logo abaixo do ponto mais estreito
