@@ -845,7 +845,7 @@ function drawDisplay(g) {
     let targetY = eyeY + (P.oy - 825) * .8; const k0 = P.k0 * T.s * (gallery ? 1.22 : spectral ? .99 : .86);
     const at = ty => new DOMMatrix().translate(cx + T.dx, ty + T.dy).rotate(T.r + P.r0).scale(k0).translate(-P.ax, -P.ay);
     // galeria: o cabelo do de cima nunca sai pelo topo
-    if (gallery && !i) { const top = at(targetY).transformPoint({ x: sh.neckX, y: sh.top }).y, minTop = 150; if (top < minTop) targetY += minTop - top; }
+    if (gallery && !i) { const top = at(targetY).transformPoint({ x: sh.neckX, y: sh.top }).y - T.dy, minTop = 150; if (top < minTop) targetY += minTop - top; }   // Caio 17/11 04:30: só a posição automática; arrastar para cima continua livre
     const m0 = at(targetY), k = k0 * (1 - .15 * rise);
     const m = new DOMMatrix().translate(cx + T.dx - 18 * rise, targetY + T.dy + 65 * rise).rotate(T.r + P.r0).scale(k).translate(-P.ax, -P.ay);
     const nk = m0.transformPoint({ x: sh.neckX, y: sh.neckY });
@@ -873,7 +873,7 @@ function drawDisplay(g) {
     else if (man != null) { cut = chinY + man * fh; fadeEnd = cut + fh * .1; }
     const sink = 65 * rise;   // na entrada, tudo desce junto com a cabeça
     const geo = face ? neckGeo(item, man) : null;   // Caio 14/11: o mesmo corte de pescoço (contorno, sem blocos) nos três modos
-    if (spectral && face && item.prev && !(item.pyr && item.pyr.oval) && !item._ovalTry) {   // fotos antigas: busca o contorno da mandíbula uma vez
+    if (face && item.prev && !(item.pyr && item.pyr.oval) && !item._ovalTry) {   /* Caio 17/11 04:30: também na Galeria e no Detalhe (sem o contorno não há corte de pescoço) */   // fotos antigas: busca o contorno da mandíbula uma vez
       item._ovalTry = 1; detectOn(item.prev).then(p => { if (p && p.oval) { item.pyr = { ...(item.pyr || { pts: [...p], w: item.w, h: item.h }), oval: p.oval, fore: p.fore }; render(); } }).catch(() => {}); }
     if (geo) { const Rm = m.transformPoint({ x: geo.R[0], y: geo.R[1] }), Cm = m.transformPoint({ x: geo.C[0], y: geo.C[1] }), Am = m.transformPoint({ x: geo.R[0] + geo.axis[0] * 100, y: geo.R[1] + geo.axis[1] * 100 }), sc = Math.hypot(m.a, m.b);
       const al = Math.hypot(Am.x - Rm.x, Am.y - Rm.y) || 1;
@@ -1798,7 +1798,8 @@ $('vtog').onclick = () => { const v = $('view'), full = v.classList.toggle('full
 document.addEventListener('gesturestart', e => { if (!(e.target.closest && e.target.closest('#view'))) e.preventDefault(); }, { passive: false });
 document.addEventListener('touchmove', e => { if (e.touches.length > 1 && !(e.target.closest && e.target.closest('#view'))) e.preventDefault(); }, { passive: false });
 let lastTap = 0; document.addEventListener('touchend', e => { const n = Date.now(); if (n - lastTap < 300 && !(e.target.closest && e.target.closest('#view, input, textarea, button, label, .strip'))) e.preventDefault(); lastTap = n; }, { passive: false });
-(document.fonts ? document.fonts.ready : Promise.resolve()).then(render);
+// Caio 17/11 04:30: a fonte das legendas só é baixada quando o canvas pede; carrega antes para não sair na fonte do sistema
+(document.fonts ? Promise.all(['500 26px Figtree', '300 33px Figtree', '400 28px Figtree', '500 20px Figtree'].map(f => document.fonts.load(f).catch(() => {}))).then(() => document.fonts.ready) : Promise.resolve()).then(render);
 render();
 // ---------- banco local (IndexedDB): projetos e fotos ficam só no aparelho ----------
 const DB = (() => {
