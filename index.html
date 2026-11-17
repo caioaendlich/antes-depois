@@ -1372,10 +1372,10 @@ function regionMask(it) {
     let holes = 0; for (let i = 0; i < w * h; i++) if (!m[i] && !out[i]) holes++;
     if (holes < Math.max(50, m.reduce((a, v) => a + v, 0) * .25)) for (let i = 0; i < w * h; i++) if (!m[i] && !out[i]) m[i] = 1; }
   // claros do mesmo tecido encostados na área (reflexo lilás quase branco): entram se o tom bate, mesmo com pouca saturação
-  for (let pass = 0; pass < 3; pass++) { const add = [];
+  for (let pass = 0; pass < 14; pass++) { const add = [];
     for (let i = 0; i < w * h; i++) { if (m[i]) continue; const x = i % w, y = (i / w) | 0; let nb = 0;
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const X = x + dx, Y = y + dy; if (X >= 0 && Y >= 0 && X < w && Y < h && m[Y * w + X]) nb++; }
-      if (nb < 3) continue; const hh = hsl[i * 3], ss = hsl[i * 3 + 1], ll = hsl[i * 3 + 2]; let dh = Math.abs(hh - h0); if (dh > 180) dh = 360 - dh;
+      const edge = x === 0 || y === 0 || x === w - 1 || y === h - 1; if (nb < (edge ? 2 : 3)) continue; const hh = hsl[i * 3], ss = hsl[i * 3 + 1], ll = hsl[i * 3 + 2]; let dh = Math.abs(hh - h0); if (dh > 180) dh = 360 - dh;
       if (!gray && dh <= tol + 10 && ss > .03 && ll > l0 - .05) add.push(i); }
     if (!add.length) break; add.forEach(i => m[i] = 1); }
   // fecha furinhos (costura, sombra) e suaviza a borda
@@ -1386,10 +1386,13 @@ function regionMask(it) {
   m2.filter = 'blur(' + cr + 'px)'; m2.drawImage(mc, 0, 0); m2.filter = 'none'; let a = m2.getImageData(0, 0, w, h); for (let i = 0; i < w * h; i++) a.data[i * 4 + 3] = a.data[i * 4 + 3] > 40 ? 255 : 0; m2.putImageData(a, 0, 0);
   mg3.clearRect(0, 0, w, h); mg3.filter = 'blur(' + cr + 'px)'; mg3.drawImage(mc2, 0, 0); mg3.filter = 'none'; a = mg3.getImageData(0, 0, w, h); for (let i = 0; i < w * h; i++) a.data[i * 4 + 3] = a.data[i * 4 + 3] > 150 ? 255 : 0; m2.clearRect(0, 0, w, h); m2.putImageData(a, 0, 0);
   mg3.clearRect(0, 0, w, h); mg3.filter = 'blur(1.2px)'; mg3.drawImage(mc2, 0, 0); mg3.filter = 'none';
+  { const fa = mg3.getImageData(0, 0, w, h); for (let i = 0; i < w * h; i++) if (m[i]) fa.data[i * 4 + 3] = 255; mg3.putImageData(fa, 0, 0); }   /* Caio 17/11 15:44: a área tocada fica inteira até a borda da foto (o desfoque comia a última faixa) */
   // reflexo da cor na pele logo abaixo (a touca rosa tinge a testa): faixa em volta da área
   const bc = mkCanvas(w, h), bg = bc.getContext('2d', { willReadFrequently: true }); bg.filter = 'blur(' + Math.max(6, Math.round(w / 45)) + 'px)'; bg.drawImage(mc2, 0, 0); bg.drawImage(mc2, 0, 0); bg.drawImage(mc2, 0, 0); bg.filter = 'none';
   bg.globalCompositeOperation = 'destination-out'; bg.drawImage(mc2, 0, 0); bg.globalCompositeOperation = 'source-over'; freeCanvas(mc2);
-  it._rcMask = { c: mc, b: bc, n: cnt, lm: cnt ? lsum / cnt : l0, seed: [h0, s0, l0], key: R.x + ',' + R.y + ',' + R.tol };
+  let sxh = 0, syh = 0; { const bd = bg.getImageData(0, 0, w, h).data; for (let i = 0; i < w * h; i++) { if (bd[i * 4 + 3] < 20 || m[i]) continue; let dh = Math.abs(hsl[i * 3] - h0); if (dh > 180) dh = 360 - dh; if (dh < tol + 25 || hsl[i * 3 + 1] < .1) continue; const a = hsl[i * 3] * Math.PI / 180; sxh += Math.cos(a); syh += Math.sin(a); } }
+  const skinH = sxh || syh ? ((Math.atan2(syh, sxh) * 180 / Math.PI) + 360) % 360 : 22;
+  it._rcMask = { c: mc, b: bc, skinH, n: cnt, lm: cnt ? lsum / cnt : l0, seed: [h0, s0, l0], key: R.x + ',' + R.y + ',' + R.tol };
 }
 function applyRecolor(it) {
   const R = it.recolor, base = colorBase(it); it._rcDirty = false; if (!R || !base) { freeCanvas(it.rc); it.rc = null; return; }
@@ -1405,7 +1408,8 @@ function applyRecolor(it) {
     if (a < .98 && Bd[o + 3] > 8) {   // tira o reflexo da cor antiga na pele em volta, sem mudar o tom da pele
       const [h, s, l] = rgbHsl(P[o], P[o + 1], P[o + 2]); let dh = Math.abs(h - h0); if (dh > 180) dh = 360 - dh;
       const wgt = Math.min(1, Bd[o + 3] / 90) * Math.max(0, 1 - Math.max(0, dh - R.tol) / 25) * (1 - a);
-      if (wgt > 0) { const ns = s * (1 - wgt * (T ? .75 : Math.max(0, 1 - sat))); const [r, gg, b] = hslRgb(h, ns, l); P[o] = r; P[o + 1] = gg; P[o + 2] = b; } }
+      if (wgt > 0) { let d = M.skinH - h; if (d > 180) d -= 360; if (d < -180) d += 360; let nh2 = h + d * wgt; if (nh2 < 0) nh2 += 360; if (nh2 >= 360) nh2 -= 360;   // o reflexo vira o tom da pele vizinha, não cinza
+        const [r, gg, b] = hslRgb(nh2, s * (1 - .25 * wgt), l); P[o] = r; P[o + 1] = gg; P[o + 2] = b; } }
     if (a <= 0) continue; const [h, s, l] = rgbHsl(P[o], P[o + 1], P[o + 2]);
     let nh = h, ns = Math.min(1, s * sat), nl = l;
     if (T) { nh = T[0]; ns = Math.min(1, T[1] * sat); const ctr = .65, c0 = Math.max(.02 + .2 * ctr, Math.min(.98 - .2 * ctr, T[2])); nl = Math.max(.01, Math.min(.99, c0 + (l - lm) * ctr)); }   /* a dobra do tecido continua visível no preto e no branco */
