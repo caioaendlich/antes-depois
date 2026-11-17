@@ -585,7 +585,13 @@ function neckGeo(it, man) {
       const cutBack = (r, Y) => { const xb = backAt(Y); return bk > 0 ? [r[0], Math.min(r[1], xb)] : [Math.max(r[0], xb), r[1]]; };
       for (let Y = Y0; Y <= Yend; Y++) {
         const b = bounds[Y]; if (!b) continue;
-        if (turnedF && Y <= yN) { rows[Y] = cutBack(Y < yChin ? b : [Math.min(b[0], exr[Y][0]), Math.max(b[1], exr[Y][1])], Y); if (rows[Y][1] - rows[Y][0] < 2) rows[Y] = null; continue; }
+        // Caio 17/11 00:16 (perfil): abaixo do queixo vale a pele de cada linha (pano branco e gola ficam de fora) e, abaixo
+        // do ponto mais estreito, o pescoço segue o centro da própria pele (inclinado), sem coluna reta ("gola invisível").
+        if (turnedF) { let r;
+          if (Y < yChin) r = cutBack(b, Y);
+          else if (Y <= yN) r = cutBack(exr[Y], Y);
+          else { const t = Math.min(1, (Y - yN) / Math.max(2, fhi * .06 / k)), hw = wN / 2 * (1 - .12 * t), m = ctr[Y] != null ? ctr[Y] : nC; r = [Math.max(exr[Y][0], m - hw), Math.min(exr[Y][1], m + hw)]; }
+          rows[Y] = r && r[1] - r[0] >= 2 ? r : null; continue; }
         if (Y < yChin) { const L = wTop, m = (b[0] + b[1]) / 2; rows[Y] = b[1] - b[0] <= L ? [b[0], b[1]] : [Math.max(b[0], m - L / 2), Math.min(b[1], m + L / 2)]; }   // rosto e barba: o contorno
         else if (Y <= yN) rows[Y] = exr[Y];
         else { const t = Math.min(1, (Y - yN) / Math.max(2, fhi * .06 / k)), hw = wN / 2 * (1 - .18 * t); rows[Y] = [Math.max(b[0], nC - hw), Math.min(b[1], nC + hw)]; }   // abaixo do ponto estreito afina um pouco: a gola não aparece nas laterais
