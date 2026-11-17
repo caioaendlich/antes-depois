@@ -471,6 +471,9 @@ const DEFAULT_OPTS = { fade: 0.80, hand: true, handTxt: '@caioendlich.md', label
 // Light Touch no Prisma (Caio, 08/11/2026 00:33): o mesmo visual do Light Touch do Video Studio, em claro e escuro.
 const LT = { claro: { bg: ['#f6efe7', '#e4d5c4'], fade: '238,228,216', ink: '#6e563e', title: 'rgba(150,118,90,.9)', soft: 'rgba(110,86,62,.72)' },
   escuro: { bg: ['#2c251f', '#0b0908'], fade: '8,7,6', ink: 'rgba(242,232,220,.92)', title: 'rgba(222,203,180,.86)', soft: 'rgba(239,228,214,.6)' } };
+let entryRaf = 0;
+function playEntry() { if (recordingAnim) return; cancelAnimationFrame(entryRaf); let t0 = null;   // Caio 17/11 13:33: ao escolher o modo, os rostos sobem do anel
+  const step = now => { t0 ??= now; animT = Math.min(1, (now - t0) / 1700); render(); if (animT < 1 && !recordingAnim) entryRaf = requestAnimationFrame(step); else if (!recordingAnim) { animT = 1; render(); } }; entryRaf = requestAnimationFrame(step); }
 function setLayout(k) { opts.layout = k; [['lyC','classico'],['lyA','espectral'],['lyB','galeria'],['lyD','detalhe']].forEach(([id,v]) => $(id)?.setAttribute?.('aria-pressed', String(v === k)));
   const n = $('lyNote'); if (n) n.hidden = k === 'classico'; if (typeof render === 'function' && typeof ctx !== 'undefined' && ctx) render(); }
 // Modos do Video Studio no Prisma (Caio, 08/11/2026 00:55): Espectral, Galeria e Detalhe, em preto ou Light Touch.
@@ -827,7 +830,11 @@ function withAutoBase(t, auto) {
   return t;
 }
 function drawDisplay(g) {
-  const t = animT, rise = (1 - Math.min(1, t / .72)) ** 2, show = Math.min(1, t / .3), lupa = Math.max(0, (t - .72) / .28);
+  // Caio 17/11 13:33: entrada = os rostos sobem de dentro do anel, rápido, suave e fluido (o anel fica parado e a cabeça
+  // passa por ele); o depois sai logo depois do antes. Desaceleração cúbica, sem quique.
+  const t = animT, cl01 = v => Math.max(0, Math.min(1, v)), easeO = v => 1 - (1 - v) ** 3;
+  const prog = i => cl01((t - (i ? .17 : .05)) / .5), riseOf = i => 1 - easeO(prog(i)), showOf = i => cl01(prog(i) / (spectral ? .12 : .45));
+  const grow = easeO(cl01(t / .22)), lupa = Math.max(0, (t - .74) / .26);
   const S = [items.A[sel.A], items.D[sel.D]]; if (!S.every(it => it && it.cut && it.src)) return false;
   lupaRects = [];
   const style = opts.layout, gallery = style === 'galeria', spectral = style === 'espectral';
@@ -848,8 +855,8 @@ function drawDisplay(g) {
     const at = ty => new DOMMatrix().translate(cx + T.dx, ty + T.dy).rotate(T.r + P.r0).scale(k0).translate(-P.ax, -P.ay);
     // galeria: o cabelo do de cima nunca sai pelo topo
     if (gallery && !i) { const top = at(targetY).transformPoint({ x: sh.neckX, y: sh.top }).y - T.dy, minTop = 150; if (top < minTop) targetY += minTop - top; }   // Caio 17/11 04:30: só a posição automática; arrastar para cima continua livre
-    const m0 = at(targetY), k = k0 * (1 - .15 * rise);
-    const m = new DOMMatrix().translate(cx + T.dx - 18 * rise, targetY + T.dy + 65 * rise).rotate(T.r + P.r0).scale(k).translate(-P.ax, -P.ay);
+    const rise = riseOf(i), m0 = at(targetY);
+    let m = new DOMMatrix().translate(0, 65 * rise).multiply(m0);
     const nk = m0.transformPoint({ x: sh.neckX, y: sh.neckY });
     const facingRight = face ? face.nose[0] > (face.top[0]) : false;
     // Caio 08/11 02:21 (print de referência, recorte feito à mão): pescoço até um pouco abaixo do queixo, na largura do
@@ -877,7 +884,9 @@ function drawDisplay(g) {
     const geo = face ? neckGeo(item, man) : null;   // Caio 14/11: o mesmo corte de pescoço (contorno, sem blocos) nos três modos
     if (face && item.prev && !(item.pyr && item.pyr.oval) && !item._ovalTry) {   /* Caio 17/11 04:30: também na Galeria e no Detalhe (sem o contorno não há corte de pescoço) */   // fotos antigas: busca o contorno da mandíbula uma vez
       item._ovalTry = 1; detectOn(item.prev).then(p => { if (p && p.oval) { item.pyr = { ...(item.pyr || { pts: [...p], w: item.w, h: item.h }), oval: p.oval, fore: p.fore }; render(); } }).catch(() => {}); }
-    if (geo) { const Rm = m.transformPoint({ x: geo.R[0], y: geo.R[1] }), Cm = m.transformPoint({ x: geo.C[0], y: geo.C[1] }), Am = m.transformPoint({ x: geo.R[0] + geo.axis[0] * 100, y: geo.R[1] + geo.axis[1] * 100 }), sc = Math.hypot(m.a, m.b);
+    if (geo) { const Rm = m0.transformPoint({ x: geo.R[0], y: geo.R[1] }), Cm = m0.transformPoint({ x: geo.C[0], y: geo.C[1] }), Am = m0.transformPoint({ x: geo.R[0] + geo.axis[0] * 100, y: geo.R[1] + geo.axis[1] * 100 }), sc = Math.hypot(m0.a, m0.b);
+      // o anel não se mexe; a cabeça começa toda abaixo dele e sobe até o lugar
+      const topY = m0.transformPoint({ x: sh.neckX, y: sh.top }).y; m = new DOMMatrix().translate(0, (spectral ? Math.max(0, Rm.y - topY) + fh * .1 : fh * .3) * rise).multiply(m0);   /* Galeria e Detalhe não têm anel: sobe pouco e aparece em fade, sem linha reta */
       const al = Math.hypot(Am.x - Rm.x, Am.y - Rm.y) || 1;
       return { item, side, face, sh, cx, m, m0, k0, nkp: null, geo, neck: Rm.y, cut: Cm.y, ringY: Rm.y, neckX: Rm.x, ringW: geo.neckW * sc * 1.35, neckHalf: geo.neckW * sc / 2, axis: [(Am.x - Rm.x) / al, (Am.y - Rm.y) / al], faceH: fh, chinY: chinY + sink, facingRight }; }
     return { item, side, face, sh, cx, m, m0, k0, nkp, neck: fadeEnd + sink, cut: cut + sink, ringY: nkp ? (cut + fadeEnd) / 2 : cut + fh * .03, neckX: ringX - 18 * rise, ringW, axis, faceH: fh, chinY: chinY + sink, facingRight };
@@ -895,7 +904,7 @@ function drawDisplay(g) {
   for (const i of order) {
     const o = L[i], lay = layerOf(i), q = lay.getContext('2d');
     q.setTransform(1, 0, 0, 1, 0, 0); q.clearRect(0, 0, W, H);
-    q.save(); q.setTransform(o.m); q.globalAlpha = show; q.imageSmoothingQuality = 'high'; q.drawImage(o.item.cut, 0, 0, o.item.w, o.item.h); q.restore();
+    q.save(); q.setTransform(o.m); q.globalAlpha = showOf(i); q.imageSmoothingQuality = 'high'; q.drawImage(o.item.cut, 0, 0, o.item.w, o.item.h); q.restore();
     // o pescoço some aos poucos antes do arco e nada aparece abaixo dele
     // gola em degradê na direção do pescoço
     // Caio 08/11 02:47: no Espectral o corte não é um plano reto; o pescoço entra no anel e a borda de baixo é o arco da frente
@@ -963,6 +972,7 @@ function drawDisplay(g) {
         mq.moveTo(Gl.x, Gl.y); mq.lineTo(back.x, back.y); mq.lineTo(back.x, -big); mq.lineTo(Gl.x, -big); mq.closePath(); mq.fill(); mq.restore(); }
       if (!G.skin) { mq.save(); mq.shadowColor = '#fff'; mq.shadowBlur = fastDraw ? 0 : 6; mq.shadowOffsetX = 4 * W; mq.translate(-4 * W, 0); mq.beginPath();
       mq.moveTo(Gl.x + ux * f, Gl.y + uy * f); mq.quadraticCurveTo(G2.x, G2.y + lo, G2.x + edx / el * f, G2.y + edy / el * f); mq.lineTo(G2.x - ux * f * .5, G2.y); mq.closePath(); mq.fill(); mq.restore(); }
+      if (spectral) { mq.globalCompositeOperation = 'destination-in'; mq.drawImage(ck, 0, 0); mq.globalCompositeOperation = 'source-over'; }   // Caio 17/11 13:33: na subida, nada da cabeça aparece abaixo do anel
       q.globalCompositeOperation = 'destination-in'; q.drawImage(mk, 0, 0); q.globalCompositeOperation = 'source-over'; }
     else if (spectral) { const mk = maskCv(), mq = mk.getContext('2d'), fh = o.faceH, chin = o.chinY;
       const g1 = o.ringY + rry, g0 = Math.min(Math.max(o.ringY - fh * .05, chin + fh * .04), g1 - 4);
@@ -976,9 +986,10 @@ function drawDisplay(g) {
       mq.fillStyle = pg; mq.fillRect(0, 0, W, chin + fh * .05);
       q.globalCompositeOperation = 'destination-in'; q.drawImage(mk, 0, 0); q.globalCompositeOperation = 'source-over'; }
     if (spectral) ringHits[i] = { side: o.side, x: o.neckX, y: o.ringY, r: ringR, fh: o.faceH };
-    if (spectral) drawPortal(g, o.neckX, o.ringY, ringR, tone, 'back');
+    const portal = half => { if (!spectral || grow <= 0) return; g.save(); g.globalAlpha = grow; drawPortal(g, o.neckX, o.ringY, ringR * (.55 + .45 * grow), tone, half); g.restore(); };   /* o anel abre primeiro */
+    portal('back');
     g.drawImage(lay, 0, 0);
-    if (spectral) drawPortal(g, o.neckX, o.ringY, ringR, tone, 'front');
+    portal('front');
   }
   for (let i = 0; i < 2; i++) {
     const o = L[i], item = o.item, title = i ? 'DEPOIS' : 'ANTES', cx = o.cx;
@@ -1561,7 +1572,7 @@ $('titleOn').onchange = e => { opts.title = e.target.checked; render(); };
 $('titleTxt').oninput = e => { opts.titleTxt = e.target.value; render(); };
 function setFront(s) { opts.front = s; $('frA').setAttribute('aria-pressed', s === 'A'); $('frD').setAttribute('aria-pressed', s === 'D'); render(); }
 $('frA').onclick = () => setFront('A'); $('frD').onclick = () => setFront('D');
-$('lyC').onclick = () => setLayout('classico'); $('lyA').onclick = () => setLayout('espectral'); $('lyB').onclick = () => setLayout('galeria'); $('lyD').onclick = () => setLayout('detalhe');
+$('lyC').onclick = () => setLayout('classico'); $('lyA').onclick = () => { setLayout('espectral'); playEntry(); }; $('lyB').onclick = () => { setLayout('galeria'); playEntry(); }; $('lyD').onclick = () => { setLayout('detalhe'); playEntry(); };
 $('lkC').onclick = () => setLook('classico'); $('lkL').onclick = () => setLook('claro'); $('lkE').onclick = () => setLook('escuro');
 $('ltTitle').oninput = e => { opts.ltTitle = e.target.value; render(); }; $('ltLine').oninput = e => { opts.ltLine = e.target.value; render(); };
 $('ltFont').onchange = e => { opts.ltFont = e.target.value; loadLtFont(); };
