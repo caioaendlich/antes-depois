@@ -211,8 +211,8 @@ test('import routes two sessions to editor and three sessions to manual routing'
     const {ctx,elements}=context({requestAnimationFrame:fn=>fn(),setTimeout:fn=>fn(),curComp:{A:[],D:[],U:[]},PhotoDates:dates,explorer:null,
       rememberDraft:()=>{},projectPhotos:()=>existing?[{id:'old'}]:[],importToProject:async()=>added,shotById:id=>added.find(s=>s.id===id),
       DB:{put:async()=>{}},touchProj:async()=>{},saveComp:async()=>{},openPick:()=>picks++,setStatus:()=>{},renderExplorer:async()=>{},
-      openExplorer:async()=>{opens++;ctx.explorer={};}});
-    let importing=false;
+      openExplorer:async()=>{opens++;ctx.explorer={};},keepAwake:on=>awake.push(on),working:false,queue:[],importing:false});
+    const awake=[]; let importing=false;
     elements.importProgress={showModal:()=>{importing=true;},close:()=>{importing=false;}};
     vm.runInContext(source.slice(source.indexOf("$('importPool').onclick ="),source.indexOf("$('poolManage').onclick =")),ctx);
     await elements.filePool.onchange({target:{files:added,value:'files'}});
@@ -221,6 +221,7 @@ test('import routes two sessions to editor and three sessions to manual routing'
     else assert.equal(ctx.explorer.sessionMode,true);
     assert.equal(elements.importPool.disabled,false);
     assert.equal(importing,false);
+    assert.deepEqual(awake,[true,false]); assert.equal(ctx.importing,false);
   }
 });
 test('original background mode preserves the stored automatic mask',()=>{
