@@ -164,13 +164,14 @@ input.wide{width:100%}
 .etools .seg button[aria-pressed="true"]{background:rgba(255,255,255,.18);color:#fff}
 .etools .ebtn{font:inherit;font-size:12.5px;font-weight:600;color:#eee;background:rgba(0,0,0,.62);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:7px 10px}
 .etools input[type=range]{flex-basis:100%;max-width:240px;background:transparent}
-#colorPanel{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px 8px;justify-content:center;align-items:center;background:rgba(0,0,0,.62);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:8px 10px;font-size:12px;color:#ddd}
-#colorPanel[hidden]{display:none}
-#colorPanel label{display:flex;align-items:center;gap:6px;flex-basis:100%;justify-content:center}
-#colorPanel label input[type=range]{flex:1;max-width:190px}
-#colorPanel .sw{width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.35);padding:0}
-#colorPanel .sw[aria-pressed="true"]{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.35)}
-#colorPanel .sw.keep{width:auto;border-radius:10px;padding:0 9px;background:rgba(255,255,255,.08);color:#eee;font:inherit;font-size:11.5px}
+#colorPanel,#hwPanel{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px 8px;justify-content:center;align-items:center;background:rgba(0,0,0,.62);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:8px 10px;font-size:12px;color:#ddd}
+#colorPanel[hidden],#hwPanel[hidden]{display:none}
+#colorPanel label,#hwPanel label{display:flex;align-items:center;gap:6px;flex-basis:100%;justify-content:center}
+#colorPanel label input[type=range],#hwPanel label input[type=range]{flex:1;max-width:190px}
+#colorPanel .sw,#hwPanel .sw{width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.35);padding:0}
+#colorPanel .sw[aria-pressed="true"],#hwPanel .sw[aria-pressed="true"]{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+#colorPanel .sw.keep,#hwPanel .sw.keep{width:auto;border-radius:10px;padding:0 9px;background:rgba(255,255,255,.08);color:#eee;font:inherit;font-size:11.5px}
+#hwPanel .seg{flex-basis:100%;display:flex;justify-content:center;background:none;border:0}
 #colorPanel input[type=color]{width:30px;height:28px;border:0;background:none;padding:0}
 #app.picking .etools{display:none!important}
 .halves{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;pointer-events:none;z-index:3}
@@ -297,7 +298,7 @@ html,body{overflow-x:clip}
       </div>
     </div>
     <div class="etools" id="etools" hidden>
-        <div class="seg sm" role="group" aria-label="Ferramenta"><button data-t="move" aria-pressed="true">Mover</button><button data-t="del" aria-pressed="false">Apagar</button><button data-t="add" aria-pressed="false">Restaurar</button><button data-t="color" aria-pressed="false">Cor</button></div>
+        <div class="seg sm" role="group" aria-label="Ferramenta"><button data-t="move" aria-pressed="true">Mover</button><button data-t="del" aria-pressed="false">Apagar</button><button data-t="add" aria-pressed="false">Restaurar</button><button data-t="color" aria-pressed="false">Cor</button><button data-t="hw" aria-pressed="false">Touca</button></div>
         <div class="seg sm" role="group" aria-label="Foto"><button data-s="A" aria-pressed="true">Antes</button><button data-s="D" aria-pressed="false">Depois</button></div>
         <button class="ebtn" id="eUndo" type="button" hidden>Desfazer</button>
         <button class="ebtn" id="eRedo" type="button" hidden>Refazer</button>
@@ -313,6 +314,17 @@ html,body{overflow-x:clip}
           <button class="sw" data-c="#1f2a44" style="background:#1f2a44" aria-label="Azul-marinho" type="button"></button>
           <input type="color" id="cPick" value="#3a3a3a" aria-label="Outra cor">
           <button class="sw keep" id="cReset" type="button">Tirar ajuste</button>
+        </div>
+        <div id="hwPanel" hidden>
+          <span id="hwInfo">Escolha faixa ou touca e a cor do tecido</span>
+          <div class="seg sm" role="group" aria-label="Peça"><button data-hk="faixa" aria-pressed="false" type="button">Faixa</button><button data-hk="touca" aria-pressed="false" type="button">Touca</button></div>
+          <button class="sw" data-ht="preto" style="background:#141414" aria-label="Preto" type="button"></button>
+          <button class="sw" data-ht="creme" style="background:#ece8e3" aria-label="Creme" type="button"></button>
+          <button class="sw" data-ht="marinho" style="background:#1f2a44" aria-label="Azul-marinho" type="button"></button>
+          <label>Borda <input type="range" id="hwOff" min="-12" max="12" value="0"></label>
+          <label id="hwBwL">Largura <input type="range" id="hwBw" min="8" max="30" value="14"></label>
+          <button class="sw keep" id="hwBoth" type="button">Nas duas fotos</button>
+          <button class="sw keep" id="hwReset" type="button">Tirar</button>
         </div>
       </div>
   </div>
@@ -1025,7 +1037,7 @@ function drawDisplay(g) {
     const end = { x: x + w / 2, y }; g.save(); g.globalAlpha = lupa; g.strokeStyle = tone.line; g.lineWidth = 2; g.strokeRect(focus.x - 14, focus.y - 14, 28, 28);
     g.beginPath(); g.moveTo(focus.x, focus.y + 14); g.lineTo(focus.x + (end.x - focus.x) * lupa, focus.y + 14 + (end.y - focus.y - 14) * lupa); g.stroke();
     g.fillStyle = bg; g.fillRect(x, y, w, h);
-    g.drawImage(item.rc || item.src, Math.max(0, Math.min(item.w - cw, z.x - cw / 2)) * item.src.width / item.w, Math.max(0, Math.min(item.h - ch, z.y - ch / 2)) * item.src.height / item.h, cw * item.src.width / item.w, Math.min(ch, item.h) * item.src.height / item.h, x, y, w, h); g.strokeStyle = tone.frame; g.strokeRect(x, y, w, h);
+    for (const L of [item.rc || item.src, item.headwear && item._hwLayer]) if (L) g.drawImage(L, Math.max(0, Math.min(item.w - cw, z.x - cw / 2)) * L.width / item.w, Math.max(0, Math.min(item.h - ch, z.y - ch / 2)) * item.src.height / item.h, cw * item.src.width / item.w, Math.min(ch, item.h) * item.src.height / item.h, x, y, w, h); g.strokeStyle = tone.frame; g.strokeRect(x, y, w, h);
     if (opts.labels) label(title, x + w / 2, y + h + 24, 20); g.restore();
   }
   if (opts.title && opts.titleTxt.trim()) { g.fillStyle = ink; g.font = '300 33px Figtree, system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; spaced(g, opts.titleTxt.trim().toUpperCase(), W / 2, 102, 10); }
@@ -1048,7 +1060,7 @@ function restoreFinish(edit) {
 function snapshotEdit() {
   const photo = side => {
     const it = items[side][sel[side]];
-    return it ? {id:it.shot?.id, edge:it.edge, plus:it.edited && it.plus?.width ? it.plus.toDataURL('image/png') : it.savedPaint?.plus || null, minus:it.edited && it.minus?.width ? it.minus.toDataURL('image/png') : it.savedPaint?.minus || null, rc:it.recolor || null} : null;
+    return it ? {id:it.shot?.id, edge:it.edge, plus:it.edited && it.plus?.width ? it.plus.toDataURL('image/png') : it.savedPaint?.plus || null, minus:it.edited && it.minus?.width ? it.minus.toDataURL('image/png') : it.savedPaint?.minus || null, rc:it.recolor || null, hw:it.headwear || null} : null;
   };
   return {opts:{...opts}, backgroundRemoved:curComp?.edit?.backgroundRemoved !== false, A:photo('A'), D:photo('D')};
 }
@@ -1249,7 +1261,7 @@ function cleanMask(m) { return MaskRefinement.cleanMask(m, RES); }
 function isSelected(it) { return items.A[sel.A] === it || items.D[sel.D] === it; }
 function freeCanvas(c) { if (c) { c.width = c.height = 0; } }
 function release(it) {
-  ['src', 'cut', 'base', 'fin', 'dsrc', 'rc'].forEach(k => { freeCanvas(it[k]); it[k] = null; }); if (it._rcMask) { freeCanvas(it._rcMask.c); freeCanvas(it._rcMask.b); freeCanvas(it._rcMask.core); } it._rcMask = null;
+  ['src', 'cut', 'base', 'fin', 'dsrc', 'rc'].forEach(k => { freeCanvas(it[k]); it[k] = null; }); if (it._rcMask) { freeCanvas(it._rcMask.c); freeCanvas(it._rcMask.b); freeCanvas(it._rcMask.core); } it._rcMask = null; freeCanvas(it._hwLayer); freeCanvas(it._hwMask); it._hwLayer = it._hwMask = null;
   if (!it.edited) { freeCanvas(it.plus); freeCanvas(it.minus); it.plus = it.minus = null; }
 }
 async function ensureLive(it) {
@@ -1337,12 +1349,15 @@ function composeCut(it) {
   // Caio 17/11 15:53: a área escolhida na ferramenta Cor (touca, roupa) é da pessoa; se o recorte automático comeu um pedaço dela, volta
   if (it.recolor && (!it.rc || it._rcDirty)) applyRecolor(it);
   if (it.recolor && it._rcMask && it._rcMask.n) f.drawImage(it._rcMask.core, 0, 0, w, h);
+  if (it.headwear && !it._hwLayer && !it._hwBusy) applyHeadwear(it);
+  if (it.headwear && it._hwMask) f.drawImage(it._hwMask, 0, 0, w, h);   // a faixa ou touca é da pessoa, mesmo onde passa do cabelo
   f.globalCompositeOperation = 'destination-out'; f.drawImage(it.minus, 0, 0);
   f.globalCompositeOperation = 'source-over';
   const g = it.cut.getContext('2d'); g.globalCompositeOperation = 'source-over';
   g.clearRect(0, 0, it.cut.width, it.cut.height); g.imageSmoothingQuality = 'high';
   if (it.recolor && (!it.rc || it._rcDirty)) applyRecolor(it);
   g.drawImage(it.rc || it.dsrc || it.src, 0, 0);
+  if (it.headwear && it._hwLayer) g.drawImage(it._hwLayer, 0, 0, it.cut.width, it.cut.height);
   g.globalCompositeOperation = 'destination-in'; g.drawImage(it.fin, 0, 0, it.cut.width, it.cut.height);
   g.globalCompositeOperation = 'source-over';
 }
@@ -1439,6 +1454,133 @@ $('cSat').oninput = e => { const it = items[active][sel[active]]; if (it && it.r
 document.querySelectorAll('#colorPanel [data-c]').forEach(b => b.onclick = () => { const it = items[active][sel[active]]; if (!it || !it.recolor) { $('cInfo').textContent = 'Primeiro toque na cor da foto'; return; } it.recolor.to = b.dataset.c; recolorNow(it); });
 $('cPick').oninput = e => { const it = items[active][sel[active]]; if (!it || !it.recolor) { $('cInfo').textContent = 'Primeiro toque na cor da foto'; return; } it.recolor.to = e.target.value; recolorNow(it); };
 $('cReset').onclick = () => { const it = items[active][sel[active]]; if (!it) return; it.recolor = null; it._rcMask = null; freeCanvas(it.rc); it.rc = null; if (it.fin) composeCut(it); render(); syncColorPanel(); if (typeof savePair === 'function') savePair(); };
+// Caio 17/11 15:21 e 18:11: faixa ou touca de tecido sobre o cabelo, para o antes e o depois ficarem iguais. Tudo no aparelho:
+// o formato sai dos pontos do rosto (linha do cabelo, orelhas) e do contorno da cabeça; a luz sai da pele da própria foto;
+// o tecido é uma malha que se repete sem emenda (hw/*.jpg, geradas no ChatGPT). Fica numa camada por cima da foto.
+const HW_TEX = { preto: ['hw/preto.jpg', 2.5], creme: ['hw/creme.jpg', 2.4], marinho: ['hw/marinho.jpg', 1.5] }, hwImgs = {};   // [arquivo, tamanho da malha em alturas de rosto]
+function hwTex(n) { return hwImgs[n] ||= new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => { delete hwImgs[n]; rej(new Error('tecido')); }; im.src = HW_TEX[n][0]; }); }
+const HW_LINE = [127, 162, 21, 54, 103, 67, 109, 10, 338, 297, 332, 284, 251, 389, 356];   // linha de cima do rosto, de orelha a orelha
+const HW_OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109];
+async function hwLandmarks(it) {
+  if (it._hwLm && it._hwLm.w === it.src.width) return it._hwLm;
+  const p = await detectOn(it.src); if (!p || !p.lm) return null;
+  const W = it.src.width, H = it.src.height, L = p.lm.map(q => [q[0] * W, q[1] * H, q[2] * W]); L.w = W; it._hwLm = L; return L;
+}
+function hwShape(L, kind, off, bw) {
+  const P = i => L[i], add = (a, b, k = 1) => [a[0] + b[0] * k, a[1] + b[1] * k], nz = v => { const d = Math.hypot(v[0], v[1]) || 1; return [v[0] / d, v[1] / d]; };
+  const top = P(10), chin = P(152), Hf = Math.hypot(top[0] - chin[0], top[1] - chin[1]), u = nz([top[0] - chin[0], top[1] - chin[1]]);
+  const mid = P(168), dz = (P(454)[2] - P(234)[2]) / Hf;   // lado mais longe da câmera fica escondido quando o rosto vira
+  const hideA = dz < -.22, hideB = dz > .22;
+  let line = HW_LINE.map(i => add(P(i), u, (.015 + off * .01) * Hf));
+  const out = (q, w) => nz(add(nz([q[0] - mid[0], q[1] - mid[1]]), u, w));
+  let vA = out(P(127), .35), vB = out(P(356), .35);
+  // com o rosto virado, os pontos do lado escondido descem pela frente da testa: a linha para no ponto mais alto desse lado
+  // e segue reta para a frente, até sair da cabeça
+  const hU = q => q[0] * u[0] + q[1] * u[1], i10 = HW_LINE.indexOf(10);
+  if (hideA) { let j = 0; for (let i = 0; i <= i10; i++) if (hU(line[i]) > hU(line[j])) j = i; line = line.slice(j); vA = nz(add(nz([line[0][0] - line[1][0], line[0][1] - line[1][1]]), u, .15)); }
+  if (hideB) { const o = line.length - (HW_LINE.length - i10); let j = line.length - 1; for (let i = line.length - 1; i >= o; i--) if (hU(line[i]) > hU(line[j])) j = i; line = line.slice(0, j + 1); const n = line.length; vB = nz(add(nz([line[n - 1][0] - line[n - 2][0], line[n - 1][1] - line[n - 2][1]]), u, .15)); }
+  if (kind === 'faixa') {
+    const B = bw * .01 * Hf, lo = [], hi = [];
+    for (let t = hideA ? 1.2 : .5; t > 0; t -= .1) lo.push(add(line[0], vA, t * Hf));
+    lo.push(...line);
+    for (let t = .1; t <= (hideB ? 1.2 : .5) + .001; t += .1) lo.push(add(line[line.length - 1], vB, t * Hf));
+    lo.forEach((q, i) => { const a = lo[Math.max(0, i - 1)], b = lo[Math.min(lo.length - 1, i + 1)]; let n = nz([-(b[1] - a[1]), b[0] - a[0]]); if (n[0] * u[0] + n[1] * u[1] < 0) n = [-n[0], -n[1]]; hi.push(add(q, nz(add(n, u, .6)), B)); });
+    return { Hf, u, poly: [...lo, ...hi.reverse()], kind, line: lo };
+  }
+  const far = 3.5 * Hf, poly = [];
+  const sideA = hideA ? (() => { const q = add(line[0], vA, 1.5 * Hf); return [add(q, u, far), q]; })() : (() => { const q1 = add(line[0], vA, .2 * Hf), q2 = add(q1, u, -.38 * Hf), q3 = add(q2, vA, 2 * Hf); return [add(q3, u, far), q3, q2, q1]; })();
+  const sideB = hideB ? (() => { const q = add(line[line.length - 1], vB, 1.5 * Hf); return [q, add(q, u, far)]; })() : (() => { const q1 = add(line[line.length - 1], vB, .2 * Hf), q2 = add(q1, u, -.38 * Hf), q3 = add(q2, vB, 2 * Hf); return [q1, q2, q3, add(q3, u, far)]; })();
+  poly.push(...sideA, ...line, ...sideB);
+  return { Hf, u, poly, kind, line, face: HW_OVAL.map(i => P(i)) };
+}
+async function applyHeadwear(it) {
+  const S = it.headwear; if (!S || !it.src) return;
+  if (it._hwBusy) { it._hwAgain = true; return; }
+  it._hwBusy = true; it._hwAgain = false;
+  try {
+    const [L, tex] = await Promise.all([hwLandmarks(it), hwTex(S.tex)]);
+    if (it.headwear !== S) return;
+    if (!L) { it._hwFail = 'rosto'; return; } it._hwFail = null;
+    const W = it.src.width, H = it.src.height, k = Math.min(1, 900 / Math.max(W, H)), w = Math.round(W * k), h = Math.round(H * k);
+    const G = hwShape(L, S.kind, S.off || 0, S.bw || 14), Hf = G.Hf;
+    // contorno da cabeça: a máscara do recorte, alisada (fios soltos não deixam a touca serrilhada)
+    const sil = mkCanvas(w, h), sg = sil.getContext('2d', { willReadFrequently: true });
+    let useSil = !!it.base; if (useSil) { sg.drawImage(it.base, 0, 0, w, h); const d = sg.getImageData(0, 0, w, h).data; let on = 0; for (let i = 3; i < d.length; i += 16) if (d[i] > 128) on++; if (on / (d.length / 16) > .9) useSil = false; }
+    if (!useSil) { sg.clearRect(0, 0, w, h); const c = L[168], ang = Math.atan2(G.u[0], -G.u[1]), rw = Math.hypot(L[234][0] - L[454][0], L[234][1] - L[454][1]) * .62 * k + .25 * Hf * k; sg.fillStyle = '#fff'; sg.beginPath(); sg.ellipse((c[0] + G.u[0] * .18 * Hf) * k, (c[1] + G.u[1] * .18 * Hf) * k, rw, .82 * Hf * k, ang, 0, 7); sg.fill(); }
+    else {   // alisa o contorno: fecha os dentes do recorte do cabelo (dilata e volta), para a touca ficar redonda
+      const r = Math.max(2, (S.kind === 'touca' ? .06 : .03) * Hf * k), pd = Math.ceil(3 * r), PW = w + 2 * pd, PH = h + 2 * pd;
+      // a cabeça cortada pela borda da foto continua para fora dela (senão o alisamento come o alto da touca)
+      const pc = mkCanvas(PW, PH), pg = pc.getContext('2d', { willReadFrequently: true }); pg.drawImage(sil, pd, pd);
+      pg.drawImage(sil, 0, 0, w, 1, pd, 0, w, pd); pg.drawImage(sil, 0, h - 1, w, 1, pd, h + pd, w, pd); pg.drawImage(sil, 0, 0, 1, h, 0, pd, pd, h); pg.drawImage(sil, w - 1, 0, 1, h, w + pd, pd, pd, h);
+      const t = mkCanvas(PW, PH), tg = t.getContext('2d', { willReadFrequently: true }), pass = (rr, thr) => { tg.clearRect(0, 0, PW, PH); tg.filter = 'blur(' + rr + 'px)'; tg.drawImage(pc, 0, 0); tg.filter = 'none'; const a = tg.getImageData(0, 0, PW, PH); for (let i = 3; i < a.data.length; i += 4) a.data[i] = a.data[i] > thr ? 255 : 0; pg.clearRect(0, 0, PW, PH); pg.putImageData(a, 0, 0); };
+      pass(r, 40); pass(r, 215); pass(Math.max(2, .015 * Hf * k), 128); sg.clearRect(0, 0, w, h); sg.drawImage(pc, -pd, -pd); freeCanvas(t); freeCanvas(pc); }
+    // área da peça = forma × cabeça (sem o rosto)
+    const reg = mkCanvas(w, h), rg = reg.getContext('2d', { willReadFrequently: true });
+    rg.fillStyle = '#fff'; rg.beginPath(); G.poly.forEach((q, i) => i ? rg.lineTo(q[0] * k, q[1] * k) : rg.moveTo(q[0] * k, q[1] * k)); rg.closePath(); rg.fill();
+    rg.globalCompositeOperation = 'destination-in'; rg.drawImage(sil, 0, 0);
+    if (G.face) { rg.globalCompositeOperation = 'destination-out'; rg.beginPath(); G.face.forEach((q, i) => i ? rg.lineTo(q[0] * k, q[1] * k + 0) : rg.moveTo(q[0] * k, q[1] * k)); rg.closePath(); rg.fill(); }
+    rg.globalCompositeOperation = 'source-over'; freeCanvas(sil);
+    if (it.recolor && it._rcMask && it._rcMask.n) rg.drawImage(it._rcMask.core, 0, 0, w, h);   // touca antiga marcada na ferramenta Cor: a peça nova cobre ela inteira
+    { const t = mkCanvas(w, h), tg = t.getContext('2d'); tg.filter = 'blur(.8px)'; tg.drawImage(reg, 0, 0); tg.filter = 'none'; rg.clearRect(0, 0, w, h); rg.drawImage(t, 0, 0); freeCanvas(t); }
+    // volume: mais escuro perto das bordas, como tecido sobre uma cabeça redonda
+    const dome = mkCanvas(w, h), dg = dome.getContext('2d', { willReadFrequently: true }); dg.filter = 'blur(' + Math.max(2, (S.kind === 'faixa' ? .028 : .075) * Hf * k) + 'px)'; dg.drawImage(reg, 0, 0); dg.filter = 'none';
+    const DM = dg.getImageData(0, 0, w, h).data; freeCanvas(dome);
+    // luz: compara a pele dos dois lados do rosto e o alto da testa
+    const lum = (q, r) => { const c = mkCanvas(1, 1), cg = c.getContext('2d', { willReadFrequently: true }); cg.drawImage(it.src, q[0] - r, q[1] - r, 2 * r, 2 * r, 0, 0, 1, 1); const d = cg.getImageData(0, 0, 1, 1).data; freeCanvas(c); return d[0] * .3 + d[1] * .59 + d[2] * .11; };
+    const r0 = Math.max(3, .03 * Hf), lA = lum(L[50], r0), lB = lum(L[280], r0), gx = Math.max(-.3, Math.min(.3, (lB - lA) / Math.max(30, lA + lB) * 1.6));
+    const sx = [-G.u[1], G.u[0]], cx = L[168][0] * k, cy = L[168][1] * k, hw2 = Math.max(.35 * Hf, Math.hypot(L[234][0] - L[454][0], L[234][1] - L[454][1]) / 2) * k;
+    const RG = rg.getImageData(0, 0, w, h).data, SH = new Uint8ClampedArray(w * h * 4);
+    const ln = G.line.map(q => [q[0] * k, q[1] * k]), cum = [0]; for (let j = 1; j < ln.length; j++) cum.push(cum[j - 1] + Math.hypot(ln[j][0] - ln[j - 1][0], ln[j][1] - ln[j - 1][1]));
+    const hem = (S.kind === 'touca' ? .045 : .02) * Hf * k, fold = .2 * Hf * k, nFold = S.kind === 'touca' ? 1 / (.07 * Hf * k) : 0;
+    for (let y = 0, i = 0; y < h; y++) for (let x = 0; x < w; x++, i += 4) { const a = RG[i + 3]; if (!a) continue;
+      const b = DM[i + 3] / 255, e = Math.max(0, Math.min(1, (b - .3) / .7)), dome2 = .55 + .45 * Math.sqrt(e);
+      const xn = Math.max(-1.3, Math.min(1.3, ((x - cx) * sx[0] + (y - cy) * sx[1]) / hw2)), yn = ((x - cx) * G.u[0] + (y - cy) * G.u[1]) / (Hf * k);
+      // distância até a borda da frente (bainha elástica e franzido)
+      let dmin = 1e9, tpos = 0; for (let j = 1; j < ln.length; j++) { const ax = ln[j - 1][0], ay = ln[j - 1][1], bx = ln[j][0] - ax, by = ln[j][1] - ay, L2 = bx * bx + by * by || 1; let t = ((x - ax) * bx + (y - ay) * by) / L2; t = t < 0 ? 0 : t > 1 ? 1 : t; const dx = x - ax - bx * t, dy = y - ay - by * t, d = dx * dx + dy * dy; if (d < dmin) { dmin = d; tpos = cum[j - 1] + t * (cum[j] - cum[j - 1]); } }
+      dmin = Math.sqrt(dmin); let v = dome2 * (1 + gx * xn) * (1 + .08 * Math.max(-1, Math.min(1, yn - .6)));
+      if (dmin < hem) v *= .78 + .34 * Math.sin(Math.PI * dmin / hem);   // a bainha fica alta no meio e funda nas pontas
+      if (nFold) v *= 1 + .07 * Math.sin(2 * Math.PI * tpos * nFold) * Math.exp(-Math.max(0, dmin - hem) / fold);   // franzido logo acima da bainha
+      SH[i] = Math.min(255, v * 170); SH[i + 1] = Math.max(0, Math.min(255, (v - .95) * 400)); SH[i + 3] = a; }
+    const shC = mkCanvas(w, h); shC.getContext('2d').putImageData(new ImageData(SH, w, h), 0, 0);
+    // sombra curta na pele logo abaixo da borda
+    const sd = mkCanvas(w, h), sdg = sd.getContext('2d'); sdg.filter = 'blur(' + Math.max(1.5, .012 * Hf * k) + 'px)'; sdg.drawImage(reg, -G.u[0] * .008 * Hf * k, -G.u[1] * .008 * Hf * k); sdg.filter = 'none'; sdg.globalCompositeOperation = 'destination-out'; sdg.drawImage(reg, 0, 0);
+    // camada final na resolução da foto
+    const lay = mkCanvas(W, H), lg = lay.getContext('2d', { willReadFrequently: true });
+    const pat = lg.createPattern(tex, 'repeat'), ts = HW_TEX[S.tex][1] * Hf / tex.width, ang = Math.atan2(G.u[0], -G.u[1]);
+    pat.setTransform(new DOMMatrix().translate(L[168][0], L[168][1]).rotate(ang * 180 / Math.PI).scale(ts));
+    lg.fillStyle = pat; lg.fillRect(0, 0, W, H);
+    const F = lg.getImageData(0, 0, W, H), FD = F.data;
+    const up = c => { const t = mkCanvas(W, H), tg = t.getContext('2d', { willReadFrequently: true }); tg.imageSmoothingQuality = 'high'; tg.drawImage(c, 0, 0, W, H); const d = tg.getImageData(0, 0, W, H).data; freeCanvas(t); return d; };
+    const SU = up(shC), SDU = up(sd), sheen = { preto: 26, marinho: 20, creme: 6 }[S.tex] || 10; freeCanvas(shC); freeCanvas(sd);
+    for (let i = 0; i < FD.length; i += 4) { const a = SU[i + 3] / 255, sa = SDU[i + 3] / 255 * .32 * (1 - a), A = a + sa;
+      if (A <= .002) { FD[i + 3] = 0; continue; } const v = SU[i] / 170, sh = SU[i + 1] / 255 * sheen;   // brilho fosco do algodão onde a luz bate
+      FD[i] = (FD[i] * v + sh) * a / A; FD[i + 1] = (FD[i + 1] * v + sh) * a / A; FD[i + 2] = (FD[i + 2] * v + sh) * a / A; FD[i + 3] = A * 255; }
+    lg.putImageData(F, 0, 0);
+    if (it.headwear !== S) { freeCanvas(lay); freeCanvas(reg); return; }
+    freeCanvas(it._hwLayer); freeCanvas(it._hwMask); it._hwLayer = lay; it._hwMask = reg;
+  } catch (e) { console.warn('touca', e); it._hwFail = 'erro'; }
+  finally { it._hwBusy = false; if (it._hwAgain) applyHeadwear(it); else { if (it.fin) composeCut(it); render(); if (tool === 'hw') syncHwPanel(); } }
+}
+function syncHwPanel() {
+  const it = items[active]?.[sel[active]], S = it && it.headwear;
+  document.querySelectorAll('#hwPanel [data-hk]').forEach(b => b.setAttribute('aria-pressed', String(!!S && S.kind === b.dataset.hk)));
+  document.querySelectorAll('#hwPanel [data-ht]').forEach(b => b.setAttribute('aria-pressed', String(!!S && S.tex === b.dataset.ht)));
+  $('hwOff').value = S ? S.off || 0 : 0; $('hwBw').value = S ? S.bw || 14 : 14; $('hwBwL').hidden = !S || S.kind !== 'faixa';
+  $('hwInfo').textContent = !it ? 'Escolha uma foto' : it._hwBusy ? 'Ajustando…' : it._hwFail === 'rosto' ? 'Não achei o rosto nesta foto' : it._hwFail ? 'Não deu para colocar aqui; tente de novo' : S ? (S.kind === 'faixa' ? 'Faixa' : 'Touca') + ' · ajuste a borda se precisar' : 'Escolha faixa ou touca e a cor do tecido';
+}
+let hwTimer = 0;
+function hwSet(it, patch) {
+  if (!it) return; const prev = it.headwear || { kind: 'touca', tex: 'preto', off: 0, bw: 14 };
+  it.headwear = { ...prev, ...patch }; clearTimeout(hwTimer); syncHwPanel();
+  hwTimer = setTimeout(() => { applyHeadwear(it).then(() => { if (typeof savePair === 'function') savePair(); }); syncHwPanel(); }, 80);
+}
+const hwCur = () => items[active]?.[sel[active]];
+document.querySelectorAll('#hwPanel [data-hk]').forEach(b => b.onclick = () => hwSet(hwCur(), { kind: b.dataset.hk }));
+document.querySelectorAll('#hwPanel [data-ht]').forEach(b => b.onclick = () => hwSet(hwCur(), { tex: b.dataset.ht }));
+$('hwOff').oninput = e => { const it = hwCur(); if (it && it.headwear) hwSet(it, { off: +e.target.value }); };
+$('hwBw').oninput = e => { const it = hwCur(); if (it && it.headwear) hwSet(it, { bw: +e.target.value }); };
+$('hwBoth').onclick = () => { const it = hwCur(), S = it && it.headwear; if (!S) { $('hwInfo').textContent = 'Primeiro escolha a peça nesta foto'; return; } for (const sd of ['A', 'D']) { const o = items[sd]?.[sel[sd]]; if (o && o !== it) { o.headwear = { ...S }; applyHeadwear(o); } } if (typeof savePair === 'function') savePair(); };
+$('hwReset').onclick = () => { const it = hwCur(); if (!it) return; it.headwear = null; freeCanvas(it._hwLayer); freeCanvas(it._hwMask); it._hwLayer = it._hwMask = null; if (it.fin) composeCut(it); render(); syncHwPanel(); if (typeof savePair === 'function') savePair(); };
 let recutRaf = 0, recutIt = null;
 function scheduleRecut(it, base) {
   recutIt = it; if (base) it._needBase = true;
@@ -1704,9 +1846,10 @@ function setTool(t) {
   tool = t;
   [['toolMove', 'move'], ['toolAdd', 'add'], ['toolDel', 'del']].forEach(([id, v]) => $(id).setAttribute('aria-pressed', v === t));
   document.querySelectorAll('#etools [data-t]').forEach(b => b.setAttribute('aria-pressed', b.dataset.t === t));
-  $('eUndo').hidden = $('eRedo').hidden = $('eBrush').hidden = t === 'move' || t === 'color';
+  $('eUndo').hidden = $('eRedo').hidden = $('eBrush').hidden = t === 'move' || t === 'color' || t === 'hw';
   $('colorPanel').hidden = t !== 'color'; if (t === 'color') syncColorPanel();
-  $('hint').textContent = t === 'move' ? 'Arraste para mover · pinça para zoom e giro' : t === 'color' ? 'Toque na cor que quer mudar · lado ' + (active === 'A' ? 'Antes' : 'Depois') : (t === 'add' ? 'Pinte para restaurar' : 'Pinte para apagar') + ' · lado ' + (active === 'A' ? 'Antes' : 'Depois');
+  $('hwPanel').hidden = t !== 'hw'; if (t === 'hw') syncHwPanel();
+  $('hint').textContent = t === 'move' ? 'Arraste para mover · pinça para zoom e giro' : t === 'color' ? 'Toque na cor que quer mudar · lado ' + (active === 'A' ? 'Antes' : 'Depois') : t === 'hw' ? 'Faixa ou touca de tecido · lado ' + (active === 'A' ? 'Antes' : 'Depois') : (t === 'add' ? 'Pinte para restaurar' : 'Pinte para apagar') + ' · lado ' + (active === 'A' ? 'Antes' : 'Depois');
 }
 document.querySelectorAll('#etools [data-t]').forEach(b => b.onclick = () => setTool(b.dataset.t));
 document.querySelectorAll('#etools [data-s]').forEach(b => b.onclick = () => { setActive(b.dataset.s); if (tool !== 'move') setTool(tool); });
@@ -1783,6 +1926,7 @@ cv.addEventListener('pointerdown', e => {
   const p = toCanvas(e); ptrs.set(e.pointerId, p);
   const it = items[active][sel[active]];
   if (tool === 'color') { if (ptrs.size === 1 && it && (it.dsrc || it.src)) pickColor(it, toImage(active, p)); return; }
+  if (tool === 'hw') return;
   if (tool !== 'move' && ptrs.size === 1 && it && it.plus && it.meta) {
     stroke={it,before:paintAlpha(it)};loupePoint={x:e.clientX,y:e.clientY};
     brushing = true; lastImg = toImage(active, p); ring = p;
@@ -2094,7 +2238,7 @@ function loadFM() {
       try {
         fm = new FaceMesh({ locateFile: f => 'fm/' + f });
         fm.setOptions({ maxNumFaces: 1, refineLandmarks: false, minDetectionConfidence: 0.35, minTrackingConfidence: 0.2, selfieMode: false });
-        fm.onResults(r => { const lm = r.multiFaceLandmarks && r.multiFaceLandmarks[0]; const W = r.image && r.image.width || 1, H = r.image && r.image.height || 1; const p = lm ? pyrFromLm(lm, W, H) : null; if (p) { p.oval = JAW_LM.map(i => ({ x: lm[i].x, y: lm[i].y })); p.fore = { x: lm[10].x, y: lm[10].y }; } if (fmCb) { const cb = fmCb; fmCb = null; cb(p); } });
+        fm.onResults(r => { const lm = r.multiFaceLandmarks && r.multiFaceLandmarks[0]; const W = r.image && r.image.width || 1, H = r.image && r.image.height || 1; const p = lm ? pyrFromLm(lm, W, H) : null; if (p) { p.oval = JAW_LM.map(i => ({ x: lm[i].x, y: lm[i].y })); p.fore = { x: lm[10].x, y: lm[10].y }; if (fmStill) p.lm = lm.map(q => [q.x, q.y, q.z]); } if (fmCb) { const cb = fmCb; fmCb = null; cb(p); } });
         await fm.initialize(); res(fm);
       } catch (e) { rej(e); }
     };
@@ -2624,7 +2768,7 @@ function itemFromShot(s, side, noQueue) {
   if (s.mask) { it.raw = s.mask; it.meta = analyse(it.cleanedRaw || it.raw, it.w, it.h); it.status = 'pronto'; } else if (!noQueue) queue.push({ side, it });
   const edit = curComp?.edit, saved = edit?.[side];
   if (edit?.backgroundRemoved === false) { it.raw = new Uint8Array(RES * RES).fill(255); it.meta = analyse(it.raw,it.w,it.h); it.status = 'pronto'; }
-  if (saved?.id === s.id) { it.edge = saved.edge ?? it.edge; it.savedPaint = saved; if (saved.rc) it.recolor = { ...saved.rc }; }
+  if (saved?.id === s.id) { it.edge = saved.edge ?? it.edge; it.savedPaint = saved; if (saved.rc) it.recolor = { ...saved.rc }; if (saved.hw) it.headwear = { ...saved.hw }; }
   return it;
 }
 function queueIt(it, side) { if (it && !it.raw && it.status !== 'erro' && !queue.some(q => q.it === it)) queue.push({ side, it }); }
