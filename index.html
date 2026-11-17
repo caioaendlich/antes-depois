@@ -1249,7 +1249,7 @@ function cleanMask(m) { return MaskRefinement.cleanMask(m, RES); }
 function isSelected(it) { return items.A[sel.A] === it || items.D[sel.D] === it; }
 function freeCanvas(c) { if (c) { c.width = c.height = 0; } }
 function release(it) {
-  ['src', 'cut', 'base', 'fin', 'dsrc', 'rc'].forEach(k => { freeCanvas(it[k]); it[k] = null; }); if (it._rcMask) { freeCanvas(it._rcMask.c); freeCanvas(it._rcMask.b); } it._rcMask = null;
+  ['src', 'cut', 'base', 'fin', 'dsrc', 'rc'].forEach(k => { freeCanvas(it[k]); it[k] = null; }); if (it._rcMask) { freeCanvas(it._rcMask.c); freeCanvas(it._rcMask.b); freeCanvas(it._rcMask.core); } it._rcMask = null;
   if (!it.edited) { freeCanvas(it.plus); freeCanvas(it.minus); it.plus = it.minus = null; }
 }
 async function ensureLive(it) {
@@ -1334,6 +1334,9 @@ function composeCut(it) {
   const f = it.fin.getContext('2d'), w = it.fin.width, h = it.fin.height;
   f.globalCompositeOperation = 'source-over'; f.clearRect(0, 0, w, h);
   f.drawImage(it.base, 0, 0); f.drawImage(it.plus, 0, 0);
+  // Caio 17/11 15:53: a área escolhida na ferramenta Cor (touca, roupa) é da pessoa; se o recorte automático comeu um pedaço dela, volta
+  if (it.recolor && (!it.rc || it._rcDirty)) applyRecolor(it);
+  if (it.recolor && it._rcMask && it._rcMask.n) f.drawImage(it._rcMask.core, 0, 0, w, h);
   f.globalCompositeOperation = 'destination-out'; f.drawImage(it.minus, 0, 0);
   f.globalCompositeOperation = 'source-over';
   const g = it.cut.getContext('2d'); g.globalCompositeOperation = 'source-over';
@@ -1353,7 +1356,7 @@ function hslRgb(h, s, l) { const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 -
   return [(r + m) * 255, (g + m) * 255, (b + m) * 255]; }
 function colorBase(it) { return it.dsrc || it.src; }
 function regionMask(it) {
-  const R = it.recolor, base = colorBase(it), W = base.width, H = base.height, k = Math.min(1, 900 / Math.max(W, H)), w = Math.max(1, Math.round(W * k)), h = Math.max(1, Math.round(H * k));
+  const R = it.recolor, base = it.src || colorBase(it), W = base.width, H = base.height, k = Math.min(1, 900 / Math.max(W, H)),   /* lê a foto original: a correção de borda do recorte cria riscos dentro da touca */ w = Math.max(1, Math.round(W * k)), h = Math.max(1, Math.round(H * k));
   const c = mkCanvas(w, h), cg = c.getContext('2d', { willReadFrequently: true }); cg.drawImage(base, 0, 0, w, h); const d = cg.getImageData(0, 0, w, h).data; freeCanvas(c);
   const hsl = new Float32Array(w * h * 3); for (let i = 0; i < w * h; i++) { const q = rgbHsl(d[i * 4], d[i * 4 + 1], d[i * 4 + 2]); hsl[i * 3] = q[0]; hsl[i * 3 + 1] = q[1]; hsl[i * 3 + 2] = q[2]; }
   const sx = Math.max(0, Math.min(w - 1, Math.round(R.x * w))), sy = Math.max(0, Math.min(h - 1, Math.round(R.y * h)));
@@ -1392,7 +1395,8 @@ function regionMask(it) {
   bg.globalCompositeOperation = 'destination-out'; bg.drawImage(mc2, 0, 0); bg.globalCompositeOperation = 'source-over'; freeCanvas(mc2);
   let sxh = 0, syh = 0; { const bd = bg.getImageData(0, 0, w, h).data; for (let i = 0; i < w * h; i++) { if (bd[i * 4 + 3] < 20 || m[i]) continue; let dh = Math.abs(hsl[i * 3] - h0); if (dh > 180) dh = 360 - dh; if (dh < tol + 25 || hsl[i * 3 + 1] < .1) continue; const a = hsl[i * 3] * Math.PI / 180; sxh += Math.cos(a); syh += Math.sin(a); } }
   const skinH = sxh || syh ? ((Math.atan2(syh, sxh) * 180 / Math.PI) + 360) % 360 : 22;
-  it._rcMask = { c: mc, b: bc, skinH, n: cnt, lm: cnt ? lsum / cnt : l0, seed: [h0, s0, l0], key: R.x + ',' + R.y + ',' + R.tol };
+  const core = mkCanvas(w, h), cq = core.getContext('2d'), cd = cq.createImageData(w, h); for (let i = 0; i < w * h; i++) if (m[i]) cd.data[i * 4 + 3] = 255; cq.putImageData(cd, 0, 0);   // só o que é da cor tocada, sem a margem do desfoque
+  it._rcMask = { c: mc, b: bc, core, skinH, n: cnt, lm: cnt ? lsum / cnt : l0, seed: [h0, s0, l0], key: R.x + ',' + R.y + ',' + R.tol };
 }
 function applyRecolor(it) {
   const R = it.recolor, base = colorBase(it); it._rcDirty = false; if (!R || !base) { freeCanvas(it.rc); it.rc = null; return; }
@@ -1403,6 +1407,7 @@ function applyRecolor(it) {
   const ac = mkCanvas(W, H), ag = ac.getContext('2d', { willReadFrequently: true }); ag.imageSmoothingQuality = 'high'; ag.drawImage(M.c, 0, 0, W, H);
   const A = ag.getImageData(0, 0, W, H).data; ag.clearRect(0, 0, W, H); ag.drawImage(M.b, 0, 0, W, H); const Bd = ag.getImageData(0, 0, W, H).data; freeCanvas(ac);
   const img = g.getImageData(0, 0, W, H), P = img.data, sat = R.sat / 100, h0 = M.seed[0];
+  let S0 = null; if (it.src && it.dsrc) { const sc = mkCanvas(W, H), sg = sc.getContext('2d', { willReadFrequently: true }); sg.drawImage(it.src, 0, 0, W, H); S0 = sg.getImageData(0, 0, W, H).data; freeCanvas(sc); }
   const T = R.to ? rgbHsl(parseInt(R.to.slice(1, 3), 16), parseInt(R.to.slice(3, 5), 16), parseInt(R.to.slice(5, 7), 16)) : null, lm = M.lm;
   for (let i = 0; i < W * H; i++) { const a = A[i * 4 + 3] / 255, o = i * 4;
     if (a < .98 && Bd[o + 3] > 8) {   // tira o reflexo da cor antiga na pele em volta, sem mudar o tom da pele
@@ -1410,7 +1415,8 @@ function applyRecolor(it) {
       const wgt = Math.min(1, Bd[o + 3] / 90) * Math.max(0, 1 - Math.max(0, dh - R.tol) / 25) * (1 - a);
       if (wgt > 0) { let d = M.skinH - h; if (d > 180) d -= 360; if (d < -180) d += 360; let nh2 = h + d * wgt; if (nh2 < 0) nh2 += 360; if (nh2 >= 360) nh2 -= 360;   // o reflexo vira o tom da pele vizinha, não cinza
         const [r, gg, b] = hslRgb(nh2, s * (1 - .25 * wgt), l); P[o] = r; P[o + 1] = gg; P[o + 2] = b; } }
-    if (a <= 0) continue; const [h, s, l] = rgbHsl(P[o], P[o + 1], P[o + 2]);
+    if (a <= 0) continue; if (S0) { P[o] = S0[o]; P[o + 1] = S0[o + 1]; P[o + 2] = S0[o + 2]; }   // dentro da área, a cor de partida é a da foto original
+    const [h, s, l] = rgbHsl(P[o], P[o + 1], P[o + 2]);
     let nh = h, ns = Math.min(1, s * sat), nl = l;
     if (T) { nh = T[0]; ns = Math.min(1, T[1] * sat); const ctr = .65, c0 = Math.max(.02 + .2 * ctr, Math.min(.98 - .2 * ctr, T[2])); nl = Math.max(.01, Math.min(.99, c0 + (l - lm) * ctr)); }   /* a dobra do tecido continua visível no preto e no branco */
     const [r, gg, b] = hslRgb(nh, ns, nl); P[o] = P[o] + (r - P[o]) * a; P[o + 1] = P[o + 1] + (gg - P[o + 1]) * a; P[o + 2] = P[o + 2] + (b - P[o + 2]) * a; }
