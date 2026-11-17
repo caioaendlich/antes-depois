@@ -164,6 +164,14 @@ input.wide{width:100%}
 .etools .seg button[aria-pressed="true"]{background:rgba(255,255,255,.18);color:#fff}
 .etools .ebtn{font:inherit;font-size:12.5px;font-weight:600;color:#eee;background:rgba(0,0,0,.62);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:7px 10px}
 .etools input[type=range]{flex-basis:100%;max-width:240px;background:transparent}
+#colorPanel{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px 8px;justify-content:center;align-items:center;background:rgba(0,0,0,.62);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:8px 10px;font-size:12px;color:#ddd}
+#colorPanel[hidden]{display:none}
+#colorPanel label{display:flex;align-items:center;gap:6px;flex-basis:100%;justify-content:center}
+#colorPanel label input[type=range]{flex:1;max-width:190px}
+#colorPanel .sw{width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.35);padding:0}
+#colorPanel .sw[aria-pressed="true"]{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+#colorPanel .sw.keep{width:auto;border-radius:10px;padding:0 9px;background:rgba(255,255,255,.08);color:#eee;font:inherit;font-size:11.5px}
+#colorPanel input[type=color]{width:30px;height:28px;border:0;background:none;padding:0}
 #app.picking .etools{display:none!important}
 .halves{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;pointer-events:none;z-index:3}
 .half{position:relative;display:flex;align-items:center;justify-content:center}
@@ -289,11 +297,23 @@ html,body{overflow-x:clip}
       </div>
     </div>
     <div class="etools" id="etools" hidden>
-        <div class="seg sm" role="group" aria-label="Ferramenta"><button data-t="move" aria-pressed="true">Mover</button><button data-t="del" aria-pressed="false">Apagar</button><button data-t="add" aria-pressed="false">Restaurar</button></div>
+        <div class="seg sm" role="group" aria-label="Ferramenta"><button data-t="move" aria-pressed="true">Mover</button><button data-t="del" aria-pressed="false">Apagar</button><button data-t="add" aria-pressed="false">Restaurar</button><button data-t="color" aria-pressed="false">Cor</button></div>
         <div class="seg sm" role="group" aria-label="Foto"><button data-s="A" aria-pressed="true">Antes</button><button data-s="D" aria-pressed="false">Depois</button></div>
         <button class="ebtn" id="eUndo" type="button" hidden>Desfazer</button>
         <button class="ebtn" id="eRedo" type="button" hidden>Refazer</button>
         <input type="range" id="eBrush" min="8" max="140" value="44" aria-label="Tamanho do pincel" hidden>
+        <div id="colorPanel" hidden>
+          <span id="cInfo">Toque na cor que quer mudar (touca, roupa, cabelo…)</span>
+          <label>Tons parecidos <input type="range" id="cTol" min="4" max="80" value="34"></label>
+          <label>Saturação <input type="range" id="cSat" min="0" max="200" value="100"></label>
+          <button class="sw keep" data-c="" aria-pressed="true" type="button">Mesma cor</button>
+          <button class="sw" data-c="#141414" style="background:#141414" aria-label="Preto" type="button"></button>
+          <button class="sw" data-c="#f1efec" style="background:#f1efec" aria-label="Branco" type="button"></button>
+          <button class="sw" data-c="#8d8b88" style="background:#8d8b88" aria-label="Cinza" type="button"></button>
+          <button class="sw" data-c="#1f2a44" style="background:#1f2a44" aria-label="Azul-marinho" type="button"></button>
+          <input type="color" id="cPick" value="#3a3a3a" aria-label="Outra cor">
+          <button class="sw keep" id="cReset" type="button">Tirar ajuste</button>
+        </div>
       </div>
   </div>
 
@@ -1005,7 +1025,7 @@ function drawDisplay(g) {
     const end = { x: x + w / 2, y }; g.save(); g.globalAlpha = lupa; g.strokeStyle = tone.line; g.lineWidth = 2; g.strokeRect(focus.x - 14, focus.y - 14, 28, 28);
     g.beginPath(); g.moveTo(focus.x, focus.y + 14); g.lineTo(focus.x + (end.x - focus.x) * lupa, focus.y + 14 + (end.y - focus.y - 14) * lupa); g.stroke();
     g.fillStyle = bg; g.fillRect(x, y, w, h);
-    g.drawImage(item.src, Math.max(0, Math.min(item.w - cw, z.x - cw / 2)) * item.src.width / item.w, Math.max(0, Math.min(item.h - ch, z.y - ch / 2)) * item.src.height / item.h, cw * item.src.width / item.w, Math.min(ch, item.h) * item.src.height / item.h, x, y, w, h); g.strokeStyle = tone.frame; g.strokeRect(x, y, w, h);
+    g.drawImage(item.rc || item.src, Math.max(0, Math.min(item.w - cw, z.x - cw / 2)) * item.src.width / item.w, Math.max(0, Math.min(item.h - ch, z.y - ch / 2)) * item.src.height / item.h, cw * item.src.width / item.w, Math.min(ch, item.h) * item.src.height / item.h, x, y, w, h); g.strokeStyle = tone.frame; g.strokeRect(x, y, w, h);
     if (opts.labels) label(title, x + w / 2, y + h + 24, 20); g.restore();
   }
   if (opts.title && opts.titleTxt.trim()) { g.fillStyle = ink; g.font = '300 33px Figtree, system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; spaced(g, opts.titleTxt.trim().toUpperCase(), W / 2, 102, 10); }
@@ -1028,7 +1048,7 @@ function restoreFinish(edit) {
 function snapshotEdit() {
   const photo = side => {
     const it = items[side][sel[side]];
-    return it ? {id:it.shot?.id, edge:it.edge, plus:it.edited && it.plus?.width ? it.plus.toDataURL('image/png') : it.savedPaint?.plus || null, minus:it.edited && it.minus?.width ? it.minus.toDataURL('image/png') : it.savedPaint?.minus || null} : null;
+    return it ? {id:it.shot?.id, edge:it.edge, plus:it.edited && it.plus?.width ? it.plus.toDataURL('image/png') : it.savedPaint?.plus || null, minus:it.edited && it.minus?.width ? it.minus.toDataURL('image/png') : it.savedPaint?.minus || null, rc:it.recolor || null} : null;
   };
   return {opts:{...opts}, backgroundRemoved:curComp?.edit?.backgroundRemoved !== false, A:photo('A'), D:photo('D')};
 }
@@ -1229,7 +1249,7 @@ function cleanMask(m) { return MaskRefinement.cleanMask(m, RES); }
 function isSelected(it) { return items.A[sel.A] === it || items.D[sel.D] === it; }
 function freeCanvas(c) { if (c) { c.width = c.height = 0; } }
 function release(it) {
-  ['src', 'cut', 'base', 'fin', 'dsrc'].forEach(k => { freeCanvas(it[k]); it[k] = null; });
+  ['src', 'cut', 'base', 'fin', 'dsrc', 'rc'].forEach(k => { freeCanvas(it[k]); it[k] = null; }); it._rcMask = null;
   if (!it.edited) { freeCanvas(it.plus); freeCanvas(it.minus); it.plus = it.minus = null; }
 }
 async function ensureLive(it) {
@@ -1273,6 +1293,7 @@ function buildBase(it) {
   const refined=MaskRefinement.refineEdges(alpha,gg.getImageData(0,0,w,h).data,w,h);freeCanvas(guide);
   for(let i=0;i<refined.length;i++)mask.data[i*4+3]=refined[i];b.putImageData(mask,0,0);
   try { buildDecon(it); } catch (e) { console.warn('cor da borda', e); it.dsrc = null; }
+  if (it.recolor) it._rcDirty = true;
 
 }
 // Halo no cabelo: o pixel da borda mistura a cor do cabelo com a do fundo antigo (I = a*F + (1-a)*B).
@@ -1317,10 +1338,77 @@ function composeCut(it) {
   f.globalCompositeOperation = 'source-over';
   const g = it.cut.getContext('2d'); g.globalCompositeOperation = 'source-over';
   g.clearRect(0, 0, it.cut.width, it.cut.height); g.imageSmoothingQuality = 'high';
-  g.drawImage(it.dsrc || it.src, 0, 0);
+  if (it.recolor && (!it.rc || it._rcDirty)) applyRecolor(it);
+  g.drawImage(it.rc || it.dsrc || it.src, 0, 0);
   g.globalCompositeOperation = 'destination-in'; g.drawImage(it.fin, 0, 0, it.cut.width, it.cut.height);
   g.globalCompositeOperation = 'source-over';
 }
+// Caio 17/11 15:21: escolher uma cor dentro de uma área (touca, roupa, cabelo, pele) e calibrar:
+// saturação, quanto de tons parecidos entra (vermelho → rosa/laranja) ou trocar por preto, branco ou outra cor.
+// A área é a mancha contínua da cor tocada (não muda a mesma cor em outro lugar da foto); a textura do tecido fica.
+function rgbHsl(r, g, b) { r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+  if (!d) return [0, 0, l]; const s = d / (1 - Math.abs(2 * l - 1)); let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; if (h < 0) h += 360; return [h, s, l]; }
+function hslRgb(h, s, l) { const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2; let r = 0, g = 0, b = 0;
+  if (h < 60) [r, g] = [c, x]; else if (h < 120) [r, g] = [x, c]; else if (h < 180) [g, b] = [c, x]; else if (h < 240) [g, b] = [x, c]; else if (h < 300) [r, b] = [x, c]; else [r, b] = [c, x];
+  return [(r + m) * 255, (g + m) * 255, (b + m) * 255]; }
+function colorBase(it) { return it.dsrc || it.src; }
+function regionMask(it) {
+  const R = it.recolor, base = colorBase(it), W = base.width, H = base.height, k = Math.min(1, 900 / Math.max(W, H)), w = Math.max(1, Math.round(W * k)), h = Math.max(1, Math.round(H * k));
+  const c = mkCanvas(w, h), cg = c.getContext('2d', { willReadFrequently: true }); cg.drawImage(base, 0, 0, w, h); const d = cg.getImageData(0, 0, w, h).data; freeCanvas(c);
+  const hsl = new Float32Array(w * h * 3); for (let i = 0; i < w * h; i++) { const q = rgbHsl(d[i * 4], d[i * 4 + 1], d[i * 4 + 2]); hsl[i * 3] = q[0]; hsl[i * 3 + 1] = q[1]; hsl[i * 3 + 2] = q[2]; }
+  const sx = Math.max(0, Math.min(w - 1, Math.round(R.x * w))), sy = Math.max(0, Math.min(h - 1, Math.round(R.y * h)));
+  // cor da semente: média 5×5 em RGB
+  let mr = 0, mg2 = 0, mb = 0, n = 0; for (let y = sy - 2; y <= sy + 2; y++) for (let x = sx - 2; x <= sx + 2; x++) if (x >= 0 && y >= 0 && x < w && y < h) { const i = (y * w + x) * 4; mr += d[i]; mg2 += d[i + 1]; mb += d[i + 2]; n++; }
+  mr /= n; mg2 /= n; mb /= n; const [h0, s0, l0] = rgbHsl(mr, mg2, mb), tol = R.tol, gray = s0 < .14;
+  const ok = i => { const hh = hsl[i * 3], ss = hsl[i * 3 + 1], ll = hsl[i * 3 + 2];
+    if (gray) { const dr = d[i * 4] - mr, dg = d[i * 4 + 1] - mg2, db = d[i * 4 + 2] - mb; return Math.hypot(dr, dg, db) < tol * 2.2 && ss < .14 + tol / 250; }
+    let dh = Math.abs(hh - h0); if (dh > 180) dh = 360 - dh; return dh <= tol && ss > Math.max(.05, s0 * .18) && Math.abs(ll - l0) < .34 + tol / 120; };
+  const m = new Uint8Array(w * h), st = [sy * w + sx]; if (!ok(st[0])) { st.length = 0; }
+  while (st.length) { const i = st.pop(); if (m[i]) continue; m[i] = 1; const x = i % w, y = (i / w) | 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const X = x + dx, Y = y + dy; if (X < 0 || Y < 0 || X >= w || Y >= h) continue; const j = Y * w + X; if (!m[j] && ok(j)) st.push(j); } }
+  // fecha furinhos (costura, sombra) e suaviza a borda
+  const mc = mkCanvas(w, h), mg3 = mc.getContext('2d', { willReadFrequently: true }), md = mg3.createImageData(w, h);
+  let lsum = 0, cnt = 0; for (let i = 0; i < w * h; i++) if (m[i]) { md.data[i * 4 + 3] = 255; lsum += hsl[i * 3 + 2]; cnt++; }
+  mg3.putImageData(md, 0, 0); const mc2 = mkCanvas(w, h), m2 = mc2.getContext('2d', { willReadFrequently: true });
+  const cr = Math.max(2, Math.round(w / 260));   // fechamento: dilata e erode de volta (tampa costura, dobra e reflexo)
+  m2.filter = 'blur(' + cr + 'px)'; m2.drawImage(mc, 0, 0); m2.filter = 'none'; let a = m2.getImageData(0, 0, w, h); for (let i = 0; i < w * h; i++) a.data[i * 4 + 3] = a.data[i * 4 + 3] > 40 ? 255 : 0; m2.putImageData(a, 0, 0);
+  mg3.clearRect(0, 0, w, h); mg3.filter = 'blur(' + cr + 'px)'; mg3.drawImage(mc2, 0, 0); mg3.filter = 'none'; a = mg3.getImageData(0, 0, w, h); for (let i = 0; i < w * h; i++) a.data[i * 4 + 3] = a.data[i * 4 + 3] > 150 ? 255 : 0; m2.clearRect(0, 0, w, h); m2.putImageData(a, 0, 0);
+  mg3.clearRect(0, 0, w, h); mg3.filter = 'blur(1.2px)'; mg3.drawImage(mc2, 0, 0); mg3.filter = 'none'; freeCanvas(mc2);
+  it._rcMask = { c: mc, n: cnt, lm: cnt ? lsum / cnt : l0, seed: [h0, s0, l0], key: R.x + ',' + R.y + ',' + R.tol };
+}
+function applyRecolor(it) {
+  const R = it.recolor, base = colorBase(it); it._rcDirty = false; if (!R || !base) { freeCanvas(it.rc); it.rc = null; return; }
+  if (!it._rcMask || it._rcMask.key !== R.x + ',' + R.y + ',' + R.tol) regionMask(it);
+  const M = it._rcMask, W = base.width, H = base.height; if (!M.n) { freeCanvas(it.rc); it.rc = null; return; }
+  if (!it.rc || it.rc.width !== W || it.rc.height !== H) { freeCanvas(it.rc); it.rc = mkCanvas(W, H); }
+  const g = it.rc.getContext('2d', { willReadFrequently: true }); g.clearRect(0, 0, W, H); g.drawImage(base, 0, 0);
+  const ac = mkCanvas(W, H), ag = ac.getContext('2d', { willReadFrequently: true }); ag.imageSmoothingQuality = 'high'; ag.drawImage(M.c, 0, 0, W, H);
+  const A = ag.getImageData(0, 0, W, H).data; freeCanvas(ac);
+  const img = g.getImageData(0, 0, W, H), P = img.data, sat = R.sat / 100;
+  const T = R.to ? rgbHsl(parseInt(R.to.slice(1, 3), 16), parseInt(R.to.slice(3, 5), 16), parseInt(R.to.slice(5, 7), 16)) : null, lm = M.lm;
+  for (let i = 0; i < W * H; i++) { const a = A[i * 4 + 3] / 255; if (a <= 0) continue; const o = i * 4, [h, s, l] = rgbHsl(P[o], P[o + 1], P[o + 2]);
+    let nh = h, ns = Math.min(1, s * sat), nl = l;
+    if (T) { nh = T[0]; ns = Math.min(1, T[1] * sat); const ctr = .65, c0 = Math.max(.02 + .2 * ctr, Math.min(.98 - .2 * ctr, T[2])); nl = Math.max(.01, Math.min(.99, c0 + (l - lm) * ctr)); }   /* a dobra do tecido continua visível no preto e no branco */
+    const [r, gg, b] = hslRgb(nh, ns, nl); P[o] = P[o] + (r - P[o]) * a; P[o + 1] = P[o + 1] + (gg - P[o + 1]) * a; P[o + 2] = P[o + 2] + (b - P[o + 2]) * a; }
+  g.putImageData(img, 0, 0);
+}
+function syncColorPanel() {
+  const it = items[active]?.[sel[active]], R = it && it.recolor;
+  $('cTol').value = R ? R.tol : 34; $('cSat').value = R ? R.sat : 100;
+  document.querySelectorAll('#colorPanel [data-c]').forEach(b => b.setAttribute('aria-pressed', String((R ? R.to || '' : '') === b.dataset.c)));
+  $('cInfo').textContent = R ? (it._rcMask && !it._rcMask.n ? 'Não achei essa cor ali; toque de novo, no meio da área' : 'Ajuste abaixo ou toque em outro ponto da mesma cor') : 'Toque na cor que quer mudar (touca, roupa, cabelo…)';
+}
+let rcTimer = 0;
+function recolorNow(it) { if (!it) return; clearTimeout(rcTimer); rcTimer = setTimeout(() => { applyRecolor(it); if (it.fin) composeCut(it); render(); syncColorPanel(); if (typeof savePair === 'function') savePair(); }, 60); }
+function pickColor(it, q) {
+  const prev = it.recolor || { tol: +$('cTol').value, sat: +$('cSat').value, to: '' };
+  it.recolor = { ...prev, x: Math.max(0, Math.min(1, q.x / it.w)), y: Math.max(0, Math.min(1, q.y / it.h)) }; it._rcMask = null; recolorNow(it);
+}
+$('cTol').oninput = e => { const it = items[active][sel[active]]; if (it && it.recolor) { it.recolor.tol = +e.target.value; recolorNow(it); } };
+$('cSat').oninput = e => { const it = items[active][sel[active]]; if (it && it.recolor) { it.recolor.sat = +e.target.value; recolorNow(it); } };
+document.querySelectorAll('#colorPanel [data-c]').forEach(b => b.onclick = () => { const it = items[active][sel[active]]; if (!it || !it.recolor) { $('cInfo').textContent = 'Primeiro toque na cor da foto'; return; } it.recolor.to = b.dataset.c; recolorNow(it); });
+$('cPick').oninput = e => { const it = items[active][sel[active]]; if (!it || !it.recolor) { $('cInfo').textContent = 'Primeiro toque na cor da foto'; return; } it.recolor.to = e.target.value; recolorNow(it); };
+$('cReset').onclick = () => { const it = items[active][sel[active]]; if (!it) return; it.recolor = null; it._rcMask = null; freeCanvas(it.rc); it.rc = null; if (it.fin) composeCut(it); render(); syncColorPanel(); if (typeof savePair === 'function') savePair(); };
 let recutRaf = 0, recutIt = null;
 function scheduleRecut(it, base) {
   recutIt = it; if (base) it._needBase = true;
@@ -1586,8 +1674,9 @@ function setTool(t) {
   tool = t;
   [['toolMove', 'move'], ['toolAdd', 'add'], ['toolDel', 'del']].forEach(([id, v]) => $(id).setAttribute('aria-pressed', v === t));
   document.querySelectorAll('#etools [data-t]').forEach(b => b.setAttribute('aria-pressed', b.dataset.t === t));
-  $('eUndo').hidden = $('eRedo').hidden = $('eBrush').hidden = t === 'move';
-  $('hint').textContent = t === 'move' ? 'Arraste para mover · pinça para zoom e giro' : (t === 'add' ? 'Pinte para restaurar' : 'Pinte para apagar') + ' · lado ' + (active === 'A' ? 'Antes' : 'Depois');
+  $('eUndo').hidden = $('eRedo').hidden = $('eBrush').hidden = t === 'move' || t === 'color';
+  $('colorPanel').hidden = t !== 'color'; if (t === 'color') syncColorPanel();
+  $('hint').textContent = t === 'move' ? 'Arraste para mover · pinça para zoom e giro' : t === 'color' ? 'Toque na cor que quer mudar · lado ' + (active === 'A' ? 'Antes' : 'Depois') : (t === 'add' ? 'Pinte para restaurar' : 'Pinte para apagar') + ' · lado ' + (active === 'A' ? 'Antes' : 'Depois');
 }
 document.querySelectorAll('#etools [data-t]').forEach(b => b.onclick = () => setTool(b.dataset.t));
 document.querySelectorAll('#etools [data-s]').forEach(b => b.onclick = () => { setActive(b.dataset.s); if (tool !== 'move') setTool(tool); });
@@ -1663,6 +1752,7 @@ cv.addEventListener('pointerdown', e => {
   cv.setPointerCapture(e.pointerId);
   const p = toCanvas(e); ptrs.set(e.pointerId, p);
   const it = items[active][sel[active]];
+  if (tool === 'color') { if (ptrs.size === 1 && it && (it.dsrc || it.src)) pickColor(it, toImage(active, p)); return; }
   if (tool !== 'move' && ptrs.size === 1 && it && it.plus && it.meta) {
     stroke={it,before:paintAlpha(it)};loupePoint={x:e.clientX,y:e.clientY};
     brushing = true; lastImg = toImage(active, p); ring = p;
@@ -2504,7 +2594,7 @@ function itemFromShot(s, side, noQueue) {
   if (s.mask) { it.raw = s.mask; it.meta = analyse(it.cleanedRaw || it.raw, it.w, it.h); it.status = 'pronto'; } else if (!noQueue) queue.push({ side, it });
   const edit = curComp?.edit, saved = edit?.[side];
   if (edit?.backgroundRemoved === false) { it.raw = new Uint8Array(RES * RES).fill(255); it.meta = analyse(it.raw,it.w,it.h); it.status = 'pronto'; }
-  if (saved?.id === s.id) { it.edge = saved.edge ?? it.edge; it.savedPaint = saved; }
+  if (saved?.id === s.id) { it.edge = saved.edge ?? it.edge; it.savedPaint = saved; if (saved.rc) it.recolor = { ...saved.rc }; }
   return it;
 }
 function queueIt(it, side) { if (it && !it.raw && it.status !== 'erro' && !queue.some(q => q.it === it)) queue.push({ side, it }); }
