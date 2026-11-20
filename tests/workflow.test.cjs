@@ -304,3 +304,21 @@ test('choosing whole groups mixes the before of one date with the after of anoth
   ctx.explorer.selected = new Set(['old']); await ctx.classify('R');
   assert.deepEqual(plain(c.U), []); assert.ok(shots.some(s => s.id === 'old'));
 });
+test('front photo follows face direction, falls back to the angle side on profiles and respects manual choice', () => {
+  const press = {};
+  const el = id => ({ setAttribute: (k, v) => { press[id] = v; } });
+  const pts = nose => ({ pts: [{x:.4,y:.4},{x:.5,y:.4},{x:nose,y:.48},{x:.45,y:.6}], w: 100, h: 100 });
+  const run = (A, D, angle, manual) => {
+    const {ctx} = context({ opts: {front: 'D', frontManual: !!manual}, items: {A:[A], D:[D]}, sel: {A:0, D:0}, curComp: {angle}, $: el });
+    const start = source.indexOf('function faceTurn(');
+    vm.runInContext(source.slice(start, source.indexOf("$('lyC').onclick", start)), ctx);
+    ctx.autoFront(); return ctx.opts.front;
+  };
+  assert.equal(run({pyr: pts(.7)}, {pyr: pts(.72)}, '45° esquerda'), 'A');      // olhando para a direita
+  assert.equal(run({pyr: pts(.2)}, {pyr: pts(.22)}, '45° esquerda'), 'D');      // olhando para a esquerda: os pontos vencem o nome
+  assert.equal(run({pyr: null, shot:{pose:'Perfil E'}}, {pyr: null, shot:{pose:'Perfil E'}}, 'Perfil esquerdo'), 'A');
+  assert.equal(run({pyr: null}, {pyr: null}, 'Perfil direito'), 'D');
+  assert.equal(run({pyr: null}, {pyr: pts(.75)}, 'Perfil direito'), 'A');       // um rosto achado basta
+  assert.equal(run({pyr: pts(.45)}, {pyr: pts(.46)}, 'Frente'), 'D');
+  assert.equal(run({pyr: pts(.7)}, {pyr: pts(.7)}, '45° esquerda', true), 'D'); // escolha manual vence
+});
