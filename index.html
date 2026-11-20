@@ -217,12 +217,48 @@ input.wide{width:100%}
 #projectActions{display:grid;gap:8px;margin:10px 0}#app.picking .controls>#projectActions{display:grid!important}#projectActions .flex{flex-wrap:wrap}
 .folderHead{display:flex;gap:10px;align-items:center;justify-content:space-between}.folderHead #folderModes{margin-left:auto}.folderHead h2{font-size:18px}.angleGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}.angleTile{min-width:0;position:relative}.angleTile>.angleOpen{display:flex;flex-direction:column;width:100%;padding:8px;gap:8px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--fg);font:inherit;overflow:hidden}.angleOpen img{width:100%;aspect-ratio:4/5;object-fit:contain;background:#111}.angleAdd{min-height:180px;justify-content:center;align-items:center}.angleAdd span{font-size:42px;font-weight:300}.cardRow{display:flex;align-items:stretch;gap:6px}.cardRow>.pcard,.cardRow>.ccard{flex:1;min-width:0}.cardMenu{flex:none;align-self:center;min-width:40px;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--fg);font:600 21px var(--ui)}.angleTile>.cardMenu{position:absolute;right:10px;top:10px;z-index:1}.pcard,.ccard,.angleOpen{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;touch-action:pan-y}
 #exFilter{font:inherit;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px;min-height:44px;width:100%}
-#poolInfo{margin:0}#saveAngle{width:100%}.explorer{position:fixed;inset:0;z-index:80;background:var(--bg);overflow:auto;padding:max(16px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom))}
+#poolInfo{margin:0}#saveAngle{width:100%}.explorer{position:fixed;inset:0;z-index:80;background:var(--bg);overflow:auto;padding:0 12px;overscroll-behavior:contain}
 .exContent{max-width:900px;margin:auto}.exHead,.exActions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.exHead h2{flex:1;margin:0;font-size:20px}.exActions{padding:10px 0}.exActions.sticky{position:sticky;top:-16px;background:var(--bg);z-index:2}.exGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:10px;margin-top:10px}.exCard{display:flex;position:relative;flex-direction:column;border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;padding:8px;gap:6px;background:var(--panel)}.exCard:has(input:checked){border:2px solid var(--accent);padding:7px}.exCard input{width:24px;height:24px;accent-color:var(--accent)}.exCard img{width:100%;height:135px;object-fit:contain}.exCard b,.exCard small{display:block;overflow-wrap:anywhere}.exCard small{color:var(--muted);margin-top:4px}.danger{color:#ffb6ab!important}#exCount{flex:1;min-width:120px}
-@media(max-width:899px){.stage{position:relative;top:auto}#workflow{position:relative}#top h1{font-size:13px}#statusChip{max-width:45%;font-size:11px}.exGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:899px){.stage{position:relative;top:auto}#workflow{position:relative}#top h1{font-size:13px}#statusChip{max-width:45%;font-size:11px}.exGrid:not(.tiles){grid-template-columns:repeat(2,minmax(0,1fr))}}
 #usePatient{position:absolute;z-index:6;left:50%;top:calc(50% + 70px);transform:translateX(-50%);white-space:nowrap}
 #importPool{position:absolute;z-index:6;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;width:94px;height:94px;padding:10px;font-size:14px;background:var(--panel);border:1px solid var(--accent)}
 #plusA,#plusD{display:none!important}.sessionCard{border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0}.sessionThumbs{display:flex;overflow:auto;gap:4px;margin:10px 0}.sessionThumbs img{height:80px;width:60px;object-fit:cover}.sessionCard .flex{margin-top:8px}
+/* Fotos do paciente e do projeto (Caio 19/11/2026): grade compacta, seleção arrastando o dedo, barra de ações fixa embaixo, autoclassificação por data. */
+.exTop{position:sticky;top:0;z-index:4;background:var(--bg);padding:max(12px,env(safe-area-inset-top)) 0 8px;display:grid;gap:8px}
+.exTop .exHead h2{font-size:18px}
+.exSeg{display:flex;gap:3px;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.exSeg[hidden]{display:none}
+.exSeg button{flex:1;min-height:34px;border:0;border-radius:7px;background:none;color:var(--muted);font:600 13px var(--ui);padding:4px 6px}
+.exSeg button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink)}
+#exFilter[hidden]{display:none}
+.exGrid.tiles{grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;margin-top:4px}
+@media(min-width:600px){.exGrid.tiles{grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}}
+.exDay{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 2px 4px;font-size:13.5px}
+.exDay b{font-weight:600}.exDay .btn{padding:5px 10px;font-size:12.5px}
+.exTile{position:relative;aspect-ratio:3/4;overflow:hidden;background:#000;border-radius:4px;touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:pointer}
+.exTile img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;-webkit-user-drag:none}
+.exTile .tag{position:absolute;left:3px;bottom:3px;font:700 10px/1 var(--ui);padding:3px 5px;border-radius:99px;background:#000b;color:#fff;letter-spacing:.02em}
+.exTile .tag.A{background:var(--accent);color:var(--accent-ink)}.exTile .tag.D{background:#8fb8d9;color:#0d1822}.exTile .tag.X{background:#0009;color:#cfcfcf}
+.exTile .tick{position:absolute;right:4px;top:4px;width:21px;height:21px;border-radius:50%;border:2px solid #fffd;background:#0003;display:grid;place-items:center;font:700 12px/1 var(--ui);color:transparent}
+.exTile.on{outline:3px solid var(--accent);outline-offset:-3px}.exTile.on img{opacity:.78}
+.exTile.on .tick{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.exTile.out img{opacity:.6}
+.exBar{position:sticky;bottom:0;z-index:4;background:var(--bg);border-top:1px solid var(--line);margin:10px -12px 0;padding:8px 12px max(10px,env(safe-area-inset-bottom));display:grid;gap:6px}
+.exBar[hidden]{display:none}
+.exRow{display:flex;gap:6px;align-items:center}.exRow[hidden]{display:none}
+#exBulk #exCount{flex:1;min-width:0;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#exClassify .btn{flex:1;min-height:42px;padding:6px 4px}
+#exMore{min-width:42px;font-size:18px;line-height:1}
+#exSummary{flex:1;min-width:0;font-size:13.5px;color:var(--muted)}#exGo{min-height:44px}
+.autoHead{display:grid;gap:8px;margin:4px 0 6px}.autoHead .note{margin:0}
+.autoDay{border:1px solid var(--line);border-radius:12px;padding:10px 10px 4px;margin:10px 0;background:var(--panel)}
+.autoDay h3{margin:0 0 4px;font-size:15px;font-weight:600}
+.autoPart{border-top:1px solid var(--line);padding:9px 0}.autoPart:first-of-type{border-top:0}
+.autoMeta{display:flex;justify-content:space-between;gap:8px;font-size:13px;align-items:baseline}.autoMeta b{font-weight:600}.autoMeta span{color:var(--muted);text-align:right}
+.autoThumbs{display:flex;gap:3px;overflow-x:auto;margin:7px 0;scrollbar-width:none}.autoThumbs img{height:76px;width:57px;object-fit:cover;border-radius:3px;flex:none}
+.autoThumbs .more{flex:none;width:57px;height:76px;border-radius:3px;background:#0006;display:grid;place-items:center;font-size:12px;color:var(--muted)}
+.autoBtns{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}.autoBtns .btn{min-height:40px;padding:4px 2px;font-size:13px}
+.autoBtns .btn[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 /* Keep the comparison visible while the angle row scrolls behind the header. */
 html,body{overflow-x:clip}
 .stage{position:sticky;top:var(--comparison-top,58px);align-self:start;z-index:5;background:var(--bg)}
@@ -343,9 +379,9 @@ html,body{overflow-x:clip}
       <p class="note" id="angleSaveHelp">Salvar ângulo guarda esta montagem no projeto. Para levar a imagem ao Fotos, use Salvar na galeria.</p>
       <div class="flex" id="cutRecovery" hidden><button class="btn" id="retryCut">Tentar recorte novamente</button><button class="btn" id="useOriginal">Continuar com fundo original</button></div>
 
-      <div class="flex"><button class="btn" id="poolManage">Organizar fotos</button><button class="btn" id="savedAngles">Ângulos salvos</button><button class="btn" id="importMore" type="button" hidden>Importar mais fotos</button></div>
+      <div class="flex"><button class="btn" id="poolManage">Organizar fotos</button><button class="btn" id="patientPhotos" type="button" hidden>Fotos do paciente</button><button class="btn" id="savedAngles">Ângulos salvos</button><button class="btn" id="importMore" type="button" hidden>Importar mais fotos</button></div>
       <p class="note" id="poolInfo" aria-live="polite"></p>
-      <p class="note">As fotos importadas ficam no álbum deste projeto e podem ser usadas em qualquer ângulo.</p>
+      <p class="note">As fotos importadas ficam guardadas no paciente. Em Fotos do paciente dá para usar em qualquer projeto, sem importar de novo.</p>
     </div>
     <div class="pair">
     <div class="row">
@@ -462,10 +498,18 @@ html,body{overflow-x:clip}
 
 
 <section id="explorer" class="explorer" role="dialog" aria-modal="true" aria-labelledby="exTitle" hidden>
-<div class="exContent"><div class="exHead"><h2 id="exTitle"></h2><button class="btn" id="exClose">‹ Voltar</button></div>
-<p class="note" id="exDescription"></p><select id="exFilter" aria-label="Filtrar fotos por data ou grupo"></select>
-<div class="exActions sticky" id="exBulk"><span id="exCount" aria-live="polite"></span><button class="btn small" id="exAll">Selecionar todos</button><button class="btn small" id="exClear">Limpar seleção</button><button class="btn small primary" id="exUse" hidden>Usar neste projeto</button><button class="btn small" id="exDownload">Baixar selecionados</button><button class="btn small danger" id="exDelete">Deletar selecionados</button></div>
-<div class="exActions" id="exClassify"><span>Marcar seleção como:</span><button class="btn" id="exBefore">Antes</button><button class="btn" id="exAfter">Depois</button><button class="btn" id="exUnknown">Para classificar</button></div><div id="exSessions"></div><div class="exGrid" id="exGrid"></div></div></section>
+<div class="exContent">
+<div class="exTop" id="exTop"><div class="exHead"><h2 id="exTitle"></h2><button class="btn" id="exClose">‹ Voltar</button></div>
+<div class="exSeg" id="exTabs" hidden><button type="button" data-v="auto">Grupos por data</button><button type="button" data-v="grid">Reclassificar fotos</button></div>
+<div class="exSeg" id="exScope" hidden><button type="button" data-s="comp"></button><button type="button" data-s="patient"></button></div>
+<select id="exFilter" aria-label="Filtrar fotos por data ou grupo"></select></div>
+<p class="note" id="exDescription"></p>
+<div id="exSessions"></div><div class="exGrid" id="exGrid"></div>
+<div class="exBar" id="exBar">
+<div class="exRow" id="exBulk"><span id="exCount" aria-live="polite"></span><button class="btn small" id="exAll">Todos</button><button class="btn small" id="exClear">Limpar</button><button class="btn small primary" id="exUse" hidden>Usar neste projeto</button><button class="btn small" id="exDownload">Salvar na galeria</button><button class="btn small danger" id="exDelete">Deletar</button><button class="btn small" id="exMore" type="button" aria-label="Mais ações">⋯</button></div>
+<div class="exRow" id="exGoRow" hidden><span id="exSummary"></span><button class="btn primary" id="exGo" type="button">Ir para a montagem</button></div>
+<div class="exRow" id="exClassify"><button class="btn" id="exBefore">Antes</button><button class="btn" id="exAfter">Depois</button><button class="btn" id="exUnknown">Classificar</button></div>
+</div></div></section>
 <canvas id="brushLoupe" width="240" height="240" aria-label="Lupa de precisão" hidden style="position:fixed;width:120px;height:120px;border:2px solid #d8c3a0;border-radius:50%;z-index:60;pointer-events:none;background:#222;box-shadow:0 2px 12px #0008"></canvas>
 <script src="photo-dates.js"></script>
 <script src="import-tools.js"></script>
@@ -3282,6 +3326,7 @@ function angleUI() {
   $('importMore').hidden = !curComp || screen !== 'edit' || !hasPhotos;
   // Caio 17/11 04:34: projeto novo pode começar com as fotos que o paciente já tem (de outros projetos), sem importar de novo
   $('usePatient').hidden = $('importPool').hidden || !Pj || !Pj.shots.length;
+  $('patientPhotos').hidden = !curComp || screen !== 'edit' || !Pj || !Pj.shots.length;
   $('workflow').hidden = !curComp || screen !== 'edit';
   $('projectActions').hidden = !curComp || screen !== 'edit';
   if (!curComp) return;
@@ -3481,16 +3526,18 @@ $('filePool').onchange = async e => {
     setStatus(`${added.length} de ${files.length} fotos importadas` + (missing ? ` · ${missing} para classificar` : ' · separadas pela data de captura'), false);
     if (missing) {
       $('importProgress').close();
-      await openExplorer('photos', c, {sessionMode:true,onlyIds:added.map(s=>s.id)});
-      explorer.sessionMode = true;
+      await openExplorer('photos', c, {view:'auto',scope:'comp',onlyIds:added.map(s=>s.id)});
+      explorer.view = 'auto';
       explorer.onlyIds = added.map(s => s.id);
-      explorer.notice = 'Escolha Antes ou Depois para estes grupos. Depois toque em Continuar montagem. Você pode deixar fotos pendentes para organizar mais tarde.';
+      explorer.notice = 'Fotos novas separadas por data, em grupo do antes e grupo do depois. Toque em Antes ou Depois no grupo que quer usar, ou em Autoclassificar tudo.';
       await renderExplorer();
     }
   } catch (err) { setStatus('Não foi possível concluir a importação: ' + err.message, false); }
   finally { importing = false; if (!working && !queue.length) keepAwake(false); $('importProgress').close(); $('importPool').disabled = $('importMore').disabled = false; $('app').inert = $('top').inert = !!explorer; }
 };
-$('usePatient').onclick = () => { if (!curComp || !Pj) return; rememberDraft(); openExplorer('photos', null, { useFor: curComp }); };
+// Caio 19/11: as fotos importadas ficam na biblioteca do paciente; qualquer projeto escolhe os grupos sem importar de novo
+const openPatientPhotos = () => { if (!curComp || !Pj) return; rememberDraft(); if (linked) openPick(curComp); openExplorer('photos', curComp, { scope: 'patient', view: 'auto' }); };
+$('usePatient').onclick = openPatientPhotos;
 $('exUse').onclick = async () => {
   const ex = explorer; if (!ex || !ex.useFor || !ex.selected.size) return; const c = ex.useFor, have = new Set(projectPhotos(c).map(s => s.id));
   const pick = Pj.shots.filter(s => ex.selected.has(s.id) && !have.has(s.id)); if (!pick.length) { closeExplorer(); return; }
@@ -3499,10 +3546,11 @@ $('exUse').onclick = async () => {
   await touchProj(); await saveComp(); closeExplorer(); openPick(c); angleUI();
   const missing = assignments.filter(x => x.side === 'U').length;
   setStatus(pick.length + (pick.length === 1 ? ' foto do paciente' : ' fotos do paciente') + ' no projeto' + (missing ? ' · ' + missing + ' para classificar' : ' · separadas pela data de captura'), false);
-  if (missing) { const ids = assignments.filter(x => x.side === 'U').map(x => x.id); await openExplorer('photos', c, { sessionMode: true, onlyIds: ids });
-    explorer.notice = 'Escolha Antes ou Depois para estes grupos. Depois toque em Continuar montagem. Você pode deixar fotos pendentes para organizar mais tarde.'; await renderExplorer(); }
+  if (missing) { const ids = assignments.filter(x => x.side === 'U').map(x => x.id); await openExplorer('photos', c, { view: 'auto', scope: 'comp', onlyIds: ids });
+    explorer.notice = 'Toque em Antes ou Depois no grupo que quer usar, ou em Autoclassificar tudo.'; await renderExplorer(); }
 };
-$('poolManage').onclick = () => { rememberDraft(); if (linked) openPick(curComp); openExplorer('photos', curComp); };
+$('poolManage').onclick = () => { rememberDraft(); if (linked) openPick(curComp); openExplorer('photos', curComp, { view: 'auto' }); };
+$('patientPhotos').onclick = openPatientPhotos;
 $('savedAngles').onclick = () => openFolder(curComp);
 $('saveAngle').onclick = async () => {
   if (!curComp || !linked || $('save').disabled || savingAngle) return;
@@ -3533,43 +3581,64 @@ async function openExplorer(kind, comp, options = {}) {
 }
 function closeExplorer() {
   if (explorerBusy) return;
+  const touched = !!explorer?.touched;
   $('explorer').hidden = true; $('home').inert = $('proj').inert = $('projectFolder').inert = $('app').inert = $('top').inert = false; explorer = null;
   if (curComp && Pj && !(Pj.rec.comps || []).includes(curComp)) { closePick(); clearItems(); linked = false; curComp = null; show('proj'); }
-  if (screen === 'home') renderHome(); else if (screen === 'proj') renderProj(); else if (screen === 'folder') renderFolder(); else if (picking && curComp) openPick(curComp);
+  if (screen === 'home') renderHome(); else if (screen === 'proj') renderProj(); else if (screen === 'folder') renderFolder(); else if (curComp && (picking || (touched && screen === 'edit' && !linked))) openPick(curComp);
   angleUI();
 }
 $('exClose').onclick = closeExplorer;
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && explorer) closeExplorer(); });
 $('exFilter').onchange = e => { if (explorer) { explorer.filter = e.target.value; renderExplorer(); } };
+const SIDE_NAME = {A:'Antes', D:'Depois', U:'Para classificar', X:'Fora do projeto'}, SIDE_TAG = {A:'Antes', D:'Depois', U:'Classificar', X:'Fora'};
+const sideIn = (c, id) => ['A','D','U'].find(k => (c[k] || []).includes(id)) || 'X';
+const dayName = d => d ? d.split('-').reverse().join('/') : 'Sem data de captura';
+const clock = t => { const d = new Date(t); return pad2(d.getHours()) + 'h' + pad2(d.getMinutes()); };
 async function renderExplorer() {
   const ex = explorer; if (!ex) return;
   let rows = [];
+  const photos = ex.kind === 'photos', grouped = photos && !!ex.comp;
   if (ex.kind === 'patients') rows = (await DB.all('projects')).map(p => ({id:p.id, title:p.name, note:dateLabel(p), image:p.cover, value:p}));
   if (ex.kind === 'projects') rows = (Pj.rec.comps || []).map(c => ({id:c.id, title:'Projeto ' + dateLabel(c), note:`${projectPhotos(c).length} fotos · ${(c.angles || []).length} ângulos`, image:c.out, value:c}));
-  if (ex.kind === 'photos') rows = (ex.comp ? projectPhotos(ex.comp) : Pj.shots).map(s => ({id:s.id, title:({A:'Antes',D:'Depois',U:'Para classificar'})[ex.comp ? ['A','D','U'].find(k => (ex.comp[k] || []).includes(s.id)) : s.kind] || 'Para classificar', note:s.captureDay ? s.captureDay.split('-').reverse().join('/') + ' · captura' : 'Data de captura indisponível', image:s.thumb, value:s}));
+  if (photos) {
+    // Caio 19/11: as fotos ficam no paciente; o projeto só escolhe quais usa. Escopo "paciente" mostra tudo que já foi importado.
+    if (grouped && !ex.scope) ex.scope = projectPhotos(ex.comp).length ? 'comp' : 'patient';
+    const list = (grouped && ex.scope === 'comp' ? projectPhotos(ex.comp) : Pj.shots.slice()).sort(PhotoDates.compare);
+    rows = list.map(s => { const side = grouped ? sideIn(ex.comp, s.id) : (['A','D'].includes(s.kind) ? s.kind : 'U');
+      return {id:s.id, side, title:SIDE_NAME[side], note:s.captureDay ? dayName(s.captureDay) + ' · captura' : 'Data de captura indisponível', image:s.thumb, value:s}; });
+  }
   if (ex.kind === 'angles') rows = (ex.comp.angles || []).map(a => ({id:a.id, title:a.name, note:dateLabel(ex.comp), image:a.out, value:a}));
   if (explorer !== ex) return;
   ex.rows = rows;
   ex.selected = new Set([...ex.selected].filter(id => rows.some(r => r.id === id)));
-  $('exTitle').textContent = ({patients:'Pacientes',projects:'Projetos por data',photos:'Fotos importadas',angles:'Ângulos salvos'})[ex.kind];
+  // Caio 19/11 21:36: a tela principal é a de grupos por data; foto por foto fica na aba de reclassificar
+  if (!grouped) ex.view = 'grid'; else if (!ex.view) ex.view = 'auto';
+  const auto = grouped && ex.view === 'auto';
+  $('exTitle').textContent = grouped ? (ex.scope === 'patient' ? 'Fotos do paciente' : 'Fotos do projeto') : ({patients:'Pacientes',projects:'Projetos por data',photos:'Fotos importadas',angles:'Ângulos salvos'})[ex.kind];
   $('exDownload').textContent = ['photos','angles'].includes(ex.kind) ? 'Salvar na galeria' : 'Baixar backups';
-  $('exDescription').textContent = ex.kind === 'photos' ? 'Selecione fotos para salvar na galeria, deletar ou separar entre antes e depois.' : ex.kind === 'angles' ? 'Selecione as montagens. No iPhone, toque em Salvar na galeria e depois em Salvar imagens.' : 'Marque os itens para baixar backups ou deletar.';
+  $('exDescription').textContent = photos ? (auto ? 'Cada data vem separada em grupo do antes e grupo do depois. Toque em Antes ou Depois no grupo que quer usar; dá para juntar o antes de uma data com o depois de outra.' : 'Toque para marcar. Para marcar várias, arraste o dedo para o lado e depois desça, como na galeria.') : ex.kind === 'angles' ? 'Selecione as montagens. No iPhone, toque em Salvar na galeria e depois em Salvar imagens.' : 'Marque os itens para baixar backups ou deletar.';
   if (ex.notice) $('exDescription').textContent = ex.notice;
-  $('exClassify').hidden = ex.kind !== 'photos' || !ex.comp;
-  $('exUse').hidden = !ex.useFor; $('exDelete').hidden = !!ex.useFor;
+  $('exTabs').hidden = !grouped;
+  $('exTabs').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === ex.view));
+  const nP = Pj ? Pj.shots.length : 0, nC = grouped ? projectPhotos(ex.comp).length : 0;
+  $('exScope').hidden = !grouped || (nP <= nC && ex.scope !== 'patient');
+  if (grouped) { const [bc, bp] = $('exScope').querySelectorAll('button'); bc.textContent = `Deste projeto (${nC})`; bp.textContent = `Todas do paciente (${nP})`;
+    bc.setAttribute('aria-pressed', ex.scope === 'comp'); bp.setAttribute('aria-pressed', ex.scope === 'patient'); }
+  $('exUse').hidden = !ex.useFor; $('exDelete').hidden = !!ex.useFor || photos; $('exDownload').hidden = photos; $('exMore').hidden = !photos;
   if (ex.useFor) $('exDescription').textContent = 'Fotos que este paciente já tem. Selecione as que quer usar neste projeto; antes e depois são separados pela data de captura.';
-  const filter = $('exFilter'); filter.hidden = ex.kind !== 'photos' || !!ex.sessionMode;
-  if (ex.kind === 'photos') {
+  const filter = $('exFilter'); filter.hidden = !photos || auto;
+  if (photos) {
     filter.replaceChildren(new Option('Todas as datas e grupos', ''));
-    ['Antes','Depois','Para classificar'].forEach(k => filter.add(new Option(k, 'group:' + k)));
-    [...new Set(rows.map(r => r.value.captureDay).filter(Boolean))].sort().forEach(d => filter.add(new Option(d.split('-').reverse().join('/'), d)));
+    ['Antes','Depois','Para classificar'].concat(grouped && ex.scope === 'patient' ? ['Fora do projeto'] : []).forEach(k => filter.add(new Option(k, 'group:' + k)));
+    [...new Set(rows.map(r => r.value.captureDay).filter(Boolean))].sort().forEach(d => filter.add(new Option(dayName(d), d)));
     filter.add(new Option('Sem data de captura', 'unknown')); filter.value = ex.filter;
     if (filter.selectedIndex < 0) { ex.filter = ''; filter.value = ''; }
   }
-  const visible = rows.filter(r => (!ex.onlyIds || ex.onlyIds.includes(r.id)) && (!ex.filter || (ex.filter.startsWith('group:') ? r.title === ex.filter.slice(6) : ex.filter === 'unknown' ? !r.value.captureDay : r.value.captureDay === ex.filter)));
+  const visible = rows.filter(r => (!ex.onlyIds || ex.onlyIds.includes(r.id)) && (auto || !ex.filter || (ex.filter.startsWith('group:') ? r.title === ex.filter.slice(6) : ex.filter === 'unknown' ? !r.value.captureDay : r.value.captureDay === ex.filter)));
   ex.visible = visible;
-  const grid = $('exGrid'); grid.replaceChildren();
-  (ex.sessionMode ? [] : visible).forEach(r => {
+  const grid = $('exGrid'); grid.replaceChildren(); grid.classList.toggle('tiles', photos); grid.hidden = auto;
+  if (photos && !auto) renderTiles(ex, visible);
+  if (!photos) visible.forEach(r => {
     const label = document.createElement('label'); label.className = 'exCard';
     const check = document.createElement('input'); check.type = 'checkbox'; check.checked = ex.selected.has(r.id); check.setAttribute('aria-label', 'Selecionar ' + r.title + ' ' + r.note);
     check.onchange = () => { if (check.checked) ex.selected.add(r.id); else ex.selected.delete(r.id); exCounts(); };
@@ -3578,57 +3647,146 @@ async function renderExplorer() {
     const text = document.createElement('span'), title = document.createElement('b'), note = document.createElement('small'); title.textContent = r.title; note.textContent = r.note; text.append(title, note); label.appendChild(text);
     bindCard(label, () => {}, () => { if (!explorerBusy) itemMenu(ex.kind, ex.comp, r.id, r.title); }); grid.appendChild(label);
   });
-  if (!visible.length) { const p = document.createElement('p'); p.textContent = 'Nenhum item aqui.'; grid.appendChild(p); }
+  if (!visible.length && !auto) { const p = document.createElement('p'); p.textContent = 'Nenhum item aqui.'; grid.appendChild(p); }
+  $('exBulk').hidden = auto; $('exClassify').hidden = !grouped || auto; $('exGoRow').hidden = !grouped || !auto;
+  if (grouped) { const c = ex.comp; $('exSummary').textContent = `${(c.A || []).length} antes · ${(c.D || []).length} depois no projeto`; $('exGo').disabled = !(c.A || []).length || !(c.D || []).length; }
   renderSessions(ex);
   exCounts();
 }
+function renderTiles(ex, visible) {
+  const grid = $('exGrid'); ex.tileOrder = visible.map(r => r.id); ex.dayIds = {};
+  visible.forEach(r => { const d = r.value.captureDay || ''; (ex.dayIds[d] ||= []).push(r.id); });
+  let day = null;
+  visible.forEach((r, i) => {
+    const d = r.value.captureDay || '';
+    if (d !== day) {
+      day = d; const h = document.createElement('div'); h.className = 'exDay'; h.dataset.day = d;
+      const t = document.createElement('b'); t.textContent = dayName(d) + ' · ' + ex.dayIds[d].length + (ex.dayIds[d].length === 1 ? ' foto' : ' fotos');
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'btn small';
+      b.onclick = () => { const ids = ex.dayIds[d], all = ids.every(id => ex.selected.has(id)); ids.forEach(id => all ? ex.selected.delete(id) : ex.selected.add(id)); paintTiles(ex); };
+      h.append(t, b); grid.append(h);
+    }
+    const tile = document.createElement('div'); tile.className = 'exTile' + (r.side === 'X' ? ' out' : ''); tile.dataset.id = r.id; tile.dataset.i = i;
+    tile.setAttribute('role', 'checkbox'); tile.tabIndex = 0; tile.setAttribute('aria-label', r.title + ' · ' + r.note);
+    const im = document.createElement('img'); im.src = r.image; im.alt = ''; im.loading = 'lazy'; im.draggable = false;
+    const tag = document.createElement('span'); tag.className = 'tag ' + r.side; tag.textContent = SIDE_TAG[r.side];
+    const tick = document.createElement('span'); tick.className = 'tick'; tick.textContent = '✓';
+    tile.append(im, tag, tick); grid.append(tile);
+  });
+  paintTiles(ex);
+}
+function paintTiles(ex) {
+  if (!ex) return;
+  $('exGrid').querySelectorAll('.exTile').forEach(t => { const on = ex.selected.has(t.dataset.id); t.classList.toggle('on', on); t.setAttribute('aria-checked', on); });
+  $('exGrid').querySelectorAll('.exDay').forEach(h => { const ids = (ex.dayIds || {})[h.dataset.day] || []; h.querySelector('button').textContent = ids.length && ids.every(id => ex.selected.has(id)) ? 'Desmarcar data' : 'Marcar data'; });
+  exCounts();
+}
+// seleção como na galeria: toque marca; arrastar para o lado começa a marcar e, descendo, marca o intervalo; perto das bordas a tela rola sozinha
+(() => {
+  const grid = $('exGrid'), scroller = $('explorer'); let st = null, raf = 0, pt = null;
+  const tileAt = (x, y) => { const el = document.elementFromPoint(x, y); return el && el.closest ? el.closest('.exTile') : null; };
+  function apply(t) {
+    if (!t || !st || !explorer) return;
+    const order = explorer.tileOrder || [], a = st.i, b = +t.dataset.i, lo = Math.min(a, b), hi = Math.max(a, b), sel = new Set(st.base);
+    for (let k = lo; k <= hi; k++) { if (st.add) sel.add(order[k]); else sel.delete(order[k]); }
+    explorer.selected = sel; paintTiles(explorer);
+  }
+  function edge() {
+    raf = 0; if (!st || st.mode !== 'drag' || !pt) return;
+    const top = $('exTop').getBoundingClientRect().bottom, bottom = $('exBar').hidden ? innerHeight : $('exBar').getBoundingClientRect().top;
+    const v = pt.y < top + 48 ? -Math.ceil((top + 48 - pt.y) / 3) : pt.y > bottom - 48 ? Math.ceil((pt.y - bottom + 48) / 3) : 0;
+    if (v) { scroller.scrollTop += v; apply(tileAt(pt.x, pt.y)); raf = requestAnimationFrame(edge); }
+  }
+  grid.addEventListener('pointerdown', e => {
+    const t = e.target.closest && e.target.closest('.exTile'); if (!t || !explorer || explorerBusy || (e.pointerType === 'mouse' && e.button)) return;
+    const id = t.dataset.id;
+    st = {x:e.clientX, y:e.clientY, i:+t.dataset.i, id, mode:null, add:!explorer.selected.has(id), base:new Set(explorer.selected), pid:e.pointerId, mouse:e.pointerType === 'mouse', held:false};
+    st.timer = setTimeout(() => { if (st && !st.mode) { st.held = true; const r = explorer.rows.find(x => x.id === id); itemMenu(explorer.kind, explorer.comp, id, r ? r.title : 'Foto'); } }, 600);
+  });
+  grid.addEventListener('pointermove', e => {
+    if (!st || e.pointerId !== st.pid) return; pt = {x:e.clientX, y:e.clientY};
+    const dx = e.clientX - st.x, dy = e.clientY - st.y;
+    if (!st.mode) {
+      if ((st.mouse && Math.hypot(dx, dy) > 8) || (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy))) { st.mode = 'drag'; clearTimeout(st.timer); try { grid.setPointerCapture(e.pointerId); } catch {} }
+      else if (Math.abs(dy) > 8) { clearTimeout(st.timer); st = null; return; }
+      else return;
+    }
+    apply(tileAt(e.clientX, e.clientY)); if (!raf) raf = requestAnimationFrame(edge);
+  });
+  const end = e => {
+    if (!st || e.pointerId !== st.pid) return; clearTimeout(st.timer); const s = st; st = null; cancelAnimationFrame(raf); raf = 0;
+    if (!s.mode && !s.held && e.type === 'pointerup' && explorer) { if (explorer.selected.has(s.id)) explorer.selected.delete(s.id); else explorer.selected.add(s.id); paintTiles(explorer); }
+  };
+  grid.addEventListener('pointerup', end); grid.addEventListener('pointercancel', end);
+  grid.addEventListener('touchmove', e => { if (st && st.mode === 'drag') e.preventDefault(); }, {passive:false});
+  grid.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest('.exTile')) e.preventDefault(); });
+  grid.addEventListener('keydown', e => { const t = e.target.closest && e.target.closest('.exTile'); if (!t || !explorer || !(e.key === ' ' || e.key === 'Enter')) return; e.preventDefault();
+    const id = t.dataset.id; if (explorer.selected.has(id)) explorer.selected.delete(id); else explorer.selected.add(id); paintTiles(explorer); });
+})();
+$('exTabs').querySelectorAll('button').forEach(b => b.onclick = () => { if (!explorer || explorerBusy) return; explorer.view = b.dataset.v; explorer.notice = ''; explorer.selected.clear(); renderExplorer(); $('explorer').scrollTop = 0; });
+$('exScope').querySelectorAll('button').forEach(b => b.onclick = () => { if (!explorer || explorerBusy) return; explorer.scope = b.dataset.s; explorer.filter = ''; explorer.onlyIds = null; explorer.notice = ''; explorer.selected.clear(); renderExplorer(); });
+$('exGo').onclick = () => { if (explorer && !explorerBusy) closeExplorer(); };
+$('exMore').onclick = () => {
+  const ex = explorer; if (!ex || !ex.selected.size || explorerBusy) return;
+  const n = ex.selected.size, inComp = ex.comp ? [...ex.selected].filter(id => sideIn(ex.comp, id) !== 'X').length : 0;
+  overlay(null, n + (n === 1 ? ' foto selecionada' : ' fotos selecionadas'), [
+    ['Salvar na galeria', () => { closeOut(); $('exDownload').click(); }],
+    ...(inComp ? [['Tirar deste projeto (continua no paciente)', () => { closeOut(); classify('R'); }]] : []),
+    ['Deletar do aparelho', () => { closeOut(); $('exDelete').click(); }, 'danger'],
+    ['Cancelar', closeOut]]);
+};
 function renderSessions(ex) {
-  const box = $('exSessions'); box.replaceChildren(); $('exGrid').hidden = false;
-  $('exBulk').hidden = false;
-  $('exClose').textContent = ex.sessionMode ? 'Continuar montagem' : '‹ Voltar';
-  if (ex.kind !== 'photos' || !ex.comp) return;
-  $('exBulk').hidden = !!ex.sessionMode; $('exClassify').hidden = !!ex.sessionMode;
-  if (ex.onlyIds && !ex.sessionMode) exButton('Todas as fotos do projeto', () => { ex.onlyIds = null; ex.filter = ''; ex.selected.clear(); renderExplorer(); },box);
-  const toggle = document.createElement('button'); toggle.className = 'btn';
-  toggle.textContent = ex.sessionMode ? 'Ajustar fotos individualmente' : 'Organizar por sessão';
-  toggle.onclick = () => { ex.sessionMode = !ex.sessionMode; ex.selected.clear(); renderExplorer(); }; box.append(toggle);
-  $('exGrid').hidden = !!ex.sessionMode;
-  if (!ex.sessionMode) return;
-  if (!ex.notice) $('exDescription').textContent = 'Escolha Antes ou Depois. Depois toque em Continuar montagem. As fotos pendentes podem ser organizadas mais tarde.';
-  const batch = document.createElement('div'); batch.className='flex';
-  for(const [label,side] of [['Todas como Antes','A'],['Todas como Depois','D']]) exButton(label,()=>{ex.selected=new Set(ex.visible.map(r=>r.id));classify(side);},batch);
-  box.append(batch);
-  const {groups, unknown} = PhotoDates.sessions(ex.visible.map(r => r.value));
-  if (unknown.length) groups.push(unknown);
-  groups.forEach((group,i) => {
-    const card = document.createElement('div'); card.className = 'sessionCard';
-    const title = document.createElement('b');
-    title.textContent = Number.isFinite(group[0].capturedAt) ? `Grupo ${i+1} · ${new Date(group[0].capturedAt).toLocaleDateString('pt-BR')}` : 'Fotos sem data';
-    const sides = new Set(group.map(s => ex.comp.A.includes(s.id) ? 'Antes' : ex.comp.D.includes(s.id) ? 'Depois' : 'Para classificar'));
-    const note = document.createElement('p'); note.textContent = `${group.length} foto${group.length === 1 ? '' : 's'} · ${[...sides].join(' / ')}`;
-    const thumbs = document.createElement('div'); thumbs.className = 'sessionThumbs';
-    group.forEach(s => { const im = document.createElement('img'); im.src = s.thumb; im.alt = ''; im.loading = 'lazy'; thumbs.append(im); });
-    const actions = document.createElement('div'); actions.className = 'flex';
-    ['Antes','Depois','Separar fotos'].forEach((label,n) => {
-      const b = document.createElement('button'); b.className = 'btn'; b.textContent = label; b.disabled = explorerBusy;
-      b.onclick = () => {
-        ex.selected = new Set(group.map(s => s.id));
-        if (n < 2) classify(n === 0 ? 'A' : 'D');
-        else { ex.sessionMode = false; ex.onlyIds = group.map(s => s.id); ex.selected.clear(); ex.filter = ''; ex.notice = 'Marque somente as fotos que deseja mover e toque em Antes ou Depois.'; renderExplorer(); }
-      }; actions.append(b);
+  const box = $('exSessions'); box.replaceChildren();
+  $('exClose').textContent = ex.kind === 'photos' && ex.comp ? 'Montagem' : '‹ Voltar';
+  if (ex.kind !== 'photos') return;
+  if (ex.onlyIds) exButton(ex.comp ? 'Mostrar todas as fotos' : 'Mostrar todas', () => { ex.onlyIds = null; ex.filter = ''; ex.notice = ''; ex.selected.clear(); renderExplorer(); }, box, 'small');
+  if (!ex.comp || ex.view !== 'auto') return;
+  const c = ex.comp, days = PhotoDates.suggest(ex.visible.map(r => r.value));
+  if (!days.length) { const p = document.createElement('p'); p.className = 'note'; p.textContent = ex.scope === 'comp' ? 'Este projeto ainda não tem fotos. Toque em Todas do paciente para usar as que já foram importadas.' : 'Este paciente ainda não tem fotos importadas.'; box.append(p); return; }
+  const parts = days.flatMap(d => d.parts), hinted = parts.filter(x => x.hint);
+  const head = document.createElement('div'); head.className = 'autoHead';
+  if (hinted.length) exButton('Autoclassificar tudo pela sugestão', () => applyGroups(hinted.map(x => ({ids:x.ids, side:x.hint}))), head, 'primary');
+  box.append(head);
+  const ROLE = {antes:'Grupo do antes', depois:'Grupo do depois', retorno:'Depois · retorno', meio:'Entre o antes e o depois', sessao:'Sessão', semdata:'Fotos sem data'};
+  days.forEach(d => {
+    const card = document.createElement('div'); card.className = 'autoDay';
+    const h = document.createElement('h3'); h.textContent = dayName(d.day) + ' · ' + d.count + (d.count === 1 ? ' foto' : ' fotos'); card.append(h);
+    d.parts.forEach(part => {
+      const sides = new Set(part.ids.map(id => sideIn(c, id))), now = sides.size === 1 ? [...sides][0] : 'mix';
+      const div = document.createElement('div'); div.className = 'autoPart';
+      const meta = document.createElement('div'); meta.className = 'autoMeta';
+      const b = document.createElement('b'); b.textContent = ROLE[part.role] + ' · ' + part.ids.length + (part.ids.length === 1 ? ' foto' : ' fotos');
+      const sp = document.createElement('span'); sp.textContent = (part.from != null ? (part.from === part.to ? clock(part.from) : clock(part.from) + '–' + clock(part.to)) + ' · ' : '') + (now === 'mix' ? 'misturado' : now === 'X' ? 'fora do projeto' : SIDE_NAME[now].toLowerCase());
+      meta.append(b, sp);
+      const th = document.createElement('div'); th.className = 'autoThumbs';
+      part.ids.slice(0, 14).forEach(id => { const s = shotById(id); if (!s) return; const im = document.createElement('img'); im.src = s.thumb; im.alt = ''; im.loading = 'lazy'; th.append(im); });
+      if (part.ids.length > 14) { const m = document.createElement('span'); m.className = 'more'; m.textContent = '+' + (part.ids.length - 14); th.append(m); }
+      const btns = document.createElement('div'); btns.className = 'autoBtns';
+      [['Antes','A'],['Depois','D'],['Nenhum','U'],['Ver fotos','see']].forEach(([label, side]) => {
+        const bt = document.createElement('button'); bt.type = 'button'; bt.className = 'btn'; bt.textContent = label; bt.disabled = explorerBusy;
+        if (side !== 'see') bt.setAttribute('aria-pressed', side === 'U' ? now === 'U' || now === 'X' : now === side);
+        bt.onclick = () => {
+          if (side === 'see') { ex.view = 'grid'; ex.onlyIds = part.ids.slice(); ex.filter = ''; ex.selected.clear(); ex.notice = 'Fotos do grupo ' + ROLE[part.role].toLowerCase() + ' de ' + dayName(d.day) + '. Marque as que quer mover e toque em Antes, Depois ou Classificar.'; renderExplorer(); $('explorer').scrollTop = 0; return; }
+          // tocar de novo no lado já escolhido desfaz
+          applyGroups([{ids:part.ids, side: side !== 'U' && now === side ? 'U' : side}]);
+        };
+        btns.append(bt);
+      });
+      div.append(meta, th, btns); card.append(div);
     });
-    card.append(title,note,thumbs,actions); box.append(card);
+    box.append(card);
   });
 }
 function exCounts() {
   if (!explorer) return;
   $('exCount').textContent = `${explorer.selected.size} selecionado${explorer.selected.size === 1 ? '' : 's'}`;
-  ['exDownload','exDelete','exBefore','exAfter','exUnknown','exUse'].forEach(id => $(id).disabled = explorerBusy || !explorer.selected.size);
+  ['exDownload','exDelete','exBefore','exAfter','exUnknown','exUse','exMore'].forEach(id => $(id).disabled = explorerBusy || !explorer.selected.size);
+  $('exGo').disabled = explorerBusy || !explorer.comp || !(explorer.comp.A || []).length || !(explorer.comp.D || []).length;
   $('exAll').disabled = explorerBusy; $('exClear').disabled = explorerBusy; $('exClose').disabled = explorerBusy; $('exFilter').disabled = explorerBusy;
   $('exGrid').inert = explorerBusy; $('exSessions').inert = explorerBusy;
 }
-$('exAll').onclick = () => { explorer.visible.forEach(r => explorer.selected.add(r.id)); renderExplorer(); };
-$('exClear').onclick = () => { explorer.selected.clear(); renderExplorer(); };
+$('exAll').onclick = () => { explorer.visible.forEach(r => explorer.selected.add(r.id)); if (explorer.kind === 'photos') paintTiles(explorer); else renderExplorer(); };
+$('exClear').onclick = () => { explorer.selected.clear(); if (explorer.kind === 'photos') paintTiles(explorer); else renderExplorer(); };
 async function exAction(action) {
   if (!explorer || explorerBusy) return;
   explorerBusy = true; exCounts();
@@ -3651,25 +3809,44 @@ async function exAction(action) {
     }
   }
 }
+// muda o lugar das fotos no projeto. A/D/U: antes, depois, para classificar. R: tira do projeto (a foto continua no paciente).
+function assignIds(c, ids, side) {
+  const changed = []; c.U ||= [];
+  for (const id of ids) {
+    const s = shotById(id); if (!s) continue;
+    for (const k of ['A','D','U']) c[k] = (c[k] || []).filter(x => x !== id);
+    if (side === 'R') continue;
+    c[side].push(id); s.kind = side; s.of = null; changed.push(s);
+  }
+  return changed;
+}
+function fixSelections(c) {
+  if (!c.A.includes(c.selA)) { c.selA = null; c.tf = null; }
+  if (!c.D.includes(c.selD)) { c.selD = null; c.tf = null; }
+  Object.values(c.drafts || {}).forEach(d => {
+    if (!c.A.includes(d.selA)) { d.selA = null; d.tf = null; }
+    if (!c.D.includes(d.selD)) { d.selD = null; d.tf = null; }
+  });
+}
 async function classify(side) {
   await exAction(async ex => {
     const c = ex.comp; if (!c) return;
-    const changed=[];
     $('exDescription').textContent='Guardando a escolha…';
-    for (const id of ex.selected) {
-      const s = shotById(id); if(!s) continue;
-      for (const k of ['A','D','U']) c[k] = (c[k] || []).filter(x => x !== id);
-      c[side].push(id); s.kind = side; s.of = null; changed.push(s);
-    }
-    if (!c.A.includes(c.selA)) { c.selA = null; c.tf = null; }
-    if (!c.D.includes(c.selD)) { c.selD = null; c.tf = null; }
-    Object.values(c.drafts || {}).forEach(d => {
-      if (!c.A.includes(d.selA)) { d.selA = null; d.tf = null; }
-      if (!c.D.includes(d.selD)) { d.selD = null; d.tf = null; }
-    });
+    const n = ex.selected.size, changed = assignIds(c, [...ex.selected], side);
+    fixSelections(c); ex.touched = true;
     await commitProject([],changed);
-    ex.notice = `${changed.length} fotos em ${side==='A'?'Antes':side==='D'?'Depois':'Para classificar'} ✓. Toque em Continuar montagem ou organize outro grupo.`;
+    ex.notice = side === 'R' ? `${n} fotos tiradas deste projeto ✓. Elas continuam nas fotos do paciente.` : `${changed.length} fotos em ${side==='A'?'Antes':side==='D'?'Depois':'Para classificar'} ✓. Toque em Montagem ou organize outro grupo.`;
     ex.selected.clear();
+  });
+}
+// Caio 19/11: escolher grupos inteiros (antes de uma data, depois de outra) sem marcar foto por foto
+async function applyGroups(list) {
+  await exAction(async ex => {
+    const c = ex.comp; if (!c) return;
+    const changed = []; for (const g of list) changed.push(...assignIds(c, g.ids, g.side));
+    fixSelections(c); ex.touched = true;
+    await commitProject([], changed);
+    ex.notice = `Projeto com ${c.A.length} antes e ${c.D.length} depois ✓. Toque em Ir para a montagem quando terminar.`;
   });
 }
 $('exBefore').onclick = () => classify('A'); $('exAfter').onclick = () => classify('D'); $('exUnknown').onclick = () => classify('U');

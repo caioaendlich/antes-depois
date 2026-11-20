@@ -96,6 +96,36 @@
     if (groups.length === 2 && !unknown.length) groups.forEach((group,i) => group.forEach(s => sides.set(s.id, i ? 'D' : 'A')));
     return shots.map(s => ({id:s.id, side:sides.get(s.id) || 'U'}));
   }
-  const api = { readExif, parseDate, sessions, split, compare, zoomGroup, selectorCompare };
+  // Caio 19/11/2026: autoclassificar separa por data e, dentro de cada data, pelo intervalo entre as fotos.
+  // Em cada data com dois ou mais blocos, o primeiro é o antes provável e o último o depois provável (procedimento no mesmo dia).
+  // Data com um bloco só: a primeira data é o antes provável, as seguintes são retorno (depois provável).
+  // É sugestão: cada bloco é escolhido separadamente, inclusive o antes de uma data com o depois de outra.
+  function dayOf(t) { const d = new Date(t), p = x => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
+  function suggest(shots, gapMinutes = 20) {
+    const dated = shots.filter(s => Number.isFinite(s.capturedAt)).slice().sort((a, b) => a.capturedAt - b.capturedAt);
+    const byDay = new Map();
+    for (const s of dated) { const d = s.captureDay || dayOf(s.capturedAt); if (!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(s); }
+    const keys = [...byDay.keys()].sort();
+    const days = keys.map(day => {
+      const list = byDay.get(day), blocks = [[list[0]]];
+      for (let i = 1; i < list.length; i++) {
+        if (list[i].capturedAt - list[i - 1].capturedAt > gapMinutes * 60000) blocks.push([list[i]]); else blocks[blocks.length - 1].push(list[i]);
+      }
+      return { day, blocks };
+    });
+    const total = days.reduce((n, d) => n + d.blocks.length, 0);
+    const out = days.map((d, di) => ({ day: d.day, count: d.blocks.reduce((n, b) => n + b.length, 0), parts: d.blocks.map((b, bi) => {
+      let hint = null, role = 'meio';
+      if (total < 2) role = 'sessao';
+      else if (d.blocks.length === 1) { hint = di === 0 ? 'A' : 'D'; role = di === 0 ? 'antes' : 'retorno'; }
+      else if (bi === 0) { hint = 'A'; role = 'antes'; }
+      else if (bi === d.blocks.length - 1) { hint = 'D'; role = 'depois'; }
+      return { ids: b.map(s => s.id), from: b[0].capturedAt, to: b[b.length - 1].capturedAt, hint, role };
+    }) }));
+    const unknown = shots.filter(s => !Number.isFinite(s.capturedAt));
+    if (unknown.length) out.push({ day: null, count: unknown.length, parts: [{ ids: unknown.map(s => s.id), from: null, to: null, hint: null, role: 'semdata' }] });
+    return out;
+  }
+  const api = { readExif, parseDate, sessions, split, suggest, compare, zoomGroup, selectorCompare };
   if (typeof module !== 'undefined') module.exports = api; else root.PhotoDates = api;
 })(typeof window !== 'undefined' ? window : globalThis);
