@@ -1918,10 +1918,23 @@ function setFront(s) { opts.front = s; opts.frontManual = true; $('frA').setAttr
 // (rosto olhando para a direita: antes na frente; para a esquerda: depois na frente). De frente, vale o padrão (depois).
 // A escolha manual em "Foto na frente" sempre vence.
 function faceTurn(it) { const q = it && it.pyr && it.pyr.pts; if (!q || q.length < 4) return 0; const w = it.pyr.w || it.w || 1, h = it.pyr.h || it.h || 1, ex = (q[0].x + q[1].x) / 2 * w, ey = (q[0].y + q[1].y) / 2 * h, d = Math.hypot(q[3].x * w - ex, q[3].y * h - ey) || 1; return (q[2].x * w - ex) / d; }
+// Caio 19/11 22:17: de perfil a malha do rosto às vezes não acha os pontos; aí vale o lado do ângulo
+// (no padrão dele, "esquerda" mostra o lado esquerdo do rosto, com o nariz apontando para a direita da foto)
+function poseTurn(it) {
+  const pose = (it && it.shot && it.shot.pose && it.shot.pose !== '—' ? it.shot.pose : null) || ANGLE_POSE_OF[curComp?.angle] || '';
+  return / E$/.test(pose) ? 1 : / D$/.test(pose) ? -1 : 0;
+}
+const ANGLE_POSE_OF = {'Perfil esquerdo':'Perfil E','45° esquerda':'45° E','Frente':'Frente','45° direita':'45° D','Perfil direito':'Perfil D'};
 function autoFront() {
   if (opts.frontManual) return;
-  const tA = faceTurn(items.A[sel.A]), tD = faceTurn(items.D[sel.D]);
-  const f = Math.abs(tA) > .15 && Math.abs(tD) > .15 && Math.sign(tA) === Math.sign(tD) ? (tA > 0 ? 'A' : 'D') : 'D';
+  const A = items.A[sel.A], D = items.D[sel.D];
+  let tA = faceTurn(A), tD = faceTurn(D);
+  const okA = Math.abs(tA) > .15, okD = Math.abs(tD) > .15;
+  let dir = 0;
+  if (okA && okD) dir = Math.sign(tA) === Math.sign(tD) ? Math.sign(tA) : 0;
+  else if (okA || okD) dir = Math.sign(okA ? tA : tD);   // um rosto achado basta: os dois estão no mesmo ângulo
+  else dir = poseTurn(A) || poseTurn(D);
+  const f = dir > 0 ? 'A' : 'D';
   if (f !== opts.front) { opts.front = f; $('frA').setAttribute('aria-pressed', f === 'A'); $('frD').setAttribute('aria-pressed', f === 'D'); }
 }
 $('frA').onclick = () => setFront('A'); $('frD').onclick = () => setFront('D');
