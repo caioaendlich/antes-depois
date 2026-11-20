@@ -218,7 +218,7 @@ test('import routes two sessions to editor and three sessions to manual routing'
     await elements.filePool.onchange({target:{files:added,value:'files'}});
     assert.equal(picks,1); assert.equal(opens,count===2&&!existing?0:1);
     if(count===2&&!existing) { assert.deepEqual(plain(ctx.curComp.A),['0']); assert.deepEqual(plain(ctx.curComp.D),['1']); }
-    else assert.equal(ctx.explorer.sessionMode,true);
+    else assert.equal(ctx.explorer.view,'auto');
     assert.equal(elements.importPool.disabled,false);
     assert.equal(importing,false);
     assert.deepEqual(awake,[true,false]); assert.equal(ctx.importing,false);
@@ -276,4 +276,31 @@ test('restore commits complete patient once and remaps saved paint references',a
   await vm.runInContext('restorePackage(entry)',ctx);assert.equal(writes.length,1);
   const [rec,shots]=writes[0];assert.equal(rec.comps[0].angles[0].edit.A.id,shots[0].id);assert.equal(rec.comps[0].angles[0].edit.A.plus,'paint');assert.match(rec.name,/restaurado/);
   ctx.loadImg=async()=>{throw Error('bad image');};await assert.rejects(vm.runInContext('restorePackage(entry)',ctx),/bad image/);assert.equal(writes.length,1);
+});
+test('suggest splits each date into before and after groups and marks later single sessions as return', () => {
+  const at = (d, h, m) => { const [Y, M, D] = d.split('-').map(Number); return new Date(Y, M - 1, D, h, m).getTime(); };
+  const mk = (id, d, h, m) => ({ id, capturedAt: at(d, h, m), captureDay: d });
+  const shots = [mk('a1','2026-07-07',10,0), mk('a2','2026-07-07',10,3), mk('d1','2026-07-07',11,10), mk('d2','2026-07-07',11,12),
+    mk('r1','2026-08-10',15,0), mk('b1','2026-11-19',11,0), mk('m1','2026-11-19',11,40), mk('e1','2026-11-19',12,20), {id:'u'}];
+  const days = dates.suggest(shots);
+  assert.deepEqual(days.map(d => d.day), ['2026-07-07','2026-08-10','2026-11-19',null]);
+  assert.deepEqual(days[0].parts.map(p => [p.role, p.hint, p.ids]), [['antes','A',['a1','a2']],['depois','D',['d1','d2']]]);
+  assert.deepEqual(days[1].parts.map(p => [p.role, p.hint]), [['retorno','D']]);
+  assert.deepEqual(days[2].parts.map(p => [p.role, p.hint]), [['antes','A'],['meio',null],['depois','D']]);
+  assert.deepEqual(days[3].parts.map(p => [p.role, p.hint, p.ids]), [['semdata',null,['u']]]);
+  assert.deepEqual(dates.suggest([mk('x','2026-01-01',9,0), mk('y','2026-01-01',9,5)])[0].parts.map(p => [p.role, p.hint]), [['sessao',null]]);
+});
+test('choosing whole groups mixes the before of one date with the after of another and toggles back', async () => {
+  const c = {id:'c', A:['old'], D:[], U:[], drafts:{Frente:{selA:'old',selD:null}}, selA:'old', selD:null};
+  const shots = ['old','a1','a2','d1'].map(id => ({id, kind:'U'}));
+  let commits = 0;
+  const {ctx} = context({Pj:{rec:{comps:[c]},shots}, curComp:c, explorer:{comp:c, selected:new Set()}, explorerBusy:false, cloneValue:plain,
+    exCounts(){}, renderExplorer:async()=>{}, setStatus(){}, shotById:id => shots.find(s => s.id === id), commitProject:async()=>{commits++;}});
+  const start = source.indexOf('async function exAction(');
+  vm.runInContext(source.slice(start, source.indexOf("$('exBefore').onclick", start)), ctx);
+  await ctx.applyGroups([{ids:['a1','a2'], side:'A'}, {ids:['d1'], side:'D'}, {ids:['old'], side:'U'}]);
+  assert.deepEqual(plain(c.A), ['a1','a2']); assert.deepEqual(plain(c.D), ['d1']); assert.deepEqual(plain(c.U), ['old']);
+  assert.equal(c.selA, null); assert.equal(c.drafts.Frente.selA, null); assert.equal(commits, 1); assert.equal(ctx.explorer.touched, true);
+  ctx.explorer.selected = new Set(['old']); await ctx.classify('R');
+  assert.deepEqual(plain(c.U), []); assert.ok(shots.some(s => s.id === 'old'));
 });
