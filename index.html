@@ -1762,7 +1762,8 @@ function spaced(g, txt, cx, y, sp) {
 }
 function render() {
   saveTick();
-  if (!picking) autoFront();
+  // Caio 19/11 22:26: a escolha automática nunca pode travar a abertura do app (na v73 ela rodava antes das variáveis existirem)
+  try { if (!picking && screen === 'edit') autoFront(); } catch (e) { /* antes de o app terminar de abrir */ }
   const g = ctx;
   g.setTransform(1, 0, 0, 1, 0, 0);
   if (!picking && tool === 'move' && opts.layout && opts.layout !== 'classico' && drawDisplay(g)) { $('hint').hidden = true; $('etools').hidden = false; drawLoupe(); syncHistory(); return; }
