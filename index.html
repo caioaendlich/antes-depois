@@ -543,7 +543,7 @@ const items = { A: [], D: [] };
 let autoBusy = false, autoNote = ''; // comparação automática
 const sel = { A: 0, D: 0 };
 const tf = { A: { s: 1, dx: 0, dy: 0, r: 0 }, D: { s: 1, dx: 0, dy: 0, r: 0 } };
-const DEFAULT_OPTS = { fade: 0.80, hand: true, handTxt: '@caioendlich.md', labels: true, front: 'D', title: true, titleTxt: 'DR. CAIO ENDLICH', look: 'classico', layout: 'classico', lupa: null, neckCut: null, ltTitle: 'Light Touch', ltLine: 'a beleza é reflexo da saúde', ltFont: 'Instrument Serif' };
+const DEFAULT_OPTS = { fade: 0.80, hand: true, handTxt: '@caioendlich.md', labels: true, front: 'D', frontManual: false, title: true, titleTxt: 'DR. CAIO ENDLICH', look: 'classico', layout: 'classico', lupa: null, neckCut: null, ltTitle: 'Light Touch', ltLine: 'a beleza é reflexo da saúde', ltFont: 'Instrument Serif' };
 // Light Touch no Prisma (Caio, 08/11/2026 00:33): o mesmo visual do Light Touch do Video Studio, em claro e escuro.
 const LT = { claro: { bg: ['#f6efe7', '#e4d5c4'], fade: '238,228,216', ink: '#6e563e', title: 'rgba(150,118,90,.9)', soft: 'rgba(110,86,62,.72)' },
   escuro: { bg: ['#2c251f', '#0b0908'], fade: '8,7,6', ink: 'rgba(242,232,220,.92)', title: 'rgba(222,203,180,.86)', soft: 'rgba(239,228,214,.6)' } };
@@ -1762,6 +1762,7 @@ function spaced(g, txt, cx, y, sp) {
 }
 function render() {
   saveTick();
+  if (!picking) autoFront();
   const g = ctx;
   g.setTransform(1, 0, 0, 1, 0, 0);
   if (!picking && tool === 'move' && opts.layout && opts.layout !== 'classico' && drawDisplay(g)) { $('hint').hidden = true; $('etools').hidden = false; drawLoupe(); syncHistory(); return; }
@@ -1912,7 +1913,17 @@ $('handTxt').oninput = e => { opts.handTxt = e.target.value; render(); };
 $('labels').onchange = e => { opts.labels = e.target.checked; render(); };
 $('titleOn').onchange = e => { opts.title = e.target.checked; render(); };
 $('titleTxt').oninput = e => { opts.titleTxt = e.target.value; render(); };
-function setFront(s) { opts.front = s; $('frA').setAttribute('aria-pressed', s === 'A'); $('frD').setAttribute('aria-pressed', s === 'D'); render(); }
+function setFront(s) { opts.front = s; opts.frontManual = true; $('frA').setAttribute('aria-pressed', s === 'A'); $('frD').setAttribute('aria-pressed', s === 'D'); render(); }
+// Caio 19/11 22:11: com os dois rostos virados para o mesmo lado, fica na frente a foto cujo rosto aponta para a outra
+// (rosto olhando para a direita: antes na frente; para a esquerda: depois na frente). De frente, vale o padrão (depois).
+// A escolha manual em "Foto na frente" sempre vence.
+function faceTurn(it) { const q = it && it.pyr && it.pyr.pts; if (!q || q.length < 4) return 0; const w = it.pyr.w || it.w || 1, h = it.pyr.h || it.h || 1, ex = (q[0].x + q[1].x) / 2 * w, ey = (q[0].y + q[1].y) / 2 * h, d = Math.hypot(q[3].x * w - ex, q[3].y * h - ey) || 1; return (q[2].x * w - ex) / d; }
+function autoFront() {
+  if (opts.frontManual) return;
+  const tA = faceTurn(items.A[sel.A]), tD = faceTurn(items.D[sel.D]);
+  const f = Math.abs(tA) > .15 && Math.abs(tD) > .15 && Math.sign(tA) === Math.sign(tD) ? (tA > 0 ? 'A' : 'D') : 'D';
+  if (f !== opts.front) { opts.front = f; $('frA').setAttribute('aria-pressed', f === 'A'); $('frD').setAttribute('aria-pressed', f === 'D'); }
+}
 $('frA').onclick = () => setFront('A'); $('frD').onclick = () => setFront('D');
 $('lyC').onclick = () => setLayout('classico'); $('lyA').onclick = () => { setLayout('espectral'); playEntry(); }; $('lyB').onclick = () => { setLayout('galeria'); playEntry(); }; $('lyD').onclick = () => { setLayout('detalhe'); playEntry(); };
 $('lkC').onclick = () => setLook('classico'); $('lkL').onclick = () => setLook('claro'); $('lkE').onclick = () => setLook('escuro');
@@ -2864,15 +2875,15 @@ function pairTag(i) { return Pj ? slug(Pj.rec.name) + '_par' + pad2(i + 1) + (pa
 function savePair() {
   if (!linked || !pairShots.length) return;
   const i = sel.A, [a, d] = pairShots[i] || []; if (!d) return;
-  pairTf[i] = { A: { ...tf.A }, D: { ...tf.D }, front: opts.front };
+  pairTf[i] = { A: { ...tf.A }, D: { ...tf.D }, front: opts.front, frontManual: !!opts.frontManual };
   d.adj = { tf: pairTf[i] }; a.edge = items.A[i].edge; d.edge = items.D[i].edge;
   if (curComp && curComp.selA === a.id && curComp.selD === d.id) { curComp.tf = pairTf[i]; curComp.edit = snapshotEdit(); saveComp(); }
   DB.put('shots', a).catch(() => {}); DB.put('shots', d).catch(() => {});
 }
 function loadPairTf(i) {
   const p = pairTf[i]; tf.A = p ? { ...p.A } : T0(); tf.D = p ? { ...p.D } : T0();
-  const f = p && p.front ? p.front : defaultFront(pairShots[i] && pairShots[i][0]);
-  opts.front = f; $('frA').setAttribute('aria-pressed', f === 'A'); $('frD').setAttribute('aria-pressed', f === 'D');
+  const f = p && p.front && p.frontManual ? p.front : defaultFront(pairShots[i] && pairShots[i][0]);
+  opts.front = f; opts.frontManual = !!(p && p.frontManual); $('frA').setAttribute('aria-pressed', f === 'A'); $('frD').setAttribute('aria-pressed', f === 'D');
 }
 function switchPair(i) {
   if (i !== sel.A) savePair();
