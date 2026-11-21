@@ -23,7 +23,7 @@ test('EXIF reads equivalent focal length and rational digital zoom without requi
 test('saving to gallery retains the complete rendered output in the project',()=>{
   let rendered=false;
   const comp={};
-  const ctx=vm.createContext({curComp:comp,linked:true,render:()=>{rendered=true;},savePair(){},saveComp(){},
+  const ctx=vm.createContext({curComp:comp,linked:true,tool:'move',cleanFrame:false,render:()=>{rendered=true;},savePair(){},saveComp(){},
     cv:{toDataURL:(mime,quality)=>{assert.equal(rendered,true);assert.equal(mime,'image/jpeg');assert.equal(quality,.95);return 'full-output';}}});
   vm.runInContext(source.slice(source.indexOf('function compThumb('),source.indexOf("$('save').onclick =")),ctx);
   ctx.compThumb();assert.equal(comp.out,'full-output');
