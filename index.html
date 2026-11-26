@@ -427,6 +427,7 @@ html,body{overflow-x:clip}
 
     <div class="panel">
       <span class="lbl">Acabamento</span>
+      <label class="check" id="ltProjRow"><input type="checkbox" id="ltProj"> Protocolo Light Touch (harmonização completa)</label>
       <div class="row-head"><span class="check" style="gap:10px">Montagem</span>
         <div class="seg" role="group" aria-label="Montagem"><button id="lyC" aria-pressed="true">Clássica</button><button id="lyA" aria-pressed="false">Espectral</button><button id="lyB" aria-pressed="false">Galeria</button><button id="lyD" aria-pressed="false">Detalhe</button></div></div>
       <p class="note" id="lyNote" hidden>Espectral: as duas cabeças saindo do anel e duas lupas embaixo. Galeria: antes em cima, depois embaixo. Detalhe: as duas cabeças em cima e duas lupas em faixas.</p>
@@ -1104,6 +1105,9 @@ function loadLtFont() { const go = () => { if (typeof render === 'function' && t
 const opts = {...DEFAULT_OPTS};
 function restoreFinish(edit) {
   Object.assign(opts, DEFAULT_OPTS, edit?.opts || {});
+  // Caio 25/11: projeto marcado como Light Touch abre já com o título Light Touch (cor clara), a menos que a montagem tenha cor salva
+  if (typeof curComp !== 'undefined' && curComp?.lt && !edit?.opts?.look) opts.look = 'claro';
+  if (typeof document !== 'undefined' && document.getElementById('ltProj')) document.getElementById('ltProj').checked = !!(typeof curComp !== 'undefined' && curComp?.lt);
   $('fade').value = Math.round(opts.fade * 100); $('fadeV').textContent = $('fade').value + '%';
   for (const [id,key] of [['hand','hand'],['labels','labels'],['titleOn','title']]) $(id).checked = opts[key];
   $('handTxt').value = opts.handTxt; $('titleTxt').value = opts.titleTxt;
@@ -2005,6 +2009,7 @@ function autoFront() {
 $('frA').onclick = () => setFront('A'); $('frD').onclick = () => setFront('D');
 $('lyC').onclick = () => setLayout('classico'); $('lyA').onclick = () => { setLayout('espectral'); playEntry(); }; $('lyB').onclick = () => { setLayout('galeria'); playEntry(); }; $('lyD').onclick = () => { setLayout('detalhe'); playEntry(); };
 $('lkC').onclick = () => setLook('classico'); $('lkL').onclick = () => setLook('claro'); $('lkE').onclick = () => setLook('escuro');
+$('ltProj').onchange = e => { if (!curComp) { e.target.checked = false; setStatus('Abra um projeto por data para marcar como Light Touch', false); return; } curComp.lt = e.target.checked; if (curComp.lt) { if (!opts.ltTitle.trim()) { opts.ltTitle = 'Light Touch'; $('ltTitle').value = opts.ltTitle; } if (opts.look === 'classico') setLook('claro'); } render(); saveComp().catch(() => {}); };
 $('ltTitle').oninput = e => { opts.ltTitle = e.target.value; render(); }; $('ltLine').oninput = e => { opts.ltLine = e.target.value; render(); };
 $('ltFont').onchange = e => { opts.ltFont = e.target.value; loadLtFont(); };
 
@@ -2915,7 +2920,7 @@ function renderProj() {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'ccard';
     const th = c.out ? '<span class="cth2 one"><img alt="" src="' + c.out + '"></span>' : '<span class="cth2">' + (a ? '<img alt="" src="' + a.thumb + '">' : '<span></span>') + (d ? '<img alt="" src="' + d.thumb + '">' : '<span></span>') + '</span>';
     b.innerHTML = th + '<span><b></b><small></small></span><i>›</i>';
-    b.querySelector('b').textContent = 'Projeto ' + dateLabel(c) + (comps.filter(other => dateLabel(other) === dateLabel(c)).length > 1 ? ' · ' + new Date(c.t).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '');
+    b.querySelector('b').textContent = (c.lt ? 'Light Touch · ' : 'Projeto ') + dateLabel(c) + (comps.filter(other => dateLabel(other) === dateLabel(c)).length > 1 ? ' · ' + new Date(c.t).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '');
     b.querySelector('small').textContent = c.A.length + ' antes · ' + c.D.length + ' depois' + ((c.U || []).length ? ' · ' + c.U.length + ' para classificar' : '') + ' · ' + (c.angles || []).length + ' ângulos salvos';
     const menu = () => itemMenu('projects', null, c.id, 'Projeto ' + dateLabel(c));
     bindCard(b, () => openFolder(c), menu);
