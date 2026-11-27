@@ -1317,7 +1317,7 @@ function cleanMask(m) { return MaskRefinement.cleanMask(m, RES); }
 function isSelected(it) { return items.A[sel.A] === it || items.D[sel.D] === it; }
 function freeCanvas(c) { if (c) { c.width = c.height = 0; } }
 function release(it) {
-  ['src', 'cut', 'base', 'fin', 'dsrc', 'rc'].forEach(k => { freeCanvas(it[k]); it[k] = null; }); if (it._rcMask) { freeCanvas(it._rcMask.c); freeCanvas(it._rcMask.b); freeCanvas(it._rcMask.core); } it._rcMask = null; freeCanvas(it._hwLayer); freeCanvas(it._hwMask); it._hwLayer = it._hwMask = null;
+  ['src', 'cut', 'base', 'fin', 'dsrc', 'rc', '_plusSrc'].forEach(k => { freeCanvas(it[k]); it[k] = null; }); if (it._rcMask) { freeCanvas(it._rcMask.c); freeCanvas(it._rcMask.b); freeCanvas(it._rcMask.core); } it._rcMask = null; freeCanvas(it._hwLayer); freeCanvas(it._hwMask); it._hwLayer = it._hwMask = null;
   if (!it.edited) { freeCanvas(it.plus); freeCanvas(it.minus); it.plus = it.minus = null; }
 }
 async function ensureLive(it) {
@@ -1413,6 +1413,14 @@ function composeCut(it) {
   g.clearRect(0, 0, it.cut.width, it.cut.height); g.imageSmoothingQuality = 'high';
   if (it.recolor && (!it.rc || it._rcDirty)) applyRecolor(it);
   g.drawImage(it.rc || it.dsrc || it.src, 0, 0);
+  // Caio 27/11 17:01: a cor corrigida da borda (dsrc) só vale na borda do recorte automático. Onde ele pintou Restaurar,
+  // volta a foto original; senão o contorno antigo do recorte aparece como um risco no cabelo e no rosto.
+  if (it.edited && it.plus && it.dsrc && !it.rc) {
+    let t = it._plusSrc; if (!t || t.width !== it.cut.width || t.height !== it.cut.height) { freeCanvas(t); t = it._plusSrc = mkCanvas(it.cut.width, it.cut.height); }
+    const tg = t.getContext('2d'); tg.globalCompositeOperation = 'source-over'; tg.clearRect(0, 0, t.width, t.height); tg.drawImage(it.src, 0, 0, t.width, t.height);
+    tg.globalCompositeOperation = 'destination-in'; tg.imageSmoothingQuality = 'high'; tg.drawImage(it.plus, 0, 0, t.width, t.height); tg.globalCompositeOperation = 'source-over';
+    g.drawImage(t, 0, 0);
+  }
   if (it.headwear && it._hwLayer) g.drawImage(it._hwLayer, 0, 0, it.cut.width, it.cut.height);
   g.globalCompositeOperation = 'destination-in'; g.drawImage(it.fin, 0, 0, it.cut.width, it.cut.height);
   g.globalCompositeOperation = 'source-over';
